@@ -924,7 +924,7 @@ function switchTab(tabId) {
   document.querySelectorAll('.sb-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
   if (tabId === 'bankroll') renderBankrollTab();
-  if (tabId === 'news' && newsItems.length === 0) refreshNews();
+  // News loads only on manual button click
   if (tabId === 'settings') initSettings();
 }
 
@@ -1402,7 +1402,6 @@ function renderResultsTab(dr) {
 }
 
 // ── News Tab ──────────────────────────────────────────
-let newsRefreshTimer = null;
 async function refreshNews() {
   const grid = document.getElementById('news-grid');
   const dot = document.getElementById('news-dot');
@@ -1418,8 +1417,6 @@ async function refreshNews() {
     dot.className = 'status-dot green';
     status.textContent = `${newsItems.length} items · Updated ${fetched}`;
     renderNewsCards();
-    if (newsRefreshTimer) clearInterval(newsRefreshTimer);
-    newsRefreshTimer = setInterval(refreshNews, 15 * 60 * 1000);
   } catch(e) {
     dot.className = 'status-dot red';
     status.textContent = 'Failed to load news: ' + e.message;
