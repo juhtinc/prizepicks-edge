@@ -80,9 +80,9 @@ Example:
     const cleaned = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
     const objMatch = cleaned.match(/\{[\s\S]*\}/);
     if (objMatch) {
-      try { actuals = JSON.parse(objMatch[0]); } catch (e) {
-        console.error("[grade] Failed to parse actuals:", e.message);
-      }
+      actuals = JSON.parse(objMatch[0]);
+    } else {
+      throw new Error("No JSON object in actuals response. Raw: " + rawText.slice(0, 200));
     }
 
     // Step 5: Grade each pick
@@ -100,6 +100,17 @@ Example:
           actual_value: null,
           difference: null,
           reasoning: result?.note || "Game not found or player did not play",
+        };
+      }
+
+      // Exact match = push/void on PrizePicks — treat as null (not a win or loss)
+      if (actual_value === pick.line) {
+        return {
+          ...pick,
+          hit: null,
+          actual_value,
+          difference: 0,
+          reasoning: result?.note || `Exactly hit the line (${pick.line}) — push`,
         };
       }
 
