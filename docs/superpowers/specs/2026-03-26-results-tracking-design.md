@@ -80,7 +80,7 @@ if (prev) {
 
 **Logic:**
 1. Read `picks:previous` from KV. If missing, log `"[grade] picks:previous not found — refresh may not have run"` and exit with `{ ok: true, skipped: true }`.
-2. Read `picksForDate` from the archived object. If missing, fall back to yesterday computed as `new Date(Date.now() - 86400000)` formatted `YYYY-MM-DD` in UTC.
+2. Read `picksForDate` from the archived object. If missing, fall back to yesterday computed as `new Date(Date.now() - 86400000)` formatted `YYYY-MM-DD` with `timeZone: "America/Los_Angeles"` — consistent with all other date derivations in the system.
 3. Check if `picks:results:${picksForDate}` already exists. If so, return early — already graded. This guard protects `picks:record` from double-counting on retries.
 4. Make a **single Claude call** with web_search tool listing all players at once (e.g. `"Find the actual stat lines for these players from games on ${picksForDate}: LeBron James Points, Steph Curry Points, ..."`). A single call is required to stay within the 120s `maxDuration` limit — individual per-player calls would time out.
 5. For each pick, parse the returned actual values and compute:
