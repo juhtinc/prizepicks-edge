@@ -19,38 +19,41 @@ module.exports = async function handler(req, res) {
   try {
     console.log("[refresh] Starting AI analysis...");
 
+    // Archive current picks before overwriting
+    const prev = await kv.get("picks:latest");
+    if (prev) {
+      const picksForDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+      await kv.set("picks:previous", { ...prev, picksForDate }, 86400 * 2);
+      console.log("[refresh] Archived picks:latest to picks:previous for date", picksForDate);
+    }
+
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8000,
+      max_tokens: 16000,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{
         role: "user",
-        content: `Today is ${today}. You are finding real PrizePicks lines and cross-referencing them against RotoWire projections to identify the biggest edges. Follow these steps in order:
+        content: `Today is ${today}. You are a sharp sports analyst finding the 12 best PrizePicks edges using deep research. Work through these phases carefully:
 
-STEP 1 — Get the actual PrizePicks lines:
-- Search "lineups.com PrizePicks NBA today"
-- Search "lineups.com PrizePicks picks today"
-- Search "PrizePicks slate today ${today}"
-Record every player name, stat, and line number you find.
+PHASE 1 — Find today's PrizePicks lines:
+- Search "lineups.com PrizePicks today" and record every player, stat, and line you find
+- Search "PrizePicks slate today ${today}" to cross-reference
+- Build a candidate list of 20-30 players with their exact PrizePicks lines
 
-STEP 2 — Get RotoWire projections for those players:
-- Search "rotowire.com PrizePicks NBA today"
-- Search "rotowire player projections today NBA"
-- Search "rotowire.com prizepicks picks today"
-For each player from Step 1, find RotoWire's projected stat total.
+PHASE 2 — Deep research on each candidate (do ALL of these searches):
+For each candidate player:
+- Search "[player name] last 10 games stats [sport]"
+- Search "[player name] injury status today"
+- Search "[player name] vs [tonight's opponent] history"
+- Search "[team name] defensive ranking vs [player position]"
+- Search "rotowire [player name] projection today"
 
-STEP 3 — Find the edges:
-For each player where you have both a PrizePicks line AND a RotoWire projection:
-- If RotoWire projects HIGHER than the PrizePicks line → strong OVER edge
-- If RotoWire projects LOWER than the PrizePicks line → strong UNDER edge
-- The bigger the gap between projection and line, the higher the confidence
-Prioritize picks where the RotoWire projection differs from the PrizePicks line by the largest margin.
+PHASE 3 — Cross-reference and select:
+- Compare RotoWire projections vs PrizePicks lines — projection above line = OVER edge, below = UNDER edge
+- Only include a pick if at least 2 sources support the edge
+- Rank by edge size (projection vs line gap) and pick the 12 absolute best
 
-STEP 4 — Supplement with other sources if needed to reach 20 picks:
-- Search "pickswise.com PrizePicks picks today"
-- Search "bettingpros.com PrizePicks today"
-
-After all steps, return the 20 best picks ranked by edge size. You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
+You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
 
 Each object must have exactly these fields:
 - player (string): full name
@@ -59,9 +62,9 @@ Each object must have exactly these fields:
 - stat (string): e.g. "Points", "Rebounds", "Strikeouts"
 - line (number): the actual PrizePicks line
 - direction (string): "OVER" or "UNDER"
-- confidence (integer 60-95): higher when RotoWire gap is larger
-- reasoning (string): state the PrizePicks line, the RotoWire projection, the gap, and why it's the right side
-- tags (array of strings): include "RotoWire Edge" if cross-referenced, "Confirmed Line" if line was found on lineups.com, or "Approximate Line" if estimated`,
+- confidence (integer 60-95): scale with edge size — 90+ only if gap is very large and multiple sources agree
+- reasoning (string): MUST include last 5 and 10 game averages, opponent defensive ranking, any injury/rest info, the RotoWire or expert projection vs the PrizePicks line, and specifically why this line is mispriced
+- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated`,
       }],
     });
 
