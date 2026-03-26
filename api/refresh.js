@@ -25,18 +25,24 @@ module.exports = async function handler(req, res) {
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{
         role: "user",
-        content: `Today is ${today}. You are finding real PrizePicks prop lines published today. Run ALL of these searches before returning results:
+        content: `Today is ${today}. You are compiling real PrizePicks prop lines from multiple sources. Run ALL of these searches before returning results:
 
-1. Search "PrizePicks lines twitter today 2026" and "site:twitter.com PrizePicks props today"
-2. Search for tweets from these accounts posting today's slate: "@PrizePicks props today", "@PrizePicksProps slate", "@EamonMcAteer PrizePicks", "@WatsonPicks PrizePicks"
-3. Search "PrizePicks slate today 2026"
-4. Search "PrizePicks NBA picks today 2026"
-5. Search "PrizePicks MLB picks today 2026"
-6. Search "PrizePicks props today site:rotowire.com OR site:lineups.com OR site:pickswise.com OR site:underdogfantasy.com"
+1. Search "site:lineups.com/prizepicks PrizePicks props today"
+2. Search "lineups.com PrizePicks today"
+3. Search "site:rotowire.com player props today PrizePicks"
+4. Search "site:pickswise.com PrizePicks picks today"
+5. Search "site:oddsjam.com PrizePicks props today"
+6. Search "site:bettingpros.com PrizePicks picks today"
+7. Search "r/prizepicks daily slate today 2026" and "site:reddit.com/r/prizepicks today slate"
+8. Search "PrizePicks slate today March 26 2026"
+9. Search "@PrizePicks @PrizePicksProps @EamonMcAteer @WatsonPicks @PropBetGuy props today"
+10. Search "PrizePicks NBA props today 2026" and "PrizePicks MLB props today 2026"
 
-Combine all sources. Use ONLY lines actually found in search results. For players where the exact PrizePicks line was confirmed in a source, tag as "Confirmed Line". For players where you could not confirm the exact line, still include them with a line based on their season average and tag as "Approximate Line".
+After all searches: compile every player prop line you found across all sources into one master list, remove duplicates (keep the line that appeared in the most sources), then analyze and select the 20 best picks with the strongest edges.
 
-After all searches, return your 20 best picks. You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
+Use ONLY lines found in search results. Tag each pick as "Confirmed Line" if the exact PrizePicks line was found in at least one source, or "Approximate Line" if you had to estimate from season averages.
+
+You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
 
 Each object must have exactly these fields:
 - player (string): full name
@@ -46,7 +52,7 @@ Each object must have exactly these fields:
 - line (number): the prop line
 - direction (string): "OVER" or "UNDER"
 - confidence (integer 60-95)
-- reasoning (string): cite specific stats or source found in search
+- reasoning (string): name the source(s) where this line was found and cite supporting stats
 - tags (array of strings): include "Confirmed Line" or "Approximate Line"`,
       }],
     });
