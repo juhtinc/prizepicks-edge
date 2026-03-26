@@ -199,96 +199,87 @@ module.exports = async function handler(req, res) {
 - player (string): full name
 - team (string): team abbreviation
 - opponent (string|null): opponent team abbreviation, or null if unknown
-- sport (string): NBA, MLB, NHL, NFL, Soccer, Tennis, Valorant, LoL, CS2, Dota2, RocketLeague, Golf, MMA, or other
+- sport (string): NBA, MLB, NHL, NFL, Tennis, Valorant, LoL, CS2, Dota2, RocketLeague, Golf, MMA, or other
 - stat (string): e.g. "Points", "Rebounds", "Kills", "Aces"
-- line (number): the PrizePicks line
-- line_open (number|null): opening PrizePicks line if found, else null
+- line (number): the consensus line (from sportsbooks for NBA/MLB/NHL/NFL, from your research for other sports)
+- line_open (number|null): opening line if you found line movement data, else null
 - direction (string): "OVER" or "UNDER"
-- confidence (integer 60-95): higher when sportsbook consensus strongly supports the edge
-- sharp_move (boolean|null): true if line moved in our direction, false if against, null if unknown
+- confidence (integer 60-95): higher when recent averages strongly support the direction vs the line
+- sharp_move (boolean|null): true if line moved in our direction recently, false if against, null if unknown
 - public_fade (boolean|null): true if public is 75%+ on the OTHER side
 - public_pct (integer|null): public % on OUR side (0-100), or null
 - weather_flag (boolean|null): true if adverse weather for MLB/NFL, null otherwise
 - trap_game (boolean|null): true if back-to-back, travel, or letdown spot detected
-- alt_lines (object|null): {"dk": number|null, "fd": number|null} sportsbook lines for comparison
-- reasoning (string): MUST include sportsbook line vs PrizePicks line comparison, recent form (last 5 and 10 games), opponent context, injury status, and why this is a value edge
-- tags (array of strings): "Confirmed Line", "Approximate Line", "Sharp Action", "Fade Public", "Weather Factor", "Trap Spot", "Line Shop Opportunity" (if sportsbook line >1pt different from PrizePicks), "RotoWire Edge"`;
+- alt_lines (object|null): {"dk": number|null, "fd": number|null} per-book lines when books disagree
+- reasoning (string): MUST include the sportsbook line, player's last 5 and 10 game averages for this stat, matchup context, injury status, projection vs line, and specifically why this is a value play
+- tags (array of strings): "Sharp Number" if books agree tightly, "Book Disagreement" if gap ≥ 1pt between books, "Sharp Action", "Fade Public", "Weather Factor", "Trap Spot", "RotoWire Edge"`;
 
     let researchPrompt;
 
     if (oddsMode) {
-      // ── ODDS API MODE: Real lines provided, Claude focuses on PrizePicks + news ──
-      researchPrompt = `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks value plays.
+      // ── ODDS API MODE ─────────────────────────────────────────────────────────
+      // Lines come from The Odds API. Claude ONLY does injury/news research + niche sports.
+      researchPrompt = `Today is ${today}. You are a sharp sports analyst. You have been given real sportsbook player prop lines. Your job is to identify the best OVER/UNDER plays by researching each player's recent form and health.
 
-SPORTSBOOK PLAYER PROPS FOR TODAY (source: The Odds API — DraftKings, FanDuel, BetMGM consensus):
-Each line is: SPORT | PLAYER | STAT | BOOK:LINE ... [gap if books disagree]
+TODAY'S PLAYER PROP LINES (DraftKings / FanDuel / BetMGM — via The Odds API):
+Format: SPORT | PLAYER | STAT | BOOK:LINE ... [⚡ Xpt gap if books disagree]
 
 ${propsContext}
 
-These are real sportsbook market lines. Your job is to find where PrizePicks has a DIFFERENT line than the sportsbook consensus — that gap is your edge.
+These lines are authoritative. Do NOT search for alternative lines for these players. Focus all searches on player performance and injury data.
 
-PHASE 1 — Find PrizePicks lines for these players (targeted searches only):
-For each player above, search "PrizePicks [player name] [stat] line today" or check lineups.com/prizepicks.
-Note the exact PrizePicks line. Focus on players where the PrizePicks line appears meaningfully different from the sportsbook lines above.
-Also search: "PrizePicks slate ${today}" and "lineups.com PrizePicks today" to catch any players not in the Odds API list (esports, tennis, golf, MMA).
+PHASE 1 — Research every player in the list above:
+For each player, run these targeted searches:
+- "[player name] injury status today" — immediately skip anyone listed out/doubtful
+- "[player name] last 10 games [stat]" — what is their actual recent average vs the line above?
+- "[player name] vs [opponent] stats" — how do they perform against tonight's specific opponent?
+- "rotowire [player name] projection ${today}" — what does the industry project?
+- "[player name] back to back rest days" — schedule context (flag trap games)
+For MLB/NFL only: "[city] weather forecast ${today}" — flag wind >15mph or rain.
 
-PHASE 2 — Research injuries and recent form for your top 20-25 candidates:
-For EACH candidate you're seriously considering, search:
-- "[player name] injury status today" or "[player name] game status ${today}"
-- "[player name] last 10 games [stat]" — get real recent averages
-- "[player name] vs [opponent] matchup history" — get opponent defensive context
-- "rotowire [player name] projection today" — cross-check projection vs line
-- "[player name] line movement today" — note if PrizePicks line has moved
+PHASE 2 — Find props for sports NOT in the list above (these have no Odds API coverage):
+For Tennis: search "tennis props today ${today}", "best tennis bets today", "ATP WTA picks today"
+For Esports: search "esports props today", "vlr.gg matches today", "hltv.org today", "LoL props today"
+For Golf: search "PGA tour props ${today}", "golf DFS picks today", "golf player props today"
+For MMA: search "UFC props today", "MMA player props today"
+For each player found: research their recent form and H2H the same way as Phase 1.
 
-For MLB/NFL only: "[city] weather forecast today" — flag wind/rain.
-For tennis: "[player] H2H [opponent]" and surface record.
-
-PHASE 3 — Select the 15 best edges:
-Rank candidates by:
-1. Size of edge: how far is PrizePicks line from sportsbook consensus AND recent player averages?
-2. Confidence in direction: do recent stats, projections, and matchup all agree?
-3. No injury concern: player confirmed playing, not listed questionable/out
-4. Multi-source confirmation: at least 2 independent signals support the pick
-
-For each pick, set alt_lines.dk and alt_lines.fd from the sportsbook data above.
-Add "Line Shop Opportunity" tag if PrizePicks line differs from sportsbook by 1+ point.
-Confidence 85+ only when the sportsbook line is clearly on your side AND recent form agrees strongly.
+PHASE 3 — Select the 15 best plays total:
+Rank strictly by:
+1. Recent average vs line gap — player averaging 28pts over last 10 games on a 24.5 line is a strong OVER
+2. Matchup advantage — opponent gives up the most/least of that stat
+3. Health confirmed — player is active and not carrying an injury
+4. Projection support — at least one projection source (RotoWire, ESPN) agrees with direction
+Confidence 85+ only when the 10-game average, matchup, and projection all point the same direction.
 
 ${jsonSchema}`;
 
     } else {
-      // ── WEB SEARCH FALLBACK MODE: Claude finds everything via search ─────────
-      researchPrompt = `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks edges using deep research. No ODDS_API_KEY is configured so you must find all lines via web search.
+      // ── NO ODDS API — WEB SEARCH FOR NICHE SPORTS ONLY ───────────────────────
+      // Without an API key we cannot get reliable NBA/MLB/NHL/NFL lines.
+      // Only cover sports with publicly available prop data via web search.
+      researchPrompt = `Today is ${today}. You are a sharp sports analyst. ODDS_API_KEY is not configured, so you will focus on sports where prop lines are available via free public sources: Tennis, Esports, Golf, and MMA.
 
-PHASE 1 — Find today's PrizePicks lines:
-1. Search "lineups.com PrizePicks today" — primary source
-2. Search "rotowire PrizePicks props today"
-3. Search "reddit r/prizepicks slate today ${today}"
-4. Search "PrizePicks props today" on Twitter (@PrizePicks @PrizePicksProps @lineupshq)
-5. Search "oddsjam prizepicks today" and "pickswise prizepicks today"
-For tennis: "PrizePicks tennis props today", "tennisabstract.com", "atptour.com match today"
-For esports: "PrizePicks esports props today", "vlr.gg today", "gol.gg today", "hltv.org today"
-For other sports: "PrizePicks golf props today", "PrizePicks UFC props today", "PrizePicks MLS today"
-Build a candidate list of 25-35 players with their exact PrizePicks lines.
+PHASE 1 — Find today's props for niche sports:
+For Tennis: search "tennis props today ${today}", "best tennis bets today", "ATP WTA picks today", "tennisabstract.com", "atptour.com match today"
+For Esports: search "esports props today", "vlr.gg today", "gol.gg today", "hltv.org today", "LoL esports props today", "CS2 match props today"
+For Golf: search "PGA tour props ${today}", "golf player props today", "golf DFS picks today"
+For MMA/UFC: search "UFC fight props today", "MMA player props today"
+Build a list of 20-30 players with lines from at least one source.
 
-PHASE 2 — Deep research each candidate:
-- Search "[player name] last 10 games stats [sport]"
-- Search "[player name] injury status today"
-- Search "[player name] vs [opponent] history"
-- Search "[team name] defensive ranking vs [position]"
-- Search "rotowire [player name] projection today"
-- Search "PrizePicks [player name] line movement today"
-- Search "[player name] public betting percentage today"
-- Search "Underdog Fantasy [player name] line today" — note for alt_lines
-- Search "[team name] schedule back to back rest" — flag trap games
-For MLB/NFL: "[city] weather forecast today"
-For Tennis: "[player] H2H [opponent]", surface record, serve stats
-For Esports: team recent results, player stats, tournament context
+PHASE 2 — Research each candidate:
+- "[player name] injury status today"
+- "[player name] recent form last 5 matches [stat]"
+- "[player name] vs [opponent] H2H history"
+- "[player name] projection today"
+- "[player name] public betting percentage"
+For Tennis: H2H record, surface record, serve stats
+For Esports: team recent results, player KDA/stats, tournament context
 
-PHASE 3 — Select 15 best picks:
-- Compare projections vs PrizePicks lines
-- Only include if 2+ sources support the edge
-- Rank by edge size
+PHASE 3 — Select the 15 best plays:
+- Only include if you found a specific verifiable line from a real source
+- Rank by edge: recent average vs line gap
+- Require 2+ independent signals supporting the direction
 
 ${jsonSchema}`;
     }
