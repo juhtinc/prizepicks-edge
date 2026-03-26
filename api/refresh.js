@@ -14,13 +14,13 @@ module.exports = async function handler(req, res) {
       model: "claude-sonnet-4-20250514",
       max_tokens: 8000,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{ role: "user", content: "You are an elite sports betting analyst. Today is " + today + ". Search the web for today's PrizePicks player prop lines and identify the 14 best plays. For each pick search for recent news. Return ONLY a valid JSON array, no markdown, no backticks. Fields: player, team, sport, stat, line (number), direction (OVER or UNDER), confidence (60-95), reasoning (3-4 sentences), tags (array). Return ONLY the JSON array." }]
+      messages: [{ role: "user", content: "You are an elite sports betting analyst. Today is " + today + ". Search for recent player news, injuries, and matchups for NBA, MLB, NHL, and any other active sports today. Then give me your 14 best player prop picks for today — use realistic lines based on player averages and recent performance. For each pick search for news to back it up. You MUST return picks regardless of whether you find exact PrizePicks lines — use your best judgment on realistic prop values. Return ONLY a valid JSON array, no markdown, no backticks, no explanation. Each object must have: player (string), team (string), sport (string), stat (string), line (number), direction (OVER or UNDER), confidence (integer 60-95), reasoning (string, 3-4 sentences with specific facts), tags (array of strings). Return ONLY the JSON array starting with [ and ending with ]." }]
     });
     let rawText = "";
     for (const block of response.content || []) { if (block.type === "text") rawText += block.text; }
     rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error("No JSON found. Raw: " + rawText.slice(0, 200));
+    if (!jsonMatch) throw new Error("No JSON found. Raw: " + rawText.slice(0, 300));
     const picks = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(picks) || picks.length === 0) throw new Error("Empty picks");
     const leaguesSeen = [...new Set(picks.map(p => p.sport).filter(Boolean))];
