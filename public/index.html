@@ -529,7 +529,7 @@ footer{
     <span id="bankroll-display">Not set</span>
     <button class="bankroll-edit" onclick="openBankrollModal()">Set</button>
   </div>
-  <div id="bankroll-modal" class="modal-bg" style="display:none">
+  <div id="bankroll-modal" class="modal-bg">
     <div class="modal-box">
       <div class="modal-title">Set Your Bankroll</div>
       <input type="number" id="bankroll-input" class="modal-input" placeholder="e.g. 1000" min="1"/>
@@ -641,10 +641,10 @@ function updateBankrollDisplay() {
 function openBankrollModal() {
   document.getElementById('bankroll-input').value = BANKROLL || '';
   document.getElementById('bankroll-err').style.display = 'none';
-  document.getElementById('bankroll-modal').style.display = 'flex';
+  document.getElementById('bankroll-modal').classList.add('open');
   setTimeout(() => document.getElementById('bankroll-input').focus(), 50);
 }
-function closeBankrollModal() { document.getElementById('bankroll-modal').style.display = 'none'; }
+function closeBankrollModal() { document.getElementById('bankroll-modal').classList.remove('open'); }
 function saveBankroll() {
   const val = parseFloat(document.getElementById('bankroll-input').value);
   if (!val || val <= 0) {
@@ -669,7 +669,7 @@ async function loadPicks(){
     const [r, rr] = await Promise.all([fetch('/api/picks'), fetch('/api/results')]);
     if(!r.ok) throw new Error('Server error '+r.status);
     const d=await r.json();
-    const dr = rr.ok ? await rr.json() : { results: null, record: { wins: 0, losses: 0 } };
+    const dr = rr.ok ? await rr.json() : { results: null, record: { wins: 0, losses: 0 }, clv_record: null };
     ALL=d.picks||[];
     const m=d.meta||{};
 
