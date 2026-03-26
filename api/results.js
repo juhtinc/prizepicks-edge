@@ -5,9 +5,10 @@ module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Compute yesterday in PT
-  const yesterdayStr = new Date(Date.now() - 86400000)
-    .toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  // Compute yesterday in PT (DST-safe: decrement calendar day, not 86400 s)
+  const todayPT = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const [y, m, d] = todayPT.split("-").map(Number);
+  const yesterdayStr = new Date(y, m - 1, d - 1).toLocaleDateString("en-CA");
 
   try {
     const [results, record] = await Promise.all([
