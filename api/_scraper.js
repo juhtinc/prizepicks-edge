@@ -1,95 +1,69 @@
 /**
  * api/_scraper.js
- * Hits the PrizePicks internal API to get live prop lines.
- * Prefixed with _ so Vercel does NOT expose it as a route.
+ * Uses Claude AI with web search to find today's PrizePicks props
+ * instead of hitting their API directly (which Cloudflare blocks).
  */
 
-const axios = require("axios");
-
-const BASE = "https://api.prizepicks.com";
-
-const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Accept": "application/json, text/plain, */*",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Accept-Encoding": "gzip, deflate, br",
-  "Origin": "https://app.prizepicks.com",
-  "Referer": "https://app.prizepicks.com/",
-  "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-  "sec-ch-ua-mobile": "?0",
-  "sec-ch-ua-platform": '"Windows"',
-  "sec-fetch-dest": "empty",
-  "sec-fetch-mode": "cors",
-  "sec-fetch-site": "same-site",
-  "Connection": "keep-alive",
-};
-
-function buildIncludedMap(included = []) {
-  const map = {};
-  for (const item of included) {
-    if (!map[item.type]) map[item.type] = {};
-    map[item.type][item.id] = item;
-  }
-  return map;
-}
-
-function normalizeProjection(proj, includedMap) {
-  const attrs = proj.attributes || {};
-  const playerRel = proj.relationships?.new_player?.data;
-  const playerData = playerRel ? includedMap["new_player"]?.[playerRel.id] : null;
-  const playerAttrs = playerData?.attributes || {};
-  const leagueRel = proj.relationships?.league?.data;
-  const leagueData = leagueRel ? includedMap["league"]?.[leagueRel.id] : null;
-  const leagueAttrs = leagueData?.attributes || {};
-
-  return {
-    id: proj.id,
-    player: playerAttrs.display_name || playerAttrs.name || "Unknown Player",
-    team: playerAttrs.team || playerAttrs.team_name || "",
-    position: playerAttrs.position || "",
-    image_url: playerAttrs.image_url || "",
-    sport: leagueAttrs.sport || leagueAttrs.name || attrs.sport || "",
-    league: leagueAttrs.name || leagueAttrs.abbreviation || "",
-    stat: attrs.stat_type || attrs.projection_type || "",
-    line: parseFloat(attrs.line_score) || 0,
-    description: attrs.description || "",
-    status: attrs.status || "pre_game",
-    start_time: attrs.start_time || null,
-  };
-}
+const Anthropic = require("@anthropic-ai/sdk");
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function scrapeAll() {
-  console.log("[scraper] Fetching PrizePicks projections...");
+  console.log("[scraper] Using AI web search to find today's PrizePicks props...");
 
-  const res = await axios.get(`${BASE}/projections`, {
-    headers: HEADERS,
-    params: {
-      include: "new_player,league,stat_type",
-      per_page: 250,
-      single_stat: true,
-    },
-    timeout: 20000,
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
   });
 
-  const raw = res.data || {};
-  const included = raw.included || [];
-  const includedMap = buildIncludedMap(included);
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4000,
+    tools: [{ type: "web_search_20250305", name: "web_search" }],
+    messages: [{
+      role: "user",
+      content: `Today is ${today}. Search for today's PrizePicks player prop lines that are currently available. Look for props across NBA, MLB, NHL, NFL, golf, and esports (Valorant, League of Legends, CS2, etc.).
 
-  const projections = (raw.data || [])
-    .map((p) => normalizeProjection(p, includedMap))
-    .filter((p) => p.line > 0 && p.player !== "Unknown Player");
+Search for "PrizePicks props today ${today}" and related queries to find current lines.
+
+Return ONLY a valid JSON array of props. No markdown, no backticks. Each object must have:
+{
+  "player": "Player Name",
+  "team": "TEAM",
+  "sport": "NBA",
+  "stat": "Points",
+  "line": 24.5
+}
+
+Return as many real props as you can find, minimum 20. Only include props you actually found via search with real line values.`
+    }]
+  });
+
+  let rawText = "";
+  for (const block of response.content || []) {
+    if (block.type === "text") rawText += block.text;
+  }
+
+  const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error("Could not find props via web search");
+
+  const projections = JSON.parse(jsonMatch[0]).filter(p => p.line > 0);
 
   const grouped = {};
   for (const p of projections) {
-    const key = p.sport || p.league || "Other";
+    const key = p.sport || "Other";
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(p);
   }
 
   const leaguesSeen = Object.keys(grouped);
-  console.log(`[scraper] ${projections.length} props across: ${leaguesSeen.join(", ")}`);
+  console.log(`[scraper] Found ${projections.length} props via web search across: ${leaguesSeen.join(", ")}`);
 
-  return { projections, grouped, leaguesSeen, total: projections.length, scrapedAt: new Date().toISOString() };
+  return {
+    projections,
+    grouped,
+    leaguesSeen,
+    total: projections.length,
+    scrapedAt: new Date().toISOString()
+  };
 }
 
 module.exports = { scrapeAll };
