@@ -34,6 +34,25 @@ module.exports = async function handler(req, res) {
       console.error("[refresh] Archive step failed (non-fatal):", archiveErr.message);
     }
 
+    // Load cached multi-book lines (populated by /api/lines — non-fatal if missing)
+    let linesContext = "";
+    try {
+      const cachedLines = await kv.get("lines:combined");
+      if (cachedLines?.props?.length) {
+        const shopAlerts = cachedLines.props.filter(p => p.lineShopAlert);
+        const allProps = cachedLines.props.slice(0, 60); // cap prompt size
+        const propsText = allProps.map(p => {
+          const bookStr = Object.entries(p.books).map(([b, l]) => `${b}:${l}`).join(", ");
+          const alert = p.lineShopAlert ? ` ⚡ LINE SHOP (${p.discrepancy} pt gap)` : "";
+          return `  ${p.player} ${p.stat}: [${bookStr}] best-OVER ${p.bestOver?.book}@${p.bestOver?.line} best-UNDER ${p.bestUnder?.book}@${p.bestUnder?.line}${alert}`;
+        }).join("\n");
+        linesContext = `\n\nLIVE MULTI-BOOK LINES (from The Odds API — DraftKings, FanDuel, BetMGM et al.):\n${propsText}\n\nFor any pick you include, cross-reference against this data:\n- If PrizePicks line differs from sportsbook line by 1+ point, add "Line Shop Opportunity" to tags and note the discrepancy in reasoning\n- Set alt_lines fields using bestOver/bestUnder book values above\n- If sportsbooks have the player significantly higher/lower than PrizePicks, factor that into confidence`;
+        console.log(`[refresh] Injecting ${allProps.length} book lines (${shopAlerts.length} line-shop alerts) into prompt`);
+      }
+    } catch (linesErr) {
+      console.warn("[refresh] Lines context load failed (non-fatal):", linesErr.message);
+    }
+
     const systemPrompt = "You are a JSON API. You only ever respond with valid JSON arrays. Never include any text, explanation, or markdown outside of the JSON array.";
 
     const researchPrompt = `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks edges using deep research across all available sports. Work through these phases carefully:
@@ -96,7 +115,7 @@ Use this exact JSON schema for each pick (you will output the JSON array in the 
 - trap_game (boolean|null): true if schedule trap detected (back-to-back, travel, letdown spot), else null
 - alt_lines (object|null): {"underdog": number|null, "sleeper": number|null} if found, else null
 - reasoning (string): MUST include last 5 and 10 game averages, opponent context, projection vs line, line movement info, public split, and specifically why this line is mispriced. For tennis include H2H, surface, serve stats. For esports include team form and meta context.
-- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated, "Sharp Action" if sharp_move is true, "Fade Public" if public_fade is true, "Weather Factor" if weather_flag is true, "Trap Spot" if trap_game is true`;
+- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated, "Sharp Action" if sharp_move is true, "Fade Public" if public_fade is true, "Weather Factor" if weather_flag is true, "Trap Spot" if trap_game is true, "Line Shop Opportunity" if sportsbook line differs from PrizePicks by 1+ point${linesContext}`;
 
     // Turn 1: research with web search
     const researchResponse = await client.messages.create({

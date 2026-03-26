@@ -481,6 +481,51 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 .admin-link{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--fog);opacity:0.5;cursor:pointer;background:none;border:none;padding:0}
 .admin-link:hover{opacity:1;color:var(--lime)}
 
+/* ── Lines Tab ── */
+.lines-table-wrap{overflow-x:auto;margin-bottom:20px}
+.lines-table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+.lines-table th{
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--fog);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);
+  background:var(--ink2);position:sticky;top:0;
+}
+.lines-table td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.lines-table tr:hover td{background:rgba(255,255,255,0.02)}
+.lines-table tr.shop-alert td{background:rgba(184,245,66,0.04)}
+.lines-book-cell{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:2px 6px;border-radius:3px;
+}
+.lines-book-cell.best-over{color:var(--lime);background:rgba(184,245,66,0.1);border:1px solid rgba(184,245,66,0.2)}
+.lines-book-cell.best-under{color:var(--sky);background:rgba(90,180,255,0.08);border:1px solid rgba(90,180,255,0.15)}
+.lines-gap{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  padding:2px 6px;border-radius:3px;
+}
+.lines-gap.alert{color:var(--lime);background:rgba(184,245,66,0.08);border:1px solid rgba(184,245,66,0.15)}
+.lines-gap.normal{color:var(--fog)}
+.lines-pp-cell{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--violet)}
+
+/* Pick card line comparison */
+.card-lines{
+  padding:10px 16px;border-top:1px solid var(--line);
+  background:rgba(0,0,0,0.1);
+}
+.card-lines-title{
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--fog);margin-bottom:7px;
+}
+.card-lines-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:5px}
+.card-lines-book{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  padding:2px 7px;border-radius:3px;
+  background:var(--ink4);border:1px solid var(--line2);color:var(--smoke);
+}
+.card-lines-book.best{background:rgba(184,245,66,0.1);border-color:rgba(184,245,66,0.25);color:var(--lime)}
+.card-lines-best{font-size:11px;margin-top:3px;color:var(--smoke)}
+.card-lines-best strong{color:var(--lime)}
+.card-lines-best .sky{color:var(--sky)}
+
 /* ── Scores Tab ── */
 .scores-sport-group{margin-bottom:28px}
 .scores-sport-label{
@@ -632,6 +677,9 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       </button>
       <button class="sb-tab" data-tab="results" onclick="switchTab('results')">
         <span class="sb-icon">📈</span><span class="sb-label">RESULTS</span>
+      </button>
+      <button class="sb-tab" data-tab="lines" onclick="switchTab('lines')">
+        <span class="sb-icon">📐</span><span class="sb-label">LINES</span>
       </button>
       <button class="sb-tab" data-tab="scores" onclick="switchTab('scores')">
         <span class="sb-icon">🏟️</span><span class="sb-label">SCORES</span>
@@ -872,6 +920,45 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       </div>
     </div>
 
+    <!-- ════ TAB: LINES ════ -->
+    <div class="tab-panel" id="tab-lines">
+      <div class="tab-hd">
+        <div>
+          <div class="tab-title">📐 <em>Lines</em></div>
+          <div class="tab-sub">Multi-book comparison · DraftKings · FanDuel · BetMGM · Line shop alerts</div>
+        </div>
+        <button class="btn-refresh" onclick="loadLines(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Fetch Lines
+        </button>
+      </div>
+
+      <div class="news-status-bar">
+        <span class="status-dot amber" id="lines-dot"></span>
+        <span id="lines-status">Lines not loaded — click Fetch Lines</span>
+        <span style="margin-left:auto;font-size:9px;color:var(--fog)" id="lines-quota"></span>
+      </div>
+
+      <div class="news-filter" id="lines-sport-filter">
+        <button class="pill on" data-lines-filter="ALL">All Sports</button>
+      </div>
+
+      <div id="lines-shop-banner" style="display:none;margin-bottom:16px;padding:12px 16px;background:rgba(184,245,66,0.07);border:1px solid rgba(184,245,66,0.2);border-radius:var(--r)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--lime)">⚡ LINE SHOP ALERTS</span>
+        <span id="lines-shop-count" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);margin-left:10px"></span>
+      </div>
+
+      <div id="lines-grid">
+        <div class="center-state">
+          <div style="font-size:40px;opacity:0.15">📐</div>
+          <div class="state-title">No Lines Loaded</div>
+          <div class="state-sub">Click "Fetch Lines" to pull real-time player prop lines from DraftKings, FanDuel, BetMGM and more.<br><br>Requires <code style="font-family:monospace;font-size:11px;background:var(--ink4);padding:1px 5px;border-radius:3px">ODDS_API_KEY</code> in Vercel environment variables.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ════ TAB: SCORES ════ -->
     <div class="tab-panel" id="tab-scores">
       <div class="tab-hd">
@@ -1013,6 +1100,7 @@ function switchTab(tabId) {
   document.querySelectorAll('.sb-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
   if (tabId === 'bankroll') renderBankrollTab();
+  if (tabId === 'lines') renderLinesTab();
   if (tabId === 'scores' && !SCORES.length) loadScores();
   // News loads only on manual button click
   if (tabId === 'settings') initSettings();
@@ -1381,6 +1469,7 @@ function cardHTML(p, i) {
     ${(()=>{const s=kellyStake(p.confidence);return s!=null?`<div class="kelly-stake">Recommended: $${s.toFixed(2)}</div>`:''})()}
     ${p.correlation?`<div class="corr-badge">${p.correlation.note}</div>`:''}
   </div>
+  <div class="card-lines" id="card-lines-${i}" style="display:none"></div>
   <div class="card-live-score" id="score-${i}" style="display:none"></div>
 </div>`;
 }
@@ -1425,6 +1514,7 @@ function render() {
   if (value.length) html += sec('💡 Value Leans', value, '60–74 edge score');
   main.innerHTML = html;
   renderSharpSection();
+  updatePickCardLines();
   updatePickCardScores();
 }
 
@@ -1622,7 +1712,180 @@ document.getElementById('main').innerHTML = `
     <div class="state-mono">Connecting to API...</div>
   </div>`;
 
-// ── Scores ────────────────────────────────────────────
+// ── Lines ─────────────────────────────────────────────
+let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
+let activeLinesSportFilter = 'ALL';
+
+async function loadLines(manual = false) {
+  const dot = document.getElementById('lines-dot');
+  const status = document.getElementById('lines-status');
+  if (dot) dot.className = 'status-dot amber';
+  if (status) status.textContent = 'Fetching lines from sportsbooks...';
+
+  try {
+    const r = await fetch('/api/lines');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    LINES = await r.json();
+
+    if (dot) dot.className = LINES.propCount > 0 ? 'status-dot green' : 'status-dot amber';
+    if (status) status.textContent = LINES.propCount > 0
+      ? `${LINES.propCount} props · ${LINES.lineShopCount} line-shop alerts · ${new Date(LINES.fetchedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`
+      : (LINES.hasOddsApi ? 'No props found for today' : 'ODDS_API_KEY not configured');
+
+    if (!LINES.hasOddsApi && document.getElementById('lines-quota')) {
+      document.getElementById('lines-quota').textContent = 'Add ODDS_API_KEY to Vercel env vars';
+    }
+
+    if (document.getElementById('tab-lines')?.classList.contains('active')) renderLinesTab();
+    updatePickCardLines();
+  } catch(e) {
+    if (dot) dot.className = 'status-dot red';
+    if (status) status.textContent = 'Failed: ' + e.message;
+  }
+}
+
+function renderLinesTab() {
+  const grid = document.getElementById('lines-grid');
+  if (!grid) return;
+  const props = LINES.props || [];
+
+  if (!props.length) {
+    if (!LINES.hasOddsApi) return; // keep placeholder
+    grid.innerHTML = `<div class="center-state"><div style="font-size:32px;opacity:0.15">📐</div><div class="state-title">No Props Today</div><div class="state-sub">No player props found for today's games.</div></div>`;
+    return;
+  }
+
+  // Build sport filter pills
+  const sports = [...new Set(props.map(p => {
+    // Infer sport from market key prefix
+    if (['player_points','player_rebounds','player_assists','player_threes'].some(m => p.market?.includes(m.replace('player_',''))))  return 'NBA';
+    if (p.market?.includes('batter') || p.market?.includes('pitcher')) return 'MLB';
+    if (p.market?.includes('shots_on_goal') || p.market?.includes('player_goals')) return 'NHL';
+    if (p.market?.includes('pass_yds') || p.market?.includes('rush_yds') || p.market?.includes('reception')) return 'NFL';
+    return 'Other';
+  }))];
+  const filterWrap = document.getElementById('lines-sport-filter');
+  if (filterWrap && filterWrap.children.length <= 1) {
+    sports.forEach(s => {
+      const b = document.createElement('button');
+      b.className = 'pill'; b.dataset.linesFilter = s; b.textContent = emoji(s) + ' ' + s;
+      b.onclick = () => { document.querySelectorAll('[data-lines-filter]').forEach(x => x.classList.remove('on')); b.classList.add('on'); activeLinesSportFilter = s; renderLinesTab(); };
+      filterWrap.appendChild(b);
+    });
+  }
+
+  // Filter
+  let filtered = props;
+  if (activeLinesSportFilter !== 'ALL') {
+    filtered = props.filter(p => {
+      const s = activeLinesSportFilter;
+      if (s === 'NBA') return ['player_points','player_rebounds','player_assists','player_threes','player_blocks','player_steals'].includes(p.market);
+      if (s === 'MLB') return p.market?.includes('batter') || p.market?.includes('pitcher');
+      if (s === 'NHL') return p.market?.includes('goals') || p.market?.includes('shots_on_goal') || p.market?.includes('blocked_shots');
+      if (s === 'NFL') return p.market?.includes('pass_yds') || p.market?.includes('rush_yds') || p.market?.includes('reception');
+      return true;
+    });
+  }
+
+  // Sort: line-shop alerts first, then by discrepancy desc
+  filtered = [...filtered].sort((a,b) => {
+    if (a.lineShopAlert && !b.lineShopAlert) return -1;
+    if (!a.lineShopAlert && b.lineShopAlert) return 1;
+    return (b.discrepancy||0) - (a.discrepancy||0);
+  });
+
+  const shopAlerts = filtered.filter(p => p.lineShopAlert);
+  const shopBanner = document.getElementById('lines-shop-banner');
+  const shopCount = document.getElementById('lines-shop-count');
+  if (shopBanner) shopBanner.style.display = shopAlerts.length ? 'block' : 'none';
+  if (shopCount) shopCount.textContent = `${shopAlerts.length} props with 1+ point gap between books`;
+
+  // Get all book names present
+  const allBooks = [...new Set(filtered.flatMap(p => Object.keys(p.books || {})))].sort();
+
+  // PrizePicks lines lookup by player name
+  const ppLines = {};
+  for (const pick of ALL) {
+    ppLines[pick.player?.toLowerCase()] = { line: pick.line, stat: pick.stat };
+  }
+
+  const bookHeaders = allBooks.map(b => `<th>${bookLabel(b)}</th>`).join('');
+  const rows = filtered.map(p => {
+    const ppData = ppLines[p.player?.toLowerCase()];
+    const ppCell = ppData ? `<td><span class="lines-pp-cell">${ppData.line}</span></td>` : '<td style="color:var(--fog)">—</td>';
+    const gap = `<span class="lines-gap ${p.lineShopAlert?'alert':'normal'}">${p.discrepancy > 0 ? '+'+p.discrepancy : '0'}</span>`;
+    const bookCells = allBooks.map(b => {
+      const line = p.books[b];
+      if (line == null) return '<td style="color:var(--fog)">—</td>';
+      const isBestOver = p.bestOver?.book === b;
+      const isBestUnder = p.bestUnder?.book === b;
+      const cls = isBestOver ? 'best-over' : isBestUnder ? 'best-under' : '';
+      return `<td><span class="lines-book-cell ${cls}">${line}</span></td>`;
+    }).join('');
+    return `<tr class="${p.lineShopAlert?'shop-alert':''}">
+      <td style="font-weight:600">${p.player}</td>
+      <td style="color:var(--smoke);font-size:11px">${p.stat}</td>
+      ${ppCell}
+      ${bookCells}
+      <td>${gap}</td>
+      <td style="font-size:10px;color:var(--smoke)">${p.bestOver ? bookLabel(p.bestOver.book)+'@'+p.bestOver.line : '—'}</td>
+      <td style="font-size:10px;color:var(--smoke)">${p.bestUnder ? bookLabel(p.bestUnder.book)+'@'+p.bestUnder.line : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  grid.innerHTML = `<div class="lines-table-wrap">
+    <table class="lines-table">
+      <thead><tr>
+        <th>Player</th><th>Stat</th><th>PrizePicks</th>
+        ${bookHeaders}
+        <th>Gap</th><th>Best OVER</th><th>Best UNDER</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function bookLabel(key) {
+  const labels = { draftkings:'DK', fanduel:'FD', betmgm:'MGM', pointsbet:'PB', caesars:'CZ', bovada:'BV', mybookieag:'MB', betonlineag:'BOL', williamhill_us:'WH', lowvig:'LV', betrivers:'BR', unibet_us:'UB' };
+  return labels[key] || key.slice(0,4).toUpperCase();
+}
+
+function updatePickCardLines() {
+  if (!LINES.props?.length || !ALL.length) return;
+  ALL.forEach((pick, i) => {
+    const el = document.getElementById('card-lines-'+i);
+    if (!el) return;
+    const nameLower = pick.player?.toLowerCase() || '';
+    const statLower = pick.stat?.toLowerCase() || '';
+    // Match by player name (exact or last-name) and stat similarity
+    const match = LINES.props.find(p => {
+      const pName = p.player?.toLowerCase() || '';
+      const nameOk = pName === nameLower || pName.endsWith(' '+nameLower.split(' ').pop()) || nameLower.endsWith(' '+pName.split(' ').pop());
+      const statOk = !statLower || p.stat?.toLowerCase().includes(statLower.split(' ')[0]) || statLower.includes(p.stat?.toLowerCase().split(' ')[0]);
+      return nameOk && statOk;
+    });
+    if (!match) return;
+
+    const books = Object.entries(match.books || {});
+    if (!books.length) return;
+    const bookChips = books.map(([b, l]) => {
+      const isBest = match.bestOver?.book === b;
+      return `<span class="card-lines-book ${isBest?'best':''}">${bookLabel(b)}: ${l}</span>`;
+    }).join('');
+    const bestLine = match.bestOver
+      ? `Best OVER: <strong>${bookLabel(match.bestOver.book)} ${match.bestOver.line}</strong> &nbsp;·&nbsp; Best UNDER: <span class="sky">${bookLabel(match.bestUnder.book)} ${match.bestUnder.line}</span>`
+      : '';
+    const shopAlert = match.lineShopAlert
+      ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--lime);margin-left:8px">⚡ ${match.discrepancy}pt gap</span>`
+      : '';
+    el.innerHTML = `<div class="card-lines-title">Multi-Book Lines${shopAlert}</div>
+      <div class="card-lines-row">${bookChips}</div>
+      ${bestLine ? `<div class="card-lines-best">${bestLine}</div>` : ''}`;
+    el.style.display = 'block';
+  });
+}
+
+// ── Scores ─────────────────────────────────────────────
 let SCORES = [];
 let scoresTimer = null;
 
