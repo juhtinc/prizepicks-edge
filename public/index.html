@@ -637,14 +637,35 @@ async function submitRefresh(){
   const errEl=document.getElementById('modal-err');
   errEl.style.display='none';
   if(!sec){errEl.textContent='Please enter your CRON_SECRET';errEl.style.display='block';return}
+  closeModal();
+  const btn=document.getElementById('btn-refresh');
+  btn.disabled=true;btn.classList.add('spinning');
   try{
-    const r=await fetch('/api/refresh',{method:'POST',headers:{'x-secret':sec}});
-    const d=await r.json();
-    if(!r.ok){errEl.textContent=d.error||'Error';errEl.style.display='block';return}
-    closeModal();
-    startPolling();
+    document.getElementById('sdot').className='status-dot amber';
+    document.getElementById('stext').textContent='Step 1/2 — Scraping live PrizePicks props...';
+    const r1=await fetch('/api/refresh',{method:'POST',headers:{'x-secret':sec}});
+    const d1=await r1.json();
+    if(!r1.ok||d1.error){
+      document.getElementById('stext').textContent='Scrape failed: '+(d1.error||'unknown error');
+      document.getElementById('sdot').className='status-dot red';
+      btn.disabled=false;btn.classList.remove('spinning');
+      return;
+    }
+    document.getElementById('stext').textContent='Step 2/2 — AI analyzing '+d1.total+' props with web search (~60s)...';
+    const r2=await fetch('/api/analyze',{method:'POST',headers:{'x-secret':sec}});
+    const d2=await r2.json();
+    if(!r2.ok||d2.error){
+      document.getElementById('stext').textContent='Analysis failed: '+(d2.error||'unknown error');
+      document.getElementById('sdot').className='status-dot red';
+      btn.disabled=false;btn.classList.remove('spinning');
+      return;
+    }
+    await loadPicks();
+    btn.disabled=false;btn.classList.remove('spinning');
   }catch(e){
-    errEl.textContent='Request failed: '+e.message;errEl.style.display='block';
+    document.getElementById('stext').textContent='Error: '+e.message;
+    document.getElementById('sdot').className='status-dot red';
+    btn.disabled=false;btn.classList.remove('spinning');
   }
 }
 
