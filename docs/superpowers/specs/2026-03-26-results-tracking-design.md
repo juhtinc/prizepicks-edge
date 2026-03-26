@@ -2,7 +2,12 @@
 Date: 2026-03-26
 
 ## Overview
-Add a daily results grading system that automatically grades yesterday's PrizePicks picks against actual box scores, displays hits/misses in the UI, and tracks a running win-loss record over time. Autocorrection (adjusting future confidence based on past performance) is explicitly out of scope for this version.
+Two scoped changes:
+
+1. **Results tracking** — daily grading system that grades yesterday's picks against actual box scores, displays hits/misses in the UI, and maintains a running win-loss record.
+2. **Deep-research refresh** — overhaul of `refresh.js` to do per-player research before selecting picks, prioritizing accuracy over speed.
+
+Autocorrection (adjusting future confidence based on past performance) is out of scope.
 
 ## Data Model
 
@@ -60,17 +65,41 @@ Add a daily results grading system that automatically grades yesterday's PrizePi
 
 ## API Changes
 
-### api/refresh.js — archive step
-Before saving new picks to `picks:latest`, copy the current value to `picks:previous`, adding a `picksForDate` field set to today's calendar date in PT (format: `YYYY-MM-DD`). This is the only change to refresh.js.
+### api/refresh.js — full rewrite
 
+**Archive step (before fetching new picks):**
+Copy `picks:latest` → `picks:previous` with a `picksForDate` field (today's date in PT, `YYYY-MM-DD`):
 ```js
 const prev = await kv.get("picks:latest");
 if (prev) {
-  const picksForDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }); // YYYY-MM-DD
+  const picksForDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
   await kv.set("picks:previous", { ...prev, picksForDate }, 86400 * 2);
 }
-// ... then save new picks to picks:latest as normal
 ```
+
+**Deep-research prompt (replaces current single-prompt approach):**
+- `max_tokens`: increased from 8000 to 16000
+- The prompt instructs Claude to run multi-phase research before selecting picks:
+
+  **Phase 1 — Find today's games and PrizePicks lines:**
+  - Search `"lineups.com PrizePicks today"` for actual lines
+  - Search `"PrizePicks slate today [date]"` to cross-reference
+
+  **Phase 2 — Per-player deep research** (for each candidate pick):
+  - `"[player name] last 10 games stats"`
+  - `"[player name] injury status today"`
+  - `"[player name] vs [opponent] history"`
+  - `"[team] defensive ranking vs [position]"`
+  - `"rotowire [player name] projection today"`
+
+  **Phase 3 — Selection:** Only include a pick if at least 2 sources support the edge. Pick the 12 absolute best.
+
+- `reasoning` field must include: last 5 and 10 game averages, opponent defensive ranking, any injury/rest notes, the RotoWire or expert projection vs the PrizePicks line, and a specific explanation of why the line is mispriced.
+
+**vercel.json — increase maxDuration:**
+Change `"api/*.js"` `maxDuration` from 120 to 300 to accommodate extended research time.
+
+**Pick count:** Reduced from 20 to 12 (quality over quantity).
 
 ### api/grade.js — new endpoint
 - **Method:** POST (called by Vercel cron)
@@ -113,9 +142,18 @@ The `date` field in the response is sourced from `results.date` when results is 
 
 Returns `{ results: null, record: { wins: 0, losses: 0 }, date: yesterdayStr }` gracefully if nothing graded yet.
 
-### vercel.json — new cron entry
+### vercel.json — changes
+Add grade cron and increase maxDuration:
 ```json
-{ "path": "/api/grade", "schedule": "0 15 * * *" }
+{
+  "functions": { "api/*.js": { "maxDuration": 300 } },
+  "crons": [
+    { "path": "/api/cron", "schedule": "0 17 * * *" },
+    { "path": "/api/cron", "schedule": "0 21 * * *" },
+    { "path": "/api/cron", "schedule": "0 2 * * *" },
+    { "path": "/api/grade", "schedule": "0 15 * * *" }
+  ]
+}
 ```
 
 ## Frontend Changes
