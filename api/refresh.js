@@ -34,13 +34,9 @@ module.exports = async function handler(req, res) {
       console.error("[refresh] Archive step failed (non-fatal):", archiveErr.message);
     }
 
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 16000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{
-        role: "user",
-        content: `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks edges using deep research across all available sports. Work through these phases carefully:
+    const systemPrompt = "You are a JSON API. You only ever respond with valid JSON arrays. Never include any text, explanation, or markdown outside of the JSON array.";
+
+    const researchPrompt = `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks edges using deep research across all available sports. Work through these phases carefully:
 
 PHASE 1 — Find today's PrizePicks lines (search in this priority order):
 1. Search "lineups.com PrizePicks today" — primary source
@@ -83,9 +79,7 @@ PHASE 3 — Cross-reference and select 15 best picks:
 - Only include a pick if at least 2 sources support the edge
 - Rank by edge size and pick the 15 absolute best across all sports
 
-You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
-
-Each object must have exactly these fields:
+Use this exact JSON schema for each pick (you will output the JSON array in the next turn):
 - player (string): full name
 - team (string): team abbreviation
 - opponent (string|null): opponent team abbreviation, or null if unknown
@@ -102,12 +96,37 @@ Each object must have exactly these fields:
 - trap_game (boolean|null): true if schedule trap detected (back-to-back, travel, letdown spot), else null
 - alt_lines (object|null): {"underdog": number|null, "sleeper": number|null} if found, else null
 - reasoning (string): MUST include last 5 and 10 game averages, opponent context, projection vs line, line movement info, public split, and specifically why this line is mispriced. For tennis include H2H, surface, serve stats. For esports include team form and meta context.
-- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated, "Sharp Action" if sharp_move is true, "Fade Public" if public_fade is true, "Weather Factor" if weather_flag is true, "Trap Spot" if trap_game is true`,
-      }],
+- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated, "Sharp Action" if sharp_move is true, "Fade Public" if public_fade is true, "Weather Factor" if weather_flag is true, "Trap Spot" if trap_game is true`;
+
+    // Turn 1: research with web search
+    const researchResponse = await client.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 16000,
+      system: systemPrompt,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: researchPrompt }],
+    });
+
+    let researchText = "";
+    for (const block of researchResponse.content || []) {
+      if (block.type === "text") researchText += block.text;
+    }
+    console.log("[refresh] Research phase done, requesting JSON output...");
+
+    // Turn 2: force pure JSON array output
+    const jsonResponse = await client.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 8000,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: researchPrompt },
+        { role: "assistant", content: researchText || "Research complete." },
+        { role: "user", content: "Now output ONLY the JSON array from your research. Start your response with [ and end with ]. No other text whatsoever." },
+      ],
     });
 
     let rawText = "";
-    for (const block of response.content || []) {
+    for (const block of jsonResponse.content || []) {
       if (block.type === "text") rawText += block.text;
     }
 
