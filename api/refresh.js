@@ -2,6 +2,140 @@ const Anthropic = require("@anthropic-ai/sdk");
 const kv = require("./_kv");
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// ── Odds API config ────────────────────────────────────────────────────────────
+// Sports covered by The Odds API player props endpoint.
+// For everything else (Tennis, Esports, Golf, MMA) Claude still web-searches.
+const ODDS_SPORTS = [
+  {
+    sport: "NBA", key: "basketball_nba",
+    markets: "player_points,player_rebounds,player_assists,player_threes,player_blocks,player_steals,player_points_rebounds_assists",
+  },
+  {
+    sport: "MLB", key: "baseball_mlb",
+    markets: "batter_hits,pitcher_strikeouts,batter_home_runs,batter_rbis,batter_total_bases",
+  },
+  {
+    sport: "NHL", key: "icehockey_nhl",
+    markets: "player_goals,player_assists,player_shots_on_goal,player_blocked_shots",
+  },
+  {
+    sport: "NFL", key: "americanfootball_nfl",
+    markets: "player_pass_yds,player_rush_yds,player_reception_yds,player_receptions,player_pass_tds",
+  },
+];
+
+const MARKET_LABEL = {
+  player_points: "Points", player_rebounds: "Rebounds", player_assists: "Assists",
+  player_threes: "3-Pointers Made", player_blocks: "Blocks", player_steals: "Steals",
+  player_points_rebounds_assists: "Pts+Reb+Ast",
+  batter_hits: "Hits", pitcher_strikeouts: "Strikeouts", batter_home_runs: "Home Runs",
+  batter_rbis: "RBIs", batter_total_bases: "Total Bases",
+  player_goals: "Goals", player_shots_on_goal: "Shots on Goal", player_blocked_shots: "Blocked Shots",
+  player_pass_yds: "Pass Yards", player_rush_yds: "Rush Yards",
+  player_reception_yds: "Receiving Yards", player_receptions: "Receptions",
+  player_pass_tds: "Pass TDs",
+};
+
+function shortBook(key) {
+  const m = { draftkings: "DK", fanduel: "FD", betmgm: "MGM", pointsbet: "PB", caesars: "CZ", bovada: "BV", betonlineag: "BOL", mybookieag: "MB" };
+  return m[key] || key.slice(0, 3).toUpperCase();
+}
+
+// ── Fetch sportsbook player props ──────────────────────────────────────────────
+// Tries KV cache first (populated by /api/lines, 30-min TTL).
+// Falls back to a fresh Odds API fetch if the cache is cold.
+async function getSportsbookProps(apiKey) {
+  // Use cached lines if fresh
+  try {
+    const cached = await kv.get("lines:combined");
+    if (cached?.props?.length) {
+      console.log(`[refresh] Using cached Odds API lines (${cached.props.length} props from ${cached.fetchedAt})`);
+      return cached.props;
+    }
+  } catch (_) {}
+
+  console.log("[refresh] No cached lines — fetching fresh from The Odds API...");
+  const allProps = [];
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const from = new Date(`${today}T00:00:00-07:00`).toISOString();
+  const to   = new Date(`${today}T23:59:59-07:00`).toISOString();
+
+  for (const { sport, key, markets } of ODDS_SPORTS) {
+    try {
+      // Step 1: get today's event IDs
+      const evR = await fetch(
+        `https://api.the-odds-api.com/v4/sports/${key}/events?apiKey=${apiKey}&dateFormat=iso&commenceTimeFrom=${from}&commenceTimeTo=${to}`,
+        { signal: AbortSignal.timeout(9000) }
+      );
+      if (!evR.ok) { console.warn(`[refresh] ${sport} events HTTP ${evR.status}`); continue; }
+      const events = await evR.json();
+      const batch = (Array.isArray(events) ? events : []).slice(0, 8); // max 8 events/sport
+      console.log(`[refresh] ${sport}: ${events.length} events today, fetching props for ${batch.length}`);
+
+      // Step 2: fetch player props per event
+      await Promise.allSettled(batch.map(async event => {
+        try {
+          const prR = await fetch(
+            `https://api.the-odds-api.com/v4/sports/${key}/events/${event.id}/odds?apiKey=${apiKey}&regions=us&markets=${markets}&oddsFormat=american`,
+            { signal: AbortSignal.timeout(9000) }
+          );
+          if (!prR.ok) return;
+          const data = await prR.json();
+
+          // Normalize: player+stat → {books}
+          const byPk = {};
+          for (const bookie of (data.bookmakers || [])) {
+            for (const market of (bookie.markets || [])) {
+              const statLabel = MARKET_LABEL[market.key] || market.key;
+              for (const outcome of (market.outcomes || [])) {
+                if (outcome.name !== "Over" || !outcome.description || outcome.point == null) continue;
+                const pk = `${outcome.description}|${statLabel}`;
+                if (!byPk[pk]) byPk[pk] = { player: outcome.description, stat: statLabel, market: market.key, sport, books: {} };
+                byPk[pk].books[bookie.key] = outcome.point;
+              }
+            }
+          }
+          allProps.push(...Object.values(byPk));
+        } catch (e) {
+          console.warn(`[refresh] ${sport} event ${event.id} props failed:`, e.message);
+        }
+      }));
+    } catch (e) {
+      console.warn(`[refresh] ${sport} Odds API failed:`, e.message);
+    }
+  }
+
+  console.log(`[refresh] Fetched ${allProps.length} raw props from Odds API`);
+  return allProps;
+}
+
+// ── Format props for prompt injection ─────────────────────────────────────────
+function buildPropsContext(props) {
+  if (!props?.length) return null;
+
+  // Deduplicate by player+stat, merge books
+  const merged = {};
+  for (const p of props) {
+    const k = `${p.player}|${p.stat}`;
+    if (!merged[k]) merged[k] = { ...p, books: { ...p.books } };
+    else Object.assign(merged[k].books, p.books);
+  }
+
+  const lines = Object.values(merged).map(p => {
+    const books = Object.entries(p.books);
+    if (!books.length) return null;
+    const vals = books.map(([, v]) => v);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const gap = max - min >= 0.5 ? ` [⚡ ${(max - min).toFixed(1)}pt book gap]` : "";
+    const bookStr = books.map(([b, l]) => `${shortBook(b)}:${l}`).join(" | ");
+    return `${p.sport} | ${p.player} | ${p.stat} | ${bookStr}${gap}`;
+  }).filter(Boolean);
+
+  return lines.join("\n");
+}
+
+// ── Main handler ───────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "x-secret, content-type");
@@ -20,107 +154,150 @@ module.exports = async function handler(req, res) {
   });
 
   try {
-    console.log("[refresh] Starting AI analysis...");
+    console.log("[refresh] Starting...");
 
-    // Archive current picks before overwriting (isolated — failure must not block refresh)
+    // Archive current picks (non-fatal)
     try {
       const prev = await kv.get("picks:latest");
       if (prev) {
         const picksForDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
         await kv.set("picks:previous", { ...prev, picksForDate }, 86400 * 2);
-        console.log("[refresh] Archived picks:latest to picks:previous for date", picksForDate);
+        console.log("[refresh] Archived picks:latest to picks:previous for", picksForDate);
       }
-    } catch (archiveErr) {
-      console.error("[refresh] Archive step failed (non-fatal):", archiveErr.message);
+    } catch (e) {
+      console.error("[refresh] Archive failed (non-fatal):", e.message);
     }
 
-    // Load cached multi-book lines (populated by /api/lines — non-fatal if missing)
-    let linesContext = "";
-    try {
-      const cachedLines = await kv.get("lines:combined");
-      if (cachedLines?.props?.length) {
-        const shopAlerts = cachedLines.props.filter(p => p.lineShopAlert);
-        const allProps = cachedLines.props.slice(0, 60); // cap prompt size
-        const propsText = allProps.map(p => {
-          const bookStr = Object.entries(p.books).map(([b, l]) => `${b}:${l}`).join(", ");
-          const alert = p.lineShopAlert ? ` ⚡ LINE SHOP (${p.discrepancy} pt gap)` : "";
-          return `  ${p.player} ${p.stat}: [${bookStr}] best-OVER ${p.bestOver?.book}@${p.bestOver?.line} best-UNDER ${p.bestUnder?.book}@${p.bestUnder?.line}${alert}`;
-        }).join("\n");
-        linesContext = `\n\nLIVE MULTI-BOOK LINES (from The Odds API — DraftKings, FanDuel, BetMGM et al.):\n${propsText}\n\nFor any pick you include, cross-reference against this data:\n- If PrizePicks line differs from sportsbook line by 1+ point, add "Line Shop Opportunity" to tags and note the discrepancy in reasoning\n- Set alt_lines fields using bestOver/bestUnder book values above\n- If sportsbooks have the player significantly higher/lower than PrizePicks, factor that into confidence`;
-        console.log(`[refresh] Injecting ${allProps.length} book lines (${shopAlerts.length} line-shop alerts) into prompt`);
+    // ── Attempt to load sportsbook lines from The Odds API ──────────────────
+    const oddsApiKey = process.env.ODDS_API_KEY;
+    let propsContext = null;
+    let oddsMode = false;
+
+    if (oddsApiKey) {
+      try {
+        const props = await getSportsbookProps(oddsApiKey);
+        if (props.length >= 10) {
+          propsContext = buildPropsContext(props);
+          oddsMode = true;
+          console.log(`[refresh] Odds API mode active — ${Object.keys(
+            props.reduce((a, p) => { a[`${p.player}|${p.stat}`] = 1; return a; }, {})
+          ).length} unique player props loaded`);
+        } else {
+          console.log("[refresh] Odds API returned too few props, falling back to web-search mode");
+        }
+      } catch (e) {
+        console.warn("[refresh] Odds API load failed, falling back:", e.message);
       }
-    } catch (linesErr) {
-      console.warn("[refresh] Lines context load failed (non-fatal):", linesErr.message);
+    } else {
+      console.log("[refresh] No ODDS_API_KEY — using web-search mode");
     }
 
+    // ── Build prompt ─────────────────────────────────────────────────────────
     const systemPrompt = "You are a JSON API. You only ever respond with valid JSON arrays. Never include any text, explanation, or markdown outside of the JSON array.";
 
-    const researchPrompt = `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks edges using deep research across all available sports. Work through these phases carefully:
-
-PHASE 1 — Find today's PrizePicks lines (search in this priority order):
-1. Search "lineups.com PrizePicks today" — primary source
-2. Search "rotowire PrizePicks props today"
-3. Search "reddit r/prizepicks slate today ${today}"
-4. Search "Twitter PrizePicks props today" (look for @PrizePicks @PrizePicksProps @lineupshq)
-5. Search "oddsjam prizepicks today" and "pickswise prizepicks today" and "bettingpros prizepicks today"
-For tennis: also search "PrizePicks tennis props today" and "lineups.com prizepicks tennis" and "tennisabstract.com" and "atptour.com match today"
-For esports: also search "PrizePicks esports props today" and "PrizePicks Valorant props today" and "PrizePicks Dota2 props today" and "vlr.gg today" and "gol.gg today" and "hltv.org today" and "dotabuff.com today"
-For other sports: also search "PrizePicks golf props today" and "PrizePicks UFC props today" and "PrizePicks MLS soccer props today"
-Build a candidate list of 25-35 players across NBA, MLB, NHL, Soccer/MLS, Tennis, Esports (Valorant/LoL/CS2/Dota2/Rocket League), Golf, and MMA/UFC with their exact PrizePicks lines.
-
-PHASE 2 — Deep research on each candidate (do ALL of these for each player):
-Standard research (all sports):
-- Search "[player name] last 10 games stats [sport]"
-- Search "[player name] injury status today"
-- Search "[player name] vs [tonight's opponent] history"
-- Search "[team name] defensive ranking vs [player position]"
-- Search "rotowire [player name] projection today"
-- Search "PrizePicks [player name] line movement today" — note if line has moved and in which direction
-- Search "[player name] public betting percentage today" — note public split
-- Search "Underdog Fantasy [player name] line today" and "Sleeper props [player name] today" — note alt lines
-- Search "[team name] schedule context back to back rest" — flag trap games
-
-For MLB/NFL only:
-- Search "[city] [stadium] weather forecast today" — flag adverse weather (wind >15mph, rain, cold)
-
-For Tennis specifically:
-- Search "[player name] H2H vs [opponent]"
-- Search "[player name] surface record [surface type]"
-- Search "[player name] ATP/WTA ranking ace rate first serve percentage"
-
-For Esports specifically:
-- Search "[team name] recent match results [game]"
-- Search "[player name] recent performance stats [game]"
-- Search "tournament context [team name] [game] today"
-
-PHASE 3 — Cross-reference and select 15 best picks:
-- Compare projections vs PrizePicks lines
-- Only include a pick if at least 2 sources support the edge
-- Rank by edge size and pick the 15 absolute best across all sports
-
-Use this exact JSON schema for each pick (you will output the JSON array in the next turn):
+    const jsonSchema = `Use this exact JSON schema for each pick:
 - player (string): full name
 - team (string): team abbreviation
 - opponent (string|null): opponent team abbreviation, or null if unknown
-- sport (string): NBA, MLB, NHL, Soccer, Tennis, Valorant, LoL, CS2, Dota2, RocketLeague, Golf, MMA, or other
-- stat (string): e.g. "Points", "Rebounds", "Kills", "Aces", "Fantasy Score"
-- line (number): the actual PrizePicks line
-- line_open (number|null): opening line if found via line movement search, else null
+- sport (string): NBA, MLB, NHL, NFL, Soccer, Tennis, Valorant, LoL, CS2, Dota2, RocketLeague, Golf, MMA, or other
+- stat (string): e.g. "Points", "Rebounds", "Kills", "Aces"
+- line (number): the PrizePicks line
+- line_open (number|null): opening PrizePicks line if found, else null
 - direction (string): "OVER" or "UNDER"
-- confidence (integer 60-95): scale with edge size — 90+ only if gap is very large and multiple sources agree
-- sharp_move (boolean|null): true if line moved >1 point in our direction, false if moved against, null if unknown
-- public_fade (boolean|null): true if public is 75%+ on the OTHER side (we are fading public), else null
-- public_pct (integer|null): percentage of public on OUR side (0-100), or null if unknown
-- weather_flag (boolean|null): true if adverse weather detected for MLB/NFL, null for all other sports
-- trap_game (boolean|null): true if schedule trap detected (back-to-back, travel, letdown spot), else null
-- alt_lines (object|null): {"underdog": number|null, "sleeper": number|null} if found, else null
-- reasoning (string): MUST include last 5 and 10 game averages, opponent context, projection vs line, line movement info, public split, and specifically why this line is mispriced. For tennis include H2H, surface, serve stats. For esports include team form and meta context.
-- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated, "Sharp Action" if sharp_move is true, "Fade Public" if public_fade is true, "Weather Factor" if weather_flag is true, "Trap Spot" if trap_game is true, "Line Shop Opportunity" if sportsbook line differs from PrizePicks by 1+ point${linesContext}`;
+- confidence (integer 60-95): higher when sportsbook consensus strongly supports the edge
+- sharp_move (boolean|null): true if line moved in our direction, false if against, null if unknown
+- public_fade (boolean|null): true if public is 75%+ on the OTHER side
+- public_pct (integer|null): public % on OUR side (0-100), or null
+- weather_flag (boolean|null): true if adverse weather for MLB/NFL, null otherwise
+- trap_game (boolean|null): true if back-to-back, travel, or letdown spot detected
+- alt_lines (object|null): {"dk": number|null, "fd": number|null} sportsbook lines for comparison
+- reasoning (string): MUST include sportsbook line vs PrizePicks line comparison, recent form (last 5 and 10 games), opponent context, injury status, and why this is a value edge
+- tags (array of strings): "Confirmed Line", "Approximate Line", "Sharp Action", "Fade Public", "Weather Factor", "Trap Spot", "Line Shop Opportunity" (if sportsbook line >1pt different from PrizePicks), "RotoWire Edge"`;
 
-    // Turn 1: research with web search
+    let researchPrompt;
+
+    if (oddsMode) {
+      // ── ODDS API MODE: Real lines provided, Claude focuses on PrizePicks + news ──
+      researchPrompt = `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks value plays.
+
+SPORTSBOOK PLAYER PROPS FOR TODAY (source: The Odds API — DraftKings, FanDuel, BetMGM consensus):
+Each line is: SPORT | PLAYER | STAT | BOOK:LINE ... [gap if books disagree]
+
+${propsContext}
+
+These are real sportsbook market lines. Your job is to find where PrizePicks has a DIFFERENT line than the sportsbook consensus — that gap is your edge.
+
+PHASE 1 — Find PrizePicks lines for these players (targeted searches only):
+For each player above, search "PrizePicks [player name] [stat] line today" or check lineups.com/prizepicks.
+Note the exact PrizePicks line. Focus on players where the PrizePicks line appears meaningfully different from the sportsbook lines above.
+Also search: "PrizePicks slate ${today}" and "lineups.com PrizePicks today" to catch any players not in the Odds API list (esports, tennis, golf, MMA).
+
+PHASE 2 — Research injuries and recent form for your top 20-25 candidates:
+For EACH candidate you're seriously considering, search:
+- "[player name] injury status today" or "[player name] game status ${today}"
+- "[player name] last 10 games [stat]" — get real recent averages
+- "[player name] vs [opponent] matchup history" — get opponent defensive context
+- "rotowire [player name] projection today" — cross-check projection vs line
+- "[player name] line movement today" — note if PrizePicks line has moved
+
+For MLB/NFL only: "[city] weather forecast today" — flag wind/rain.
+For tennis: "[player] H2H [opponent]" and surface record.
+
+PHASE 3 — Select the 15 best edges:
+Rank candidates by:
+1. Size of edge: how far is PrizePicks line from sportsbook consensus AND recent player averages?
+2. Confidence in direction: do recent stats, projections, and matchup all agree?
+3. No injury concern: player confirmed playing, not listed questionable/out
+4. Multi-source confirmation: at least 2 independent signals support the pick
+
+For each pick, set alt_lines.dk and alt_lines.fd from the sportsbook data above.
+Add "Line Shop Opportunity" tag if PrizePicks line differs from sportsbook by 1+ point.
+Confidence 85+ only when the sportsbook line is clearly on your side AND recent form agrees strongly.
+
+${jsonSchema}`;
+
+    } else {
+      // ── WEB SEARCH FALLBACK MODE: Claude finds everything via search ─────────
+      researchPrompt = `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks edges using deep research. No ODDS_API_KEY is configured so you must find all lines via web search.
+
+PHASE 1 — Find today's PrizePicks lines:
+1. Search "lineups.com PrizePicks today" — primary source
+2. Search "rotowire PrizePicks props today"
+3. Search "reddit r/prizepicks slate today ${today}"
+4. Search "PrizePicks props today" on Twitter (@PrizePicks @PrizePicksProps @lineupshq)
+5. Search "oddsjam prizepicks today" and "pickswise prizepicks today"
+For tennis: "PrizePicks tennis props today", "tennisabstract.com", "atptour.com match today"
+For esports: "PrizePicks esports props today", "vlr.gg today", "gol.gg today", "hltv.org today"
+For other sports: "PrizePicks golf props today", "PrizePicks UFC props today", "PrizePicks MLS today"
+Build a candidate list of 25-35 players with their exact PrizePicks lines.
+
+PHASE 2 — Deep research each candidate:
+- Search "[player name] last 10 games stats [sport]"
+- Search "[player name] injury status today"
+- Search "[player name] vs [opponent] history"
+- Search "[team name] defensive ranking vs [position]"
+- Search "rotowire [player name] projection today"
+- Search "PrizePicks [player name] line movement today"
+- Search "[player name] public betting percentage today"
+- Search "Underdog Fantasy [player name] line today" — note for alt_lines
+- Search "[team name] schedule back to back rest" — flag trap games
+For MLB/NFL: "[city] weather forecast today"
+For Tennis: "[player] H2H [opponent]", surface record, serve stats
+For Esports: team recent results, player stats, tournament context
+
+PHASE 3 — Select 15 best picks:
+- Compare projections vs PrizePicks lines
+- Only include if 2+ sources support the edge
+- Rank by edge size
+
+${jsonSchema}`;
+    }
+
+    // ── Turn 1: Research with web search ────────────────────────────────────
+    console.log(`[refresh] Starting Turn 1 research (${oddsMode ? "Odds API mode" : "web-search mode"})...`);
     const researchResponse = await client.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 16000,
+      max_tokens: oddsMode ? 10000 : 16000, // Odds API mode needs far fewer tokens
       system: systemPrompt,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{ role: "user", content: researchPrompt }],
@@ -130,9 +307,9 @@ Use this exact JSON schema for each pick (you will output the JSON array in the 
     for (const block of researchResponse.content || []) {
       if (block.type === "text") researchText += block.text;
     }
-    console.log("[refresh] Research phase done, requesting JSON output...");
+    console.log("[refresh] Turn 1 done. Requesting JSON output...");
 
-    // Turn 2: force pure JSON array output
+    // ── Turn 2: Force pure JSON output ───────────────────────────────────────
     const jsonResponse = await client.messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 8000,
@@ -140,7 +317,7 @@ Use this exact JSON schema for each pick (you will output the JSON array in the 
       messages: [
         { role: "user", content: researchPrompt },
         { role: "assistant", content: researchText || "Research complete." },
-        { role: "user", content: "Now output ONLY the JSON array from your research. Start your response with [ and end with ]. No other text whatsoever." },
+        { role: "user", content: "Now output ONLY the JSON array of your 15 best picks. Start with [ and end with ]. No other text." },
       ],
     });
 
@@ -148,72 +325,68 @@ Use this exact JSON schema for each pick (you will output the JSON array in the 
     for (const block of jsonResponse.content || []) {
       if (block.type === "text") rawText += block.text;
     }
+    console.log("[refresh] Turn 2 raw (first 500):", rawText.slice(0, 500));
 
-    console.log("[refresh] Raw AI response:", rawText.slice(0, 500));
-
-    // Strip markdown fences
-    let cleaned = rawText
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
-
-    // Try to extract [ ... ] array
+    // ── Parse JSON (with fallback extraction) ───────────────────────────────
+    let cleaned = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
     let picks = null;
+
     const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
     if (arrayMatch) {
       try { picks = JSON.parse(arrayMatch[0]); } catch (e) {
         console.error("[refresh] Array match parse failed:", e.message);
       }
     }
-
-    // Fallback: try parsing the whole cleaned response
     if (!picks) {
       try { picks = JSON.parse(cleaned); } catch (e) {
         console.error("[refresh] Full parse failed:", e.message);
       }
     }
 
-    function detectCorrelations(picks) {
-      const gameGroups = {};
-      for (const pick of picks) {
-        const key = [pick.team, pick.opponent].filter(Boolean).sort().join(':');
-        if (!key) continue;
-        if (!gameGroups[key]) gameGroups[key] = [];
-        gameGroups[key].push(pick);
+    // ── Detect correlations ──────────────────────────────────────────────────
+    function detectCorrelations(arr) {
+      const groups = {};
+      for (const p of arr) {
+        const k = [p.team, p.opponent].filter(Boolean).sort().join(":");
+        if (!k) continue;
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(p);
       }
-      for (const group of Object.values(gameGroups)) {
+      for (const group of Object.values(groups)) {
         if (group.length < 2) continue;
-        for (const pick of group) {
-          const teammates = group.filter(q => q !== pick && q.team === pick.team);
-          const opponents = group.filter(q => q !== pick && q.team !== pick.team);
+        for (const p of group) {
+          const teammates = group.filter(q => q !== p && q.team === p.team);
+          const opponents  = group.filter(q => q !== p && q.team !== p.team);
           if (teammates.length > 0) {
-            pick.correlation = { group: `${pick.team} game`, note: "Same team — consider parlaying on a big game night" };
+            p.correlation = { group: `${p.team} game`, note: "Same team — consider parlaying on a big game night" };
           } else if (opponents.length > 0) {
-            pick.correlation = { group: `${pick.team} vs ${pick.opponent || 'Opponent'}`, note: "Opposing teams — game script dependent" };
+            p.correlation = { group: `${p.team} vs ${p.opponent || "Opponent"}`, note: "Opposing teams — game script dependent" };
           }
         }
       }
-      return picks;
+      return arr;
     }
+
     if (Array.isArray(picks)) picks = detectCorrelations(picks);
 
     if (!Array.isArray(picks) || picks.length === 0) {
-      throw new Error("No JSON array in response. Raw: " + rawText.slice(0, 300));
+      throw new Error("No valid JSON array in response. Raw: " + rawText.slice(0, 300));
     }
 
     const leaguesSeen = [...new Set(picks.map(p => p.sport).filter(Boolean))];
+    console.log(`[refresh] Saving ${picks.length} picks (${leaguesSeen.join(", ")}) to KV...`);
 
-    console.log("[refresh] Saving", picks.length, "picks to KV...");
     await kv.set("picks:latest", {
       picks,
       scrapedAt: new Date().toISOString(),
       analyzedAt: new Date().toISOString(),
       leaguesSeen,
       totalProps: picks.length,
+      oddsMode,
     }, 86400 * 2);
 
-    console.log("[refresh] KV save done. Returning", picks.length, "picks.");
-    return res.status(200).json({ ok: true, total: picks.length });
+    console.log("[refresh] Done.");
+    return res.status(200).json({ ok: true, total: picks.length, oddsMode });
 
   } catch (err) {
     console.error("[refresh] Error:", err.message);
