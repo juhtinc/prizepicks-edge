@@ -9,13 +9,19 @@ const axios = require("axios");
 const BASE = "https://api.prizepicks.com";
 
 const HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  Accept: "application/json",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Origin: "https://app.prizepicks.com",
-  Referer: "https://app.prizepicks.com/",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Origin": "https://app.prizepicks.com",
+  "Referer": "https://app.prizepicks.com/",
+  "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-site",
+  "Connection": "keep-alive",
 };
 
 function buildIncludedMap(included = []) {
