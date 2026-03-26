@@ -25,8 +25,8 @@ module.exports = async function handler(req, res) {
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{
         role: "user",
-        content: `You are an elite sports betting analyst. Today is ${today}. Search the web for today's PrizePicks player prop lines and identify the 14 best plays with the strongest edges. Include esports if available. For each pick search for recent news and injuries to back it up. Return ONLY a valid JSON array, no markdown, no backticks. Each object must have exactly: { "player": "Name", "team": "TEAM", "sport": "NBA", "stat": "Points", "line": 24.5, "direction": "OVER", "confidence": 82, "reasoning": "3-4 sentences with specific facts.", "tags": ["Tag1", "Tag2"] }. Return ONLY the JSON array.`
-      }]
+        content: `Today is ${today}. Search for today's best PrizePicks player prop picks. You MUST respond with ONLY a JSON array. No text before or after. No explanation. Just the raw JSON array starting with [ and ending with ]. Each object needs: player, team, sport, stat, line (number), direction (OVER or UNDER), confidence (60-95), reasoning (string), tags (array of strings).`,
+      }],
     });
 
     let rawText = "";
@@ -34,11 +34,33 @@ module.exports = async function handler(req, res) {
       if (block.type === "text") rawText += block.text;
     }
 
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error("No JSON returned from AI");
+    console.log("[refresh] Raw AI response:", rawText.slice(0, 500));
 
-    const picks = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(picks) || picks.length === 0) throw new Error("Empty picks");
+    // Strip markdown fences
+    let cleaned = rawText
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    // Try to extract [ ... ] array
+    let picks = null;
+    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      try { picks = JSON.parse(arrayMatch[0]); } catch (e) {
+        console.error("[refresh] Array match parse failed:", e.message);
+      }
+    }
+
+    // Fallback: try parsing the whole cleaned response
+    if (!picks) {
+      try { picks = JSON.parse(cleaned); } catch (e) {
+        console.error("[refresh] Full parse failed:", e.message);
+      }
+    }
+
+    if (!Array.isArray(picks) || picks.length === 0) {
+      throw new Error("No JSON array in response. Raw: " + rawText.slice(0, 300));
+    }
 
     const leaguesSeen = [...new Set(picks.map(p => p.sport).filter(Boolean))];
 
