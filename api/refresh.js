@@ -37,38 +37,69 @@ module.exports = async function handler(req, res) {
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{
         role: "user",
-        content: `Today is ${today}. You are a sharp sports analyst finding the 12 best PrizePicks edges using deep research. Work through these phases carefully:
+        content: `Today is ${today}. You are a sharp sports analyst finding the 15 best PrizePicks edges using deep research across all available sports. Work through these phases carefully:
 
-PHASE 1 — Find today's PrizePicks lines:
-- Search "lineups.com PrizePicks today" and record every player, stat, and line you find
-- Search "PrizePicks slate today ${today}" to cross-reference
-- Build a candidate list of 20-30 players with their exact PrizePicks lines
+PHASE 1 — Find today's PrizePicks lines (search in this priority order):
+1. Search "lineups.com PrizePicks today" — primary source
+2. Search "rotowire PrizePicks props today"
+3. Search "reddit r/prizepicks slate today ${today}"
+4. Search "Twitter PrizePicks props today" (look for @PrizePicks @PrizePicksProps @lineupshq)
+5. Search "oddsjam prizepicks today" and "pickswise prizepicks today" and "bettingpros prizepicks today"
+For tennis: also search "PrizePicks tennis props today" and "lineups.com prizepicks tennis" and "tennisabstract.com" and "atptour.com match today"
+For esports: also search "PrizePicks esports props today" and "PrizePicks Valorant props today" and "PrizePicks Dota2 props today" and "vlr.gg today" and "gol.gg today" and "hltv.org today" and "dotabuff.com today"
+For other sports: also search "PrizePicks golf props today" and "PrizePicks UFC props today" and "PrizePicks MLS soccer props today"
+Build a candidate list of 25-35 players across NBA, MLB, NHL, Soccer/MLS, Tennis, Esports (Valorant/LoL/CS2/Dota2/Rocket League), Golf, and MMA/UFC with their exact PrizePicks lines.
 
-PHASE 2 — Deep research on each candidate (do ALL of these searches):
-For each candidate player:
+PHASE 2 — Deep research on each candidate (do ALL of these for each player):
+Standard research (all sports):
 - Search "[player name] last 10 games stats [sport]"
 - Search "[player name] injury status today"
 - Search "[player name] vs [tonight's opponent] history"
 - Search "[team name] defensive ranking vs [player position]"
 - Search "rotowire [player name] projection today"
+- Search "PrizePicks [player name] line movement today" — note if line has moved and in which direction
+- Search "[player name] public betting percentage today" — note public split
+- Search "Underdog Fantasy [player name] line today" and "Sleeper props [player name] today" — note alt lines
+- Search "[team name] schedule context back to back rest" — flag trap games
 
-PHASE 3 — Cross-reference and select:
-- Compare RotoWire projections vs PrizePicks lines — projection above line = OVER edge, below = UNDER edge
+For MLB/NFL only:
+- Search "[city] [stadium] weather forecast today" — flag adverse weather (wind >15mph, rain, cold)
+
+For Tennis specifically:
+- Search "[player name] H2H vs [opponent]"
+- Search "[player name] surface record [surface type]"
+- Search "[player name] ATP/WTA ranking ace rate first serve percentage"
+
+For Esports specifically:
+- Search "[team name] recent match results [game]"
+- Search "[player name] recent performance stats [game]"
+- Search "tournament context [team name] [game] today"
+
+PHASE 3 — Cross-reference and select 15 best picks:
+- Compare projections vs PrizePicks lines
 - Only include a pick if at least 2 sources support the edge
-- Rank by edge size (projection vs line gap) and pick the 12 absolute best
+- Rank by edge size and pick the 15 absolute best across all sports
 
 You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
 
 Each object must have exactly these fields:
 - player (string): full name
 - team (string): team abbreviation
-- sport (string): NBA, MLB, NHL, etc.
-- stat (string): e.g. "Points", "Rebounds", "Strikeouts"
+- opponent (string|null): opponent team abbreviation, or null if unknown
+- sport (string): NBA, MLB, NHL, Soccer, Tennis, Valorant, LoL, CS2, Dota2, RocketLeague, Golf, MMA, or other
+- stat (string): e.g. "Points", "Rebounds", "Kills", "Aces", "Fantasy Score"
 - line (number): the actual PrizePicks line
+- line_open (number|null): opening line if found via line movement search, else null
 - direction (string): "OVER" or "UNDER"
 - confidence (integer 60-95): scale with edge size — 90+ only if gap is very large and multiple sources agree
-- reasoning (string): MUST include last 5 and 10 game averages, opponent defensive ranking, any injury/rest info, the RotoWire or expert projection vs the PrizePicks line, and specifically why this line is mispriced
-- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated`,
+- sharp_move (boolean|null): true if line moved >1 point in our direction, false if moved against, null if unknown
+- public_fade (boolean|null): true if public is 75%+ on the OTHER side (we are fading public), else null
+- public_pct (integer|null): percentage of public on OUR side (0-100), or null if unknown
+- weather_flag (boolean|null): true if adverse weather detected for MLB/NFL, null for all other sports
+- trap_game (boolean|null): true if schedule trap detected (back-to-back, travel, letdown spot), else null
+- alt_lines (object|null): {"underdog": number|null, "sleeper": number|null} if found, else null
+- reasoning (string): MUST include last 5 and 10 game averages, opponent context, projection vs line, line movement info, public split, and specifically why this line is mispriced. For tennis include H2H, surface, serve stats. For esports include team form and meta context.
+- tags (array of strings): include "RotoWire Edge" if projection found, "Confirmed Line" if from lineups.com, "Approximate Line" if estimated, "Sharp Action" if sharp_move is true, "Fade Public" if public_fade is true, "Weather Factor" if weather_flag is true, "Trap Spot" if trap_game is true`,
       }],
     });
 
@@ -100,6 +131,30 @@ Each object must have exactly these fields:
         console.error("[refresh] Full parse failed:", e.message);
       }
     }
+
+    function detectCorrelations(picks) {
+      const gameGroups = {};
+      for (const pick of picks) {
+        const key = [pick.team, pick.opponent].filter(Boolean).sort().join(':');
+        if (!key) continue;
+        if (!gameGroups[key]) gameGroups[key] = [];
+        gameGroups[key].push(pick);
+      }
+      for (const group of Object.values(gameGroups)) {
+        if (group.length < 2) continue;
+        for (const pick of group) {
+          const teammates = group.filter(q => q !== pick && q.team === pick.team);
+          const opponents = group.filter(q => q !== pick && q.team !== pick.team);
+          if (teammates.length > 0) {
+            pick.correlation = { group: `${pick.team} game`, note: "Same team — consider parlaying on a big game night" };
+          } else if (opponents.length > 0) {
+            pick.correlation = { group: `${pick.team} vs ${pick.opponent || 'Opponent'}`, note: "Opposing teams — game script dependent" };
+          }
+        }
+      }
+      return picks;
+    }
+    if (Array.isArray(picks)) picks = detectCorrelations(picks);
 
     if (!Array.isArray(picks) || picks.length === 0) {
       throw new Error("No JSON array in response. Raw: " + rawText.slice(0, 300));
