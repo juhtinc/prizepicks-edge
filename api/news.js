@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
     if (cached) return res.status(200).json(cached);
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5",
       max_tokens: 4000,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{
