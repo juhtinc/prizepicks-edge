@@ -440,6 +440,20 @@ footer{
   to{opacity:1;transform:translateY(0)}
 }
 .card{animation:fadeUp 0.3s ease both}
+#results-section { margin: 24px 0 40px; }
+.section-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.section-title { font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--lime); }
+.section-sub { font-size:12px; color:rgba(255,255,255,0.4); }
+.record-badge { font-size:12px; font-weight:700; padding:2px 10px; border-radius:20px; background:rgba(255,255,255,0.08); color:#fff; }
+.result-card { display:flex; align-items:flex-start; gap:12px; padding:12px 16px; background:var(--ink2); border-radius:var(--r); margin-bottom:8px; }
+.result-icon { font-size:18px; flex-shrink:0; margin-top:2px; }
+.result-body { flex:1; min-width:0; }
+.result-player { font-size:13px; font-weight:700; }
+.result-line { font-size:12px; margin-top:2px; }
+.result-hit  { color:#4ade80; }
+.result-miss { color:#f87171; }
+.result-null { color:rgba(255,255,255,0.3); }
+.result-reason { font-size:11px; color:rgba(255,255,255,0.45); margin-top:4px; }
 </style>
 </head>
 <body>
@@ -485,6 +499,7 @@ footer{
     <div class="hero-card"><div class="hc-label">Unders</div><div class="hc-val coral" id="h-unders">—</div></div>
     <div class="hero-card"><div class="hc-label">Avg Edge</div><div class="hc-val gold" id="h-conf">—</div></div>
     <div class="hero-card"><div class="hc-label">Props Scanned</div><div class="hc-val violet" id="h-scanned">—</div></div>
+    <div class="hero-card"><div class="hc-label">W-L Record</div><div class="hc-val lime" id="h-record">—</div></div>
   </div>
 
   <!-- Toolbar -->
@@ -522,6 +537,15 @@ footer{
 
   <!-- Main -->
   <div id="main"></div>
+
+  <div id="results-section" style="display:none">
+    <div class="section-header">
+      <span class="section-title">Yesterday's Results</span>
+      <span id="results-date" class="section-sub"></span>
+      <span id="results-record-badge" class="record-badge"></span>
+    </div>
+    <div id="results-grid"></div>
+  </div>
 
   <!-- Footer -->
   <footer>
@@ -566,8 +590,10 @@ function setPills(sel,cls){document.querySelectorAll(sel).forEach(x=>x.classList
 // ── Fetch picks ───────────────────────────────────────
 async function loadPicks(){
   try{
-    const r=await fetch('/api/picks'); if(!r.ok) throw new Error('Server error '+r.status);
+    const [r, rr] = await Promise.all([fetch('/api/picks'), fetch('/api/results')]);
+    if(!r.ok) throw new Error('Server error '+r.status);
     const d=await r.json();
+    const dr = rr.ok ? await rr.json() : { results: null, record: { wins: 0, losses: 0 } };
     ALL=d.picks||[];
     const m=d.meta||{};
 
@@ -580,6 +606,8 @@ async function loadPicks(){
     set('h-unders',un||'—');
     set('h-conf',ac?ac+'%':'—');
     set('h-scanned',m.totalProps||'—');
+    const rec = dr.record || {};
+    set('h-record', (rec.wins != null && rec.losses != null) ? rec.wins+'-'+rec.losses : '—');
 
     // Status bar
     const sdot=document.getElementById('sdot');
@@ -602,6 +630,7 @@ async function loadPicks(){
 
     buildSportPills(m.leaguesSeen||[]);
     render();
+    renderResults(dr);
     return m;
   }catch(err){
     console.error(err);
@@ -804,6 +833,39 @@ document.getElementById('main').innerHTML=`
     <div class="state-title">Loading Picks</div>
     <div class="state-mono">Connecting to API...</div>
   </div>`;
+
+function renderResults(dr) {
+  const section = document.getElementById('results-section');
+  const grid = document.getElementById('results-grid');
+  if (!dr || !dr.results || !dr.results.picks) {
+    section.style.display = 'none';
+    return;
+  }
+  const r = dr.results;
+  const wins = r.wins || 0;
+  const losses = r.losses || 0;
+  const dateStr = r.date ? new Date(r.date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+  document.getElementById('results-date').textContent = dateStr;
+  document.getElementById('results-record-badge').textContent = wins + '-' + losses + ' yesterday';
+
+  grid.innerHTML = r.picks.map(p => {
+    const icon   = p.hit === true ? '✅' : p.hit === false ? '❌' : '➖';
+    const cls    = p.hit === true ? 'result-hit' : p.hit === false ? 'result-miss' : 'result-null';
+    const dir    = p.direction === 'OVER' ? 'O' : 'U';
+    const actual = p.actual_value != null ? p.actual_value : '—';
+    const lineStr = `<span class="${cls}">${dir} ${p.line} → ${actual}</span>`;
+    return `<div class="result-card">
+      <div class="result-icon">${icon}</div>
+      <div class="result-body">
+        <div class="result-player">${p.player} · ${p.stat}</div>
+        <div class="result-line">${lineStr}</div>
+        <div class="result-reason">${p.reasoning || ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  section.style.display = 'block';
+}
 
 loadPicks();
 </script>
