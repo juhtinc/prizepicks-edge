@@ -506,7 +506,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 .lines-gap.alert{color:var(--lime);background:rgba(184,245,66,0.08);border:1px solid rgba(184,245,66,0.15)}
 .lines-gap.normal{color:var(--fog)}
 .lines-pp-cell{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--violet)}
-.track-btn{background:none;border:1px solid var(--line);color:var(--fog);border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;transition:all .15s}
+.track-btn{background:none;border:1px solid rgba(184,245,66,0.3);color:var(--lime);border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;transition:all .15s}
 .track-btn:hover{border-color:var(--lime);color:var(--lime);background:rgba(184,245,66,0.07)}
 .plays-panel{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
 .plays-panel-hd{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -2607,7 +2607,7 @@ async function loadLines(manual = false) {
   if (status) status.textContent = 'Fetching lines from sportsbooks...';
 
   try {
-    const r = await fetch('/api/lines?bust=1');
+    const r = await fetch(manual ? '/api/lines?bust=1' : '/api/lines');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     LINES = await r.json();
 
@@ -3073,6 +3073,8 @@ const jrnDate = document.getElementById('jrn-date');
 if (jrnDate) jrnDate.value = new Date().toLocaleDateString('en-CA');
 
 loadPicks();
+// Auto-load lines from KV cache on boot (no Odds API call if cache is fresh)
+loadLines(false);
 // Load scores in background on boot — no API cost, hits ESPN then caches in KV
 loadScores();
 // Poll steam every 10 min
