@@ -24,35 +24,73 @@ const kv = require("./_kv");
 
 // The Odds API sport keys
 const ODDS_SPORT_MAP = {
-  NBA: { key: "basketball_nba", markets: "player_points,player_rebounds,player_assists,player_threes,player_blocks,player_steals,player_points_rebounds_assists" },
-  MLB: { key: "baseball_mlb",   markets: "batter_hits,pitcher_strikeouts,batter_home_runs,batter_rbis,batter_total_bases" },
-  NHL: { key: "icehockey_nhl",  markets: "player_goals,player_assists,player_shots_on_goal,player_blocked_shots" },
-  NFL: { key: "americanfootball_nfl", markets: "player_pass_yds,player_rush_yds,player_reception_yds,player_receptions,player_pass_tds,player_rush_attempts" },
+  NBA: {
+    key: "basketball_nba",
+    markets: [
+      "player_points","player_rebounds","player_assists",
+      "player_points_rebounds_assists","player_points_rebounds","player_points_assists",
+      "player_threes","player_steals","player_blocks","player_turnovers","player_double_double",
+    ].join(","),
+  },
+  MLB: {
+    key: "baseball_mlb",
+    markets: [
+      "batter_hits","batter_home_runs","batter_rbis","batter_total_bases","batter_walks",
+      "pitcher_strikeouts","pitcher_hits_allowed","pitcher_earned_runs","pitcher_walks",
+    ].join(","),
+  },
+  NHL: {
+    key: "icehockey_nhl",
+    markets: [
+      "player_goals","player_assists","player_points","player_shots_on_goal","goalie_saves",
+    ].join(","),
+  },
+  NFL: {
+    key: "americanfootball_nfl",
+    markets: [
+      "player_pass_yds","player_pass_tds","player_rush_yds","player_reception_yds","player_receptions",
+    ].join(","),
+  },
 };
 
 // Friendly stat label from Odds API market key
 const MARKET_LABEL = {
+  // NBA
   player_points: "Points",
   player_rebounds: "Rebounds",
   player_assists: "Assists",
   player_threes: "3-Pointers Made",
   player_blocks: "Blocks",
   player_steals: "Steals",
+  player_turnovers: "Turnovers",
+  player_double_double: "Double Double",
   player_points_rebounds_assists: "Pts+Reb+Ast",
+  player_points_rebounds: "Pts+Reb",
+  player_points_assists: "Pts+Ast",
+  // MLB batters
   batter_hits: "Hits",
-  pitcher_strikeouts: "Strikeouts",
   batter_home_runs: "Home Runs",
   batter_rbis: "RBIs",
   batter_total_bases: "Total Bases",
+  batter_walks: "Walks",
+  // MLB pitchers
+  pitcher_strikeouts: "Strikeouts",
+  pitcher_hits_allowed: "Hits Allowed",
+  pitcher_earned_runs: "Earned Runs",
+  pitcher_walks: "Walks Allowed",
+  // NHL
   player_goals: "Goals",
-  player_assists_hockey: "Assists",
+  player_assists: "Assists",
+  player_points: "Points",
   player_shots_on_goal: "Shots on Goal",
+  goalie_saves: "Saves",
   player_blocked_shots: "Blocked Shots",
+  // NFL
   player_pass_yds: "Pass Yards",
+  player_pass_tds: "Pass TDs",
   player_rush_yds: "Rush Yards",
   player_reception_yds: "Receiving Yards",
   player_receptions: "Receptions",
-  player_pass_tds: "Pass TDs",
   player_rush_attempts: "Rush Attempts",
 };
 
@@ -199,14 +237,27 @@ function enrichProps(props) {
     // Best UNDER = highest line (more room above)
     const bestUnder = lines.reduce((a, b) => a[1] >= b[1] ? a : b);
 
+    const cat = statCategory(p.market);
     return {
       ...p,
       discrepancy,
       bestOver: { book: bestOver[0], line: bestOver[1] },
       bestUnder: { book: bestUnder[0], line: bestUnder[1] },
       lineShopAlert: discrepancy >= 1.0,
+      category: cat,
     };
   });
+}
+
+function statCategory(market) {
+  if (!market) return "other";
+  const combo = ["player_points_rebounds_assists","player_points_rebounds","player_points_assists"];
+  const primary = ["player_points","player_goals","pitcher_strikeouts","player_pass_yds","player_pass_tds"];
+  const pitching = ["pitcher_strikeouts","pitcher_hits_allowed","pitcher_earned_runs","pitcher_walks"];
+  if (combo.includes(market)) return "combo";
+  if (pitching.includes(market)) return "pitching";
+  if (primary.includes(market)) return "primary";
+  return "secondary";
 }
 
 module.exports = async function handler(req, res) {

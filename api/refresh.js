@@ -1,3 +1,10 @@
+// ── ANTHROPIC API CALLED HERE ONLY ─────────────────────────────────────────
+// This is the ONLY file in the project that calls the Anthropic API.
+// It is triggered exclusively by:
+//   1. Manual user click of the "Refresh Picks" button (POST with x-secret header)
+//   2. Vercel cron jobs (api/cron.js, Authorization: Bearer $CRON_SECRET)
+// Never called automatically from the frontend.
+// ────────────────────────────────────────────────────────────────────────────
 const Anthropic = require("@anthropic-ai/sdk");
 const kv = require("./_kv");
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -290,7 +297,7 @@ ${jsonSchema}`;
     console.log(`[refresh] Starting Turn 1 research (${oddsMode ? "Odds API mode" : "web-search mode"})...`);
     const researchResponse = await client.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: oddsMode ? 10000 : 16000, // Odds API mode needs far fewer tokens
+      max_tokens: 4000,
       system: systemPrompt,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{ role: "user", content: researchPrompt }],
@@ -305,7 +312,7 @@ ${jsonSchema}`;
     // ── Turn 2: Force pure JSON output ───────────────────────────────────────
     const jsonResponse = await client.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 8000,
+      max_tokens: 4000,
       system: systemPrompt,
       messages: [
         { role: "user", content: researchPrompt },

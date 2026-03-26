@@ -1404,6 +1404,13 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       <div class="news-filter" id="lines-sport-filter">
         <button class="pill on" data-lines-filter="ALL">All Sports</button>
       </div>
+      <div class="news-filter" id="lines-stat-filter">
+        <button class="pill on" data-lines-stat="ALL">All Stats</button>
+        <button class="pill" data-lines-stat="primary">Primary</button>
+        <button class="pill" data-lines-stat="combo">Combo</button>
+        <button class="pill" data-lines-stat="pitching">Pitching</button>
+        <button class="pill" data-lines-stat="secondary">Secondary</button>
+      </div>
 
       <div id="lines-plays-panel" style="display:none"></div>
 
@@ -2599,6 +2606,7 @@ document.getElementById('main').innerHTML = `
 // ── Lines ─────────────────────────────────────────────
 let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
 let activeLinesSportFilter = 'ALL';
+let activeLinesStatFilter = 'ALL';
 
 async function loadLines(manual = false) {
   const dot = document.getElementById('lines-dot');
@@ -2773,14 +2781,16 @@ function renderLinesTab() {
   }
 
   // Build sport filter pills
+  const NBA_MARKETS = new Set(['player_points','player_rebounds','player_assists','player_threes','player_blocks','player_steals','player_turnovers','player_double_double','player_points_rebounds_assists','player_points_rebounds','player_points_assists']);
+  const NHL_MARKETS = new Set(['player_goals','player_assists','player_points','player_shots_on_goal','goalie_saves','player_blocked_shots']);
+  const NFL_MARKETS = new Set(['player_pass_yds','player_pass_tds','player_rush_yds','player_reception_yds','player_receptions','player_rush_attempts']);
   const sports = [...new Set(props.map(p => {
-    // Infer sport from market key prefix
-    if (['player_points','player_rebounds','player_assists','player_threes'].some(m => p.market?.includes(m.replace('player_',''))))  return 'NBA';
     if (p.market?.includes('batter') || p.market?.includes('pitcher')) return 'MLB';
-    if (p.market?.includes('shots_on_goal') || p.market?.includes('player_goals')) return 'NHL';
-    if (p.market?.includes('pass_yds') || p.market?.includes('rush_yds') || p.market?.includes('reception')) return 'NFL';
+    if (NHL_MARKETS.has(p.market)) return 'NHL';
+    if (NFL_MARKETS.has(p.market)) return 'NFL';
+    if (NBA_MARKETS.has(p.market)) return 'NBA';
     return 'Other';
-  }))];
+  }))].filter(Boolean);
   const filterWrap = document.getElementById('lines-sport-filter');
   if (filterWrap && filterWrap.children.length <= 1) {
     sports.forEach(s => {
@@ -2791,17 +2801,32 @@ function renderLinesTab() {
     });
   }
 
-  // Filter
+  // Wire stat filter pills (once)
+  document.querySelectorAll('[data-lines-stat]').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('[data-lines-stat]').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      activeLinesStatFilter = b.dataset.linesStat;
+      renderLinesTab();
+    };
+  });
+
+  // Filter by sport
   let filtered = props;
   if (activeLinesSportFilter !== 'ALL') {
     filtered = props.filter(p => {
       const s = activeLinesSportFilter;
-      if (s === 'NBA') return ['player_points','player_rebounds','player_assists','player_threes','player_blocks','player_steals'].includes(p.market);
+      if (s === 'NBA') return p.market?.startsWith('player_') && !p.market?.includes('pass_') && !p.market?.includes('rush_') && !p.market?.includes('reception') && !p.market?.includes('goals') && !p.market?.includes('shots_on_goal') && !p.market?.includes('goalie');
       if (s === 'MLB') return p.market?.includes('batter') || p.market?.includes('pitcher');
-      if (s === 'NHL') return p.market?.includes('goals') || p.market?.includes('shots_on_goal') || p.market?.includes('blocked_shots');
-      if (s === 'NFL') return p.market?.includes('pass_yds') || p.market?.includes('rush_yds') || p.market?.includes('reception');
+      if (s === 'NHL') return ['player_goals','player_assists','player_points','player_shots_on_goal','goalie_saves','player_blocked_shots'].includes(p.market);
+      if (s === 'NFL') return ['player_pass_yds','player_pass_tds','player_rush_yds','player_reception_yds','player_receptions','player_rush_attempts'].includes(p.market);
       return true;
     });
+  }
+
+  // Filter by stat category
+  if (activeLinesStatFilter !== 'ALL') {
+    filtered = filtered.filter(p => p.category === activeLinesStatFilter);
   }
 
   // Sort: line-shop alerts first, then by discrepancy desc
