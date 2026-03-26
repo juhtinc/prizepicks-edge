@@ -7,7 +7,10 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "x-secret, content-type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const secret = req.headers["x-secret"] || req.query?.secret;
+  const authBearer = req.headers.authorization?.startsWith("Bearer ")
+    ? req.headers.authorization.slice(7)
+    : null;
+  const secret = req.headers["x-secret"] || req.query?.secret || authBearer;
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: "Unauthorized" });
   }
