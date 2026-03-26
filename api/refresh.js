@@ -25,7 +25,26 @@ module.exports = async function handler(req, res) {
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{
         role: "user",
-        content: `Today is ${today}. Search for today's best PrizePicks player prop picks. You MUST respond with ONLY a JSON array. No text before or after. No explanation. Just the raw JSON array starting with [ and ending with ]. Each object needs: player, team, sport, stat, line (number), direction (OVER or UNDER), confidence (60-95), reasoning (string), tags (array of strings).`,
+        content: `Today is ${today}. You are finding real PrizePicks prop lines published today. Follow these steps:
+
+1. Search "PrizePicks NBA props ${today}" to find today's actual lines
+2. Search "PrizePicks lines today site:rotowire.com OR site:lineups.com OR site:pickswise.com OR site:prizepicks.com"
+3. Search "PrizePicks player props ${today} NBA MLB NHL" to cross-reference
+
+Use ONLY lines you actually found in search results. For any player where you found their exact PrizePicks line, use that number. For players where you could not confirm the exact line, include them but set the "approximate" tag and use a line based on their season average.
+
+After searching, return your 14 best picks. You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
+
+Each object must have exactly these fields:
+- player (string): full name
+- team (string): team abbreviation
+- sport (string): NBA, MLB, NHL, etc.
+- stat (string): e.g. "Points", "Rebounds", "Strikeouts"
+- line (number): the prop line
+- direction (string): "OVER" or "UNDER"
+- confidence (integer 60-95)
+- reasoning (string): cite specific stats or news found in search
+- tags (array of strings): include "Confirmed Line" if found via search, or "Approximate Line" if estimated`,
       }],
     });
 
