@@ -211,6 +211,8 @@ module.exports = async function handler(req, res) {
 - weather_flag (boolean|null): true if adverse weather for MLB/NFL, null otherwise
 - trap_game (boolean|null): true if back-to-back, travel, or letdown spot detected
 - alt_lines (object|null): {"dk": number|null, "fd": number|null} per-book lines when books disagree
+- injury_severity (string|null): "CRITICAL" (player out/doubtful — drop confidence <60 or skip), "HIGH" (significant injury, questionable — drop confidence 15pts), "MEDIUM" (minor injury, probable — drop confidence 8pts), "LOW" (minor soreness, listed), or null if healthy. CRITICAL picks should be removed or have confidence forced below 60.
+- checklist (object): based on your research, mark each true/false — { injury_checked: bool, lineup_confirmed: bool, weather_checked: bool, line_movement: bool, back_to_back: bool, public_betting: bool, sharp_money: bool, matchup_checked: bool }
 - reasoning (string): MUST include the sportsbook line, player's last 5 and 10 game averages for this stat, matchup context, injury status, projection vs line, and specifically why this is a value play
 - tags (array of strings): "Sharp Number" if books agree tightly, "Book Disagreement" if gap ≥ 1pt between books, "Sharp Action", "Fade Public", "Weather Factor", "Trap Spot", "RotoWire Edge"`;
 

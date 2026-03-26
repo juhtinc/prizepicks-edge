@@ -9,7 +9,8 @@
 <title>Props Edge</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ── Reset ── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -37,7 +38,7 @@ a{color:inherit;text-decoration:none}
 html{scroll-behavior:smooth}
 body{
   background:var(--ink);color:var(--text);
-  font-family:'Syne',sans-serif;font-size:15px;line-height:1.6;
+  font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;
   min-height:100vh;overflow-x:hidden;
 }
 body::before{
@@ -72,13 +73,13 @@ body::before{
   flex-shrink:0;white-space:nowrap;overflow:hidden;
 }
 .sb-logo{
-  font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:-0.5px;
+  font-family:'Inter',sans-serif;font-weight:800;font-size:13px;letter-spacing:-0.5px;
   background:var(--lime);color:var(--ink);
   width:32px;height:32px;border-radius:7px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .sb-name{
-  font-family:'Archivo Black',sans-serif;font-size:13px;
+  font-family:'Inter',sans-serif;font-weight:800;font-size:13px;
   white-space:nowrap;overflow:hidden;transition:opacity 0.2s;
 }
 .sb-name span{color:var(--lime)}
@@ -148,7 +149,7 @@ body::before{
   border-bottom:1px solid var(--line);gap:12px;flex-wrap:wrap;
 }
 .tab-title{
-  font-family:'Archivo Black',sans-serif;font-size:24px;letter-spacing:-0.5px;
+  font-family:'Inter',sans-serif;font-weight:800;font-size:24px;letter-spacing:-0.5px;
 }
 .tab-title em{font-style:normal;color:var(--lime)}
 .tab-sub{
@@ -175,7 +176,7 @@ body::before{
   font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;
   text-transform:uppercase;color:var(--smoke);margin-bottom:10px;
 }
-.hc-val{font-family:'Archivo Black',sans-serif;font-size:28px;line-height:1;letter-spacing:-1px}
+.hc-val{font-family:'Inter',sans-serif;font-weight:800;font-size:28px;line-height:1;letter-spacing:-0.5px}
 .hc-val.lime{color:var(--lime)}.hc-val.coral{color:var(--coral)}
 .hc-val.sky{color:var(--sky)}.hc-val.gold{color:var(--gold)}.hc-val.violet{color:var(--violet)}
 
@@ -195,7 +196,7 @@ body::before{
 .btn-refresh{
   display:flex;align-items:center;gap:8px;padding:8px 20px;border-radius:var(--r);
   border:1px solid var(--lime);color:var(--lime);
-  font-family:'Syne',sans-serif;font-size:13px;font-weight:600;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
   background:transparent;transition:all 0.15s;white-space:nowrap;
 }
 .btn-refresh:hover{background:var(--lime);color:var(--ink)}
@@ -223,7 +224,7 @@ body::before{
 
 /* ── Section Headers ── */
 .sec{display:flex;align-items:center;gap:14px;margin-bottom:16px;margin-top:8px}
-.sec-title{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-0.3px;white-space:nowrap}
+.sec-title{font-family:'Inter',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.3px;white-space:nowrap}
 .sec-rule{flex:1;height:1px;background:var(--line)}
 .sec-count{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);white-space:nowrap}
 
@@ -242,7 +243,7 @@ body::before{
 .avatar{
   width:44px;height:44px;border-radius:50%;background:var(--ink4);border:1px solid var(--line2);
   display:flex;align-items:center;justify-content:center;
-  font-family:'Archivo Black',sans-serif;font-size:14px;color:var(--fog);flex-shrink:0;overflow:hidden;
+  font-family:'Inter',sans-serif;font-weight:800;font-size:14px;color:var(--fog);flex-shrink:0;overflow:hidden;
 }
 .avatar img{width:100%;height:100%;object-fit:cover}
 .p-col{flex:1;min-width:0}
@@ -254,12 +255,12 @@ body::before{
   padding:1px 6px;border-radius:3px;vertical-align:middle;
 }
 .conf-col{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
-.conf-n{font-family:'Archivo Black',sans-serif;font-size:30px;line-height:1;letter-spacing:-1px}
+.conf-n{font-family:'Inter',sans-serif;font-weight:800;font-size:30px;line-height:1;letter-spacing:-0.5px}
 .conf-n.hi{color:var(--lime)}.conf-n.md{color:var(--gold)}.conf-n.lo{color:var(--coral)}
 .conf-lbl{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--fog)}
 .prop-row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line)}
 .prop-stat{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--smoke);flex:1}
-.prop-num{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-1px}
+.prop-num{font-family:'Inter',sans-serif;font-weight:800;font-size:26px;letter-spacing:-0.5px}
 .dir{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;letter-spacing:1.5px;padding:5px 12px;border-radius:var(--rs);text-transform:uppercase}
 .dir.over{background:rgba(184,245,66,0.1);color:var(--lime);border:1px solid rgba(184,245,66,0.22)}
 .dir.under{background:rgba(255,89,99,0.1);color:var(--coral);border:1px solid rgba(255,89,99,0.22)}
@@ -285,7 +286,7 @@ body::before{
 /* ── Loading/Empty/Error ── */
 .center-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:20px;text-align:center}
 .spin-ring{width:46px;height:46px;border-radius:50%;border:2px solid var(--line2);border-top-color:var(--lime);animation:spin 0.8s linear infinite}
-.state-title{font-family:'Archivo Black',sans-serif;font-size:24px;letter-spacing:-0.5px;color:var(--smoke)}
+.state-title{font-family:'Inter',sans-serif;font-weight:800;font-size:24px;letter-spacing:-0.5px;color:var(--smoke)}
 .state-sub{font-size:13px;color:var(--smoke);opacity:0.65;max-width:380px;line-height:1.75}
 .state-mono{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--lime);opacity:0.6}
 .err-box{border:1px solid rgba(255,89,99,0.2);background:rgba(255,89,99,0.04);border-radius:var(--rm);padding:32px}
@@ -302,7 +303,7 @@ body::before{
   background:var(--ink2);border:1px solid var(--line2);
   border-radius:var(--rm);padding:28px;width:100%;max-width:420px;margin:20px;
 }
-.modal-title{font-family:'Archivo Black',sans-serif;font-size:20px;margin-bottom:8px}
+.modal-title{font-family:'Inter',sans-serif;font-weight:800;font-size:20px;margin-bottom:8px}
 .modal-sub{font-size:13px;color:var(--smoke);margin-bottom:20px;line-height:1.6}
 .modal input{
   width:100%;background:var(--ink4);border:1px solid var(--line2);
@@ -312,8 +313,8 @@ body::before{
 }
 .modal input:focus{border-color:var(--lime)}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end}
-.btn-cancel{padding:8px 18px;border-radius:var(--rs);border:1px solid var(--line2);color:var(--smoke);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;background:transparent}
-.btn-go{padding:8px 18px;border-radius:var(--rs);background:var(--lime);color:var(--ink);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;border:none}
+.btn-cancel{padding:8px 18px;border-radius:var(--rs);border:1px solid var(--line2);color:var(--smoke);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;background:transparent}
+.btn-go{padding:8px 18px;border-radius:var(--rs);background:var(--lime);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;border:none}
 .modal-err{color:var(--coral);font-size:12px;margin-bottom:8px;display:none}
 
 /* ── Results ── */
@@ -329,7 +330,7 @@ body::before{
 .bk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px}
 .bk-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--rm);padding:18px 20px}
 .bk-card-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--smoke);margin-bottom:8px}
-.bk-card-val{font-family:'Archivo Black',sans-serif;font-size:30px;line-height:1;letter-spacing:-1px}
+.bk-card-val{font-family:'Inter',sans-serif;font-weight:800;font-size:30px;line-height:1;letter-spacing:-0.5px}
 .bk-card-sub{font-size:11px;color:var(--smoke);margin-top:5px}
 .bk-edit-btn{
   display:inline-flex;align-items:center;gap:6px;margin-top:10px;
@@ -405,14 +406,14 @@ body::before{
 }
 .rr-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
 .rr-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--smoke);margin-bottom:6px}
-.rr-val{font-family:'Archivo Black',sans-serif;font-size:24px;letter-spacing:-0.5px}
+.rr-val{font-family:'Inter',sans-serif;font-weight:800;font-size:24px;letter-spacing:-0.5px}
 .sport-breakdown{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:20px}
 .sport-row{display:flex;align-items:center;gap:10px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--rs);padding:10px 14px}
 .sport-emoji{font-size:20px;flex-shrink:0}
 .sport-info{flex:1;min-width:0}
 .sport-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sport-rec{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--smoke);margin-top:2px}
-.sport-pct{font-family:'Archivo Black',sans-serif;font-size:18px;flex-shrink:0}
+.sport-pct{font-family:'Inter',sans-serif;font-weight:800;font-size:18px;flex-shrink:0}
 
 /* ── Settings Tab ── */
 .settings-group{background:var(--ink2);border:1px solid var(--line);border-radius:var(--rm);margin-bottom:16px;overflow:hidden}
@@ -472,7 +473,7 @@ input[type=range]::-webkit-slider-thumb{
   outline:none;width:160px;
 }
 .bankroll-input-row input:focus{border-color:var(--lime)}
-.btn-save-sm{padding:8px 16px;border-radius:var(--rs);background:var(--lime);color:var(--ink);font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
+.btn-save-sm{padding:8px 16px;border-radius:var(--rs);background:var(--lime);color:var(--ink);font-family:'Inter',sans-serif;font-size:12px;font-weight:700}
 
 /* ── Footer ── */
 footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
@@ -562,12 +563,12 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 .game-teams{display:flex;flex-direction:column;gap:6px}
 .game-team-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .game-team-abbr{
-  font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-0.3px;
+  font-family:'Inter',sans-serif;font-weight:800;font-size:14px;letter-spacing:-0.3px;
   min-width:36px;
 }
 .game-team-name{font-size:11px;color:var(--smoke);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .game-score{
-  font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-0.5px;
+  font-family:'Inter',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.5px;
   min-width:32px;text-align:right;
 }
 .game-score.winner{color:var(--lime)}
@@ -603,6 +604,245 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 @media(max-width:600px){
   .hero{grid-template-columns:repeat(2,1fr)}
   .bk-grid{grid-template-columns:1fr 1fr}
+}
+
+/* ── Mobile bottom nav ── */
+.bottom-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
+  background:var(--ink2);border-top:1px solid var(--line2);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  display:flex;flex-wrap:nowrap;
+}
+.bottom-nav-btn{
+  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:8px 14px;min-width:60px;min-height:56px;
+  color:var(--smoke);font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;
+  background:none;border:none;cursor:pointer;transition:color 0.15s;white-space:nowrap;
+}
+.bottom-nav-btn .bn-icon{font-size:18px;line-height:1}
+.bottom-nav-btn.active{color:var(--lime)}
+.bottom-nav-btn.active .bn-icon{filter:drop-shadow(0 0 4px rgba(184,245,66,0.5))}
+@media(max-width:768px){
+  :root{--sb-w:0px}
+  .sidebar{display:none}
+  .main-content{margin-left:0!important;padding:16px 14px 72px}
+  .bottom-nav{display:flex}
+  .hero{grid-template-columns:repeat(2,1fr)}
+  .grid{grid-template-columns:1fr}
+}
+
+/* ── Notification bell ── */
+.notif-bell-wrap{
+  position:fixed;top:14px;right:16px;z-index:150;display:flex;align-items:center;gap:8px;
+}
+.notif-bell{
+  position:relative;width:36px;height:36px;border-radius:50%;
+  background:var(--ink3);border:1px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  cursor:pointer;transition:border-color 0.15s;
+}
+.notif-bell:hover{border-color:var(--lime)}
+.notif-count{
+  position:absolute;top:-4px;right:-4px;
+  background:var(--coral);color:#fff;font-family:'JetBrains Mono',monospace;
+  font-size:9px;font-weight:700;min-width:16px;height:16px;
+  border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;
+}
+.theme-quick{
+  width:36px;height:36px;border-radius:50%;background:var(--ink3);border:1px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;
+  transition:border-color 0.15s;
+}
+.theme-quick:hover{border-color:var(--lime)}
+.notif-panel{
+  position:fixed;top:60px;right:16px;z-index:160;width:320px;max-height:400px;
+  background:var(--ink2);border:1px solid var(--line2);border-radius:var(--rm);
+  overflow:hidden;display:flex;flex-direction:column;
+  transform:translateY(-8px);opacity:0;pointer-events:none;transition:all 0.2s;
+}
+.notif-panel.open{transform:translateY(0);opacity:1;pointer-events:auto}
+.notif-panel-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--line);flex-shrink:0;
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);
+}
+.notif-panel-hd button{font-size:10px;color:var(--coral);opacity:0.7;font-family:'JetBrains Mono',monospace;letter-spacing:1px;background:none;border:none;cursor:pointer}
+.notif-list{overflow-y:auto;flex:1}
+.notif-item{padding:10px 16px;border-bottom:1px solid var(--line);transition:background 0.1s}
+.notif-item:hover{background:rgba(255,255,255,0.02)}
+.notif-item.unread{border-left:2px solid var(--lime)}
+.notif-title{font-size:12px;font-weight:600;margin-bottom:2px}
+.notif-body{font-size:11px;color:var(--smoke);line-height:1.5}
+.notif-time{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog);margin-top:3px}
+.notif-empty{padding:24px;text-align:center;font-size:12px;color:var(--smoke)}
+
+/* ── Steam alerts banner ── */
+.steam-banner{
+  margin-bottom:16px;border-radius:var(--r);overflow:hidden;
+}
+.steam-alert-item{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;
+}
+.steam-alert-item:last-child{border-bottom:none}
+.steam-alert-item.sharp{background:rgba(255,89,99,0.08);border-left:3px solid var(--coral)}
+.steam-alert-item.regular{background:rgba(245,200,66,0.07);border-left:3px solid var(--gold)}
+.steam-badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:3px;flex-shrink:0}
+.steam-badge.sharp{background:rgba(255,89,99,0.15);color:var(--coral);border:1px solid rgba(255,89,99,0.3)}
+.steam-badge.regular{background:rgba(245,200,66,0.12);color:var(--gold);border:1px solid rgba(245,200,66,0.25)}
+.steam-player{font-weight:600;flex:1}
+.steam-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--smoke)}
+
+/* ── Optimal parlay banner ── */
+.optimal-banner{
+  margin-bottom:20px;padding:14px 18px;
+  background:linear-gradient(135deg,rgba(184,245,66,0.08),rgba(192,132,252,0.06));
+  border:1px solid rgba(184,245,66,0.25);border-radius:var(--rm);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+}
+.optimal-icon{font-size:20px;flex-shrink:0}
+.optimal-text{flex:1;min-width:0}
+.optimal-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--lime);margin-bottom:4px}
+.optimal-picks{font-size:13px;font-weight:600;line-height:1.5}
+.optimal-payout{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--violet);margin-top:3px}
+
+/* ── Player search bar ── */
+.search-wrap{position:relative;flex:1;min-width:160px;max-width:260px}
+.search-wrap input{
+  width:100%;background:var(--ink3);border:1px solid var(--line2);border-radius:var(--r);
+  padding:7px 12px 7px 34px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;
+}
+.search-wrap input:focus{border-color:var(--lime)}
+.search-wrap input::placeholder{color:var(--fog)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none}
+
+/* ── Star / Favorite ── */
+.star-btn{
+  position:absolute;top:10px;right:10px;font-size:16px;cursor:pointer;
+  background:none;border:none;opacity:0.3;transition:opacity 0.15s,transform 0.15s;
+  line-height:1;padding:4px;
+}
+.star-btn:hover{opacity:0.8;transform:scale(1.2)}
+.star-btn.starred{opacity:1;filter:drop-shadow(0 0 3px gold)}
+.card{position:relative}
+
+/* ── Parlay button on card ── */
+.parlay-btn{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;
+  padding:4px 9px;border-radius:4px;border:1px solid rgba(192,132,252,0.3);
+  color:var(--violet);background:rgba(192,132,252,0.07);cursor:pointer;
+  transition:all 0.15s;white-space:nowrap;flex-shrink:0;
+}
+.parlay-btn:hover{background:rgba(192,132,252,0.15);border-color:var(--violet)}
+.parlay-btn.added{background:rgba(192,132,252,0.2);border-color:var(--violet);color:#fff}
+
+/* ── Share / Export buttons ── */
+.share-btn{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;
+  padding:4px 9px;border-radius:4px;border:1px solid var(--line2);
+  color:var(--smoke);background:var(--ink4);cursor:pointer;transition:all 0.15s;
+}
+.share-btn:hover{border-color:var(--sky);color:var(--sky)}
+.export-btn{
+  display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--rs);
+  border:1px solid var(--line2);color:var(--smoke);
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;
+  background:transparent;transition:all 0.15s;cursor:pointer;white-space:nowrap;
+}
+.export-btn:hover{border-color:var(--sky);color:var(--sky)}
+
+/* ── Injury severity badge ── */
+.inj-badge{
+  display:inline-block;font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;
+  padding:1px 6px;border-radius:3px;vertical-align:middle;margin-left:6px;
+}
+.inj-badge.critical{background:rgba(255,89,99,0.2);color:var(--coral);border:1px solid rgba(255,89,99,0.4)}
+.inj-badge.high{background:rgba(251,146,60,0.15);color:#fb923c;border:1px solid rgba(251,146,60,0.3)}
+.inj-badge.medium{background:rgba(245,200,66,0.12);color:var(--gold);border:1px solid rgba(245,200,66,0.25)}
+.inj-badge.low{background:rgba(74,222,128,0.1);color:#4ade80;border:1px solid rgba(74,222,128,0.25)}
+
+/* ── Checklist ── */
+.checklist-score{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;
+  padding:3px 7px;border-radius:4px;cursor:pointer;border:1px solid var(--line2);
+  background:var(--ink4);color:var(--smoke);transition:all 0.15s;flex-shrink:0;
+}
+.checklist-score:hover{border-color:var(--lime)}
+.checklist-score.sharp{background:rgba(184,245,66,0.1);color:var(--lime);border-color:rgba(184,245,66,0.3)}
+.checklist-score.moderate{background:rgba(245,200,66,0.1);color:var(--gold);border-color:rgba(245,200,66,0.25)}
+.checklist-score.risky{background:rgba(255,89,99,0.1);color:var(--coral);border-color:rgba(255,89,99,0.25)}
+.checklist-body{padding:10px 16px;border-top:1px solid var(--line);background:rgba(0,0,0,0.12);display:none}
+.checklist-body.open{display:block}
+.checklist-item{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:11px;color:var(--smoke)}
+.checklist-item .ci-icon{flex-shrink:0;font-size:12px}
+
+/* ── Parlay Tab ── */
+.parlay-empty{display:flex;flex-direction:column;align-items:center;padding:60px 20px;gap:14px;text-align:center}
+.parlay-picks-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.parlay-pick-row{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);
+}
+.parlay-pick-remove{font-size:14px;color:var(--smoke);cursor:pointer;padding:4px;opacity:0.5;transition:opacity 0.15s;background:none;border:none;margin-left:auto}
+.parlay-pick-remove:hover{opacity:1;color:var(--coral)}
+.parlay-corr{font-size:10px;padding:2px 7px;border-radius:3px;font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+.parlay-corr.good{background:rgba(184,245,66,0.1);color:var(--lime);border:1px solid rgba(184,245,66,0.2)}
+.parlay-corr.bad{background:rgba(255,89,99,0.1);color:var(--coral);border:1px solid rgba(255,89,99,0.2)}
+.parlay-payout-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.parlay-payout-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.parlay-payout-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--smoke);margin-bottom:6px}
+.parlay-payout-val{font-size:22px;font-weight:800;color:var(--lime)}
+.parlay-payout-sub{font-size:11px;color:var(--smoke);margin-top:4px}
+.parlay-entry-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.parlay-entry-row input{
+  background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);
+  padding:9px 13px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;
+  outline:none;width:140px;
+}
+.parlay-entry-row input:focus{border-color:var(--lime)}
+.parlay-entry-label{font-size:13px;color:var(--smoke)}
+.parlay-ev{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--violet);margin-top:4px}
+
+/* ── Stats Tab ── */
+.stats-chart-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--rm);padding:20px;margin-bottom:16px}
+.stats-chart-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--smoke);margin-bottom:16px}
+.stats-summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.stats-sum-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.stats-sum-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--smoke);margin-bottom:6px}
+.stats-sum-val{font-size:22px;font-weight:800}
+.stats-table{width:100%;border-collapse:collapse;font-size:12px}
+.stats-table th{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);text-align:left;padding:7px 12px;border-bottom:1px solid var(--line)}
+.stats-table td{padding:8px 12px;border-bottom:1px solid var(--line)}
+.stats-table tr:last-child td{border-bottom:none}
+
+/* ── Journal Tab ── */
+.journal-summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.journal-row-win td{background:rgba(184,245,66,0.04)}
+.journal-row-loss td{background:rgba(255,89,99,0.04)}
+.journal-row-pending td{background:rgba(245,200,66,0.03)}
+.journal-table{width:100%;border-collapse:collapse;font-size:12px}
+.journal-table th{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+.journal-table td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.journal-table tr:hover td{background:rgba(255,255,255,0.02)!important}
+.journal-modal select,.journal-modal textarea{
+  width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);
+  padding:10px 14px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;
+  margin-bottom:12px;outline:none;
+}
+.journal-modal select:focus,.journal-modal textarea:focus{border-color:var(--lime)}
+.journal-modal textarea{resize:vertical;min-height:70px;font-family:'Inter',sans-serif;font-size:13px}
+.journal-modal .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.journal-modal .field-grid input,.journal-modal .field-grid select{margin-bottom:0}
+.journal-modal .field-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);margin-bottom:4px}
+.export-csv-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--rs);border:1px solid rgba(184,245,66,0.3);color:var(--lime);background:rgba(184,245,66,0.07);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all 0.15s}
+.export-csv-btn:hover{background:rgba(184,245,66,0.14)}
+
+/* ── Print ── */
+@media print{
+  .sidebar,.bottom-nav,.notif-bell-wrap,.toolbar,.status-bar,.tab-hd-right{display:none!important}
+  .main-content{margin:0;padding:0}
+  .card{break-inside:avoid;border:1px solid #ccc}
+  .acc-body{display:block!important}
 }
 </style>
 </head>
@@ -653,6 +893,73 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
   </div>
 </div>
 
+<!-- Notification Bell -->
+<div class="notif-bell-wrap">
+  <button class="notif-bell" onclick="toggleNotifPanel()" title="Notifications">
+    🔔<span class="notif-count" id="notif-count" style="display:none">0</span>
+  </button>
+  <button class="theme-quick" onclick="quickTheme()" id="theme-quick-btn" title="Toggle theme">🌙</button>
+</div>
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-panel-hd">
+    <span>Notifications</span>
+    <button onclick="clearNotifs()">Clear all</button>
+  </div>
+  <div class="notif-list" id="notif-list"><div class="notif-empty">No notifications yet.</div></div>
+</div>
+
+<!-- Journal Entry Modal -->
+<div class="modal-bg" id="journal-modal">
+  <div class="modal journal-modal" style="max-width:520px">
+    <div class="modal-title">Log Journal Entry</div>
+    <div class="modal-sub" style="margin-bottom:16px">Record a completed entry with full details.</div>
+    <div class="field-label">Date</div>
+    <input type="date" id="jrn-date" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:12px;outline:none"/>
+    <div class="field-label">Pick (Player · Stat)</div>
+    <input type="text" id="jrn-pick" placeholder="e.g. LeBron James · Points" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:12px;outline:none"/>
+    <div class="field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <div class="field-label">Book</div>
+        <select id="jrn-book" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none">
+          <option>PrizePicks</option><option>Underdog</option><option>DraftKings</option><option>FanDuel</option><option>BetMGM</option><option>Other</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Entry Type</div>
+        <select id="jrn-type" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none">
+          <option>Power Play</option><option>Flex Play</option><option>Single</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label"># of Picks</div>
+        <select id="jrn-count" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none">
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Result</div>
+        <select id="jrn-result" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none">
+          <option value="pending">Pending</option><option value="win">Win</option><option value="loss">Loss</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Entry Amount ($)</div>
+        <input type="number" id="jrn-amount" placeholder="e.g. 25" step="0.01" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none"/>
+      </div>
+      <div>
+        <div class="field-label">Payout Received ($)</div>
+        <input type="number" id="jrn-payout" placeholder="e.g. 125" step="0.01" style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none"/>
+      </div>
+    </div>
+    <div class="field-label">Notes</div>
+    <textarea id="jrn-notes" placeholder="Optional notes..." style="width:100%;background:var(--ink4);border:1px solid var(--line2);border-radius:var(--rs);padding:9px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;margin-bottom:14px;outline:none;resize:vertical;min-height:60px"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('journal-modal').classList.remove('open')">Cancel</button>
+      <button class="btn-go" onclick="saveJournalEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-shell">
 
   <!-- ── Sidebar ── -->
@@ -669,8 +976,17 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       <button class="sb-tab active" data-tab="picks" onclick="switchTab('picks')">
         <span class="sb-icon">📊</span><span class="sb-label">PICKS</span>
       </button>
+      <button class="sb-tab" data-tab="parlay" onclick="switchTab('parlay')">
+        <span class="sb-icon">🎯</span><span class="sb-label">PARLAY</span>
+      </button>
+      <button class="sb-tab" data-tab="stats" onclick="switchTab('stats')">
+        <span class="sb-icon">📉</span><span class="sb-label">STATS</span>
+      </button>
       <button class="sb-tab" data-tab="bankroll" onclick="switchTab('bankroll')">
         <span class="sb-icon">💰</span><span class="sb-label">BANKROLL</span>
+      </button>
+      <button class="sb-tab" data-tab="journal" onclick="switchTab('journal')">
+        <span class="sb-icon">📓</span><span class="sb-label">JOURNAL</span>
       </button>
       <button class="sb-tab" data-tab="news" onclick="switchTab('news')">
         <span class="sb-icon">📰</span><span class="sb-label">NEWS</span>
@@ -723,8 +1039,13 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
         <div class="hero-card"><div class="hc-label">Avg CLV</div><div class="hc-val sky" id="h-clv">—</div></div>
       </div>
 
-      <!-- Toolbar -->
-      <div class="toolbar">
+      <!-- Toolbar row 1: search + filters -->
+      <div class="toolbar" style="margin-bottom:10px">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="player-search" placeholder="Search player..." oninput="render()"/>
+        </div>
+        <div class="sep"></div>
         <div class="pill-group" id="sport-pills">
           <button class="pill on" data-sport="ALL">All</button>
         </div>
@@ -740,6 +1061,14 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
           <button class="pill" data-conf="75">75+</button>
           <button class="pill" data-conf="85">Elite 85+</button>
         </div>
+        <div class="sep"></div>
+        <button class="pill" id="starred-filter-btn" onclick="toggleStarredFilter()">⭐ Starred</button>
+      </div>
+
+      <!-- Toolbar row 2: export + refresh -->
+      <div class="toolbar">
+        <button class="export-btn" onclick="copyPicksText()" title="Copy picks as text">📋 Copy</button>
+        <button class="export-btn" onclick="window.print()" title="Print / Save as PDF">🖨 Print</button>
         <div class="spacer"></div>
         <button class="btn-refresh" id="btn-refresh" onclick="openModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -754,6 +1083,20 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
         <span class="status-dot amber" id="sdot"></span>
         <span id="stext">Loading picks...</span>
         <span class="status-rhs" id="sleagues"></span>
+      </div>
+
+      <!-- Steam Alerts -->
+      <div id="steam-section" style="display:none" class="steam-banner"></div>
+
+      <!-- Optimal Parlay -->
+      <div id="optimal-banner" style="display:none" class="optimal-banner">
+        <span class="optimal-icon">⚡</span>
+        <div class="optimal-text">
+          <div class="optimal-label">Optimal Parlay</div>
+          <div class="optimal-picks" id="optimal-picks-text">—</div>
+          <div class="optimal-payout" id="optimal-payout-text">—</div>
+        </div>
+        <button class="parlay-btn" onclick="addOptimalToParlay()">Add to Parlay</button>
       </div>
 
       <!-- Sharp Picks -->
@@ -771,11 +1114,86 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       <footer>
         <div class="footer-note">⚠️ For entertainment &amp; research only. Always verify lines on the official sportsbook before placing entries. Gambling involves risk.</div>
         <div class="footer-rhs">
-          PRIZEPICKS EDGE v3.0<br>
-          Powered by Claude AI + Web Search<br>
+          Props Edge v4.0<br>
+          Powered by Claude AI + The Odds API<br>
           <button class="admin-link" onclick="openModal()">admin refresh</button>
         </div>
       </footer>
+    </div>
+
+    <!-- ════ TAB: PARLAY ════ -->
+    <div class="tab-panel" id="tab-parlay">
+      <div class="tab-hd">
+        <div>
+          <div class="tab-title">🎯 <em>Parlay Builder</em></div>
+          <div class="tab-sub">Build entries · Calculate payouts · Find correlated picks</div>
+        </div>
+        <div class="tab-hd-right">
+          <button class="export-btn" onclick="clearParlay()">Clear Parlay</button>
+          <button class="btn-refresh" style="padding:8px 16px;font-size:13px" onclick="addOptimalToParlay()">⚡ Optimal Parlay</button>
+        </div>
+      </div>
+      <div id="parlay-content">
+        <div class="parlay-empty">
+          <div style="font-size:48px;opacity:0.15">🎯</div>
+          <div class="state-title">No Picks Added</div>
+          <div class="state-sub">Click the <strong>+ Parlay</strong> button on any pick card to add it here.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ TAB: STATS ════ -->
+    <div class="tab-panel" id="tab-stats">
+      <div class="tab-hd">
+        <div>
+          <div class="tab-title">📉 <em>Performance Stats</em></div>
+          <div class="tab-sub">Win rate by sport, confidence, ROI over time — from your entry log</div>
+        </div>
+      </div>
+      <div id="stats-content">
+        <div class="parlay-empty">
+          <div style="font-size:48px;opacity:0.15">📉</div>
+          <div class="state-title">No Data Yet</div>
+          <div class="state-sub">Log entries in the Bankroll tab to see performance charts here.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ TAB: JOURNAL ════ -->
+    <div class="tab-panel" id="tab-journal">
+      <div class="tab-hd">
+        <div>
+          <div class="tab-title">📓 <em>Bet Journal</em></div>
+          <div class="tab-sub">Track every entry · True ROI · Detailed analytics</div>
+        </div>
+        <div class="tab-hd-right">
+          <button class="export-csv-btn" onclick="exportJournalCSV()">⬇ Export CSV</button>
+          <button class="btn-refresh" style="padding:8px 16px;font-size:13px" onclick="document.getElementById('journal-modal').classList.add('open')">+ Log Entry</button>
+        </div>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="journal-summary-grid" id="journal-summary"></div>
+
+      <!-- Monthly chart -->
+      <div class="stats-chart-card" style="margin-bottom:20px">
+        <div class="stats-chart-title">Monthly P&amp;L</div>
+        <canvas id="journal-chart" height="80"></canvas>
+      </div>
+
+      <!-- Journal table -->
+      <div class="chart-wrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="chart-title" style="margin-bottom:0">Entry Log</div>
+          <button onclick="clearJournal()" style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--coral);opacity:0.6;background:none;border:none;cursor:pointer">Clear All</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="journal-table">
+            <thead><tr><th>Date</th><th>Pick</th><th>Book</th><th>Type</th><th>#</th><th>Amount</th><th>Result</th><th>Payout</th><th>P&L</th><th>Notes</th></tr></thead>
+            <tbody id="journal-tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ════ TAB: BANKROLL ════ -->
@@ -1077,11 +1495,73 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
   </div><!-- end main-content -->
 </div><!-- end app-shell -->
 
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bottom-nav-btn active" data-tab="picks" onclick="switchTab('picks')"><span class="bn-icon">📊</span>PICKS</button>
+  <button class="bottom-nav-btn" data-tab="parlay" onclick="switchTab('parlay')"><span class="bn-icon">🎯</span>PARLAY</button>
+  <button class="bottom-nav-btn" data-tab="stats" onclick="switchTab('stats')"><span class="bn-icon">📉</span>STATS</button>
+  <button class="bottom-nav-btn" data-tab="bankroll" onclick="switchTab('bankroll')"><span class="bn-icon">💰</span>BANKROLL</button>
+  <button class="bottom-nav-btn" data-tab="journal" onclick="switchTab('journal')"><span class="bn-icon">📓</span>JOURNAL</button>
+  <button class="bottom-nav-btn" data-tab="news" onclick="switchTab('news')"><span class="bn-icon">📰</span>NEWS</button>
+  <button class="bottom-nav-btn" data-tab="results" onclick="switchTab('results')"><span class="bn-icon">📈</span>RESULTS</button>
+  <button class="bottom-nav-btn" data-tab="lines" onclick="switchTab('lines')"><span class="bn-icon">📐</span>LINES</button>
+  <button class="bottom-nav-btn" data-tab="scores" onclick="switchTab('scores')"><span class="bn-icon">🏟️</span>SCORES</button>
+  <button class="bottom-nav-btn" data-tab="settings" onclick="switchTab('settings')"><span class="bn-icon">⚙️</span>MORE</button>
+</nav>
+
 <script>
 // ── State ─────────────────────────────────────────────
 let ALL = [], activeSport='ALL', activeDir='ALL', activeConf=0;
 let activeNewsFilter = 'ALL';
 let newsItems = [];
+let FAVORITES = [];
+let PARLAY = [];
+let showStarredOnly = false;
+let NOTIFS = [];
+let STEAM = [];
+let OPTIMAL_PICKS = [];
+let chartInstances = {};
+
+// ── Notifications ──────────────────────────────────────
+function pushNotif(title, body, type='info') {
+  const n = { id: Date.now(), title, body, type, read: false, ts: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) };
+  NOTIFS.unshift(n);
+  if (NOTIFS.length > 30) NOTIFS.pop();
+  updateNotifBell();
+  renderNotifList();
+  if (getSetting('notifications',false) && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.ico' });
+  }
+}
+function updateNotifBell() {
+  const unread = NOTIFS.filter(n => !n.read).length;
+  const cnt = document.getElementById('notif-count');
+  if (cnt) { cnt.textContent = unread; cnt.style.display = unread ? 'flex' : 'none'; }
+}
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) { NOTIFS.forEach(n => n.read = true); updateNotifBell(); }
+}
+function clearNotifs() { NOTIFS=[]; updateNotifBell(); renderNotifList(); }
+function renderNotifList() {
+  const el = document.getElementById('notif-list');
+  if (!el) return;
+  if (!NOTIFS.length) { el.innerHTML = '<div class="notif-empty">No notifications yet.</div>'; return; }
+  el.innerHTML = NOTIFS.map(n => `<div class="notif-item${n.read?'':' unread'}"><div class="notif-title">${n.title}</div><div class="notif-body">${n.body}</div><div class="notif-time">${n.ts}</div></div>`).join('');
+}
+document.addEventListener('click', e => {
+  const panel = document.getElementById('notif-panel');
+  if (panel?.classList.contains('open') && !e.target.closest('.notif-panel') && !e.target.closest('.notif-bell')) panel.classList.remove('open');
+});
+
+// ── Theme quick toggle ─────────────────────────────────
+function quickTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  document.documentElement.setAttribute('data-theme', isLight ? 'dark' : 'light');
+  saveSetting('theme', isLight ? 'dark' : 'light');
+  document.getElementById('theme-quick-btn').textContent = isLight ? '🌙' : '☀️';
+}
 
 // ── Settings from localStorage ─────────────────────────
 function getSetting(key, def) {
@@ -1097,13 +1577,15 @@ let minConf = getSetting('min_conf', 60);
 
 // ── Tab Switching ──────────────────────────────────────
 function switchTab(tabId) {
-  document.querySelectorAll('.sb-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+  document.querySelectorAll('.sb-tab,[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
   if (tabId === 'bankroll') renderBankrollTab();
   if (tabId === 'lines') renderLinesTab();
   if (tabId === 'scores' && !SCORES.length) loadScores();
-  // News loads only on manual button click
   if (tabId === 'settings') initSettings();
+  if (tabId === 'parlay') renderParlayTab();
+  if (tabId === 'stats') renderStatsTab();
+  if (tabId === 'journal') renderJournalTab();
 }
 
 // ── Date display ──────────────────────────────────────
@@ -1399,6 +1881,7 @@ async function submitRefresh() {
       btn.disabled = false; btn.classList.remove('spinning'); return;
     }
     await loadPicks();
+    pushNotif('✅ Picks Refreshed!', `${ALL.length} new picks loaded.`, 'success');
   } catch(e) {
     document.getElementById('stext').textContent = 'Error: '+e.message;
     document.getElementById('sdot').className = 'status-dot red';
@@ -1431,6 +1914,50 @@ function emoji(s) {
 function initials(n) { return (n||'??').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase(); }
 function cc(c) { return c>=85?'hi':c>=75?'md':'lo'; }
 
+// ── Favorites ─────────────────────────────────────────
+function loadFavorites() { try { FAVORITES = JSON.parse(localStorage.getItem('pp_favorites')||'[]'); } catch(e) { FAVORITES=[]; } }
+function saveFavorites() { localStorage.setItem('pp_favorites', JSON.stringify(FAVORITES)); }
+function toggleFav(player, btnEl) {
+  const idx = FAVORITES.indexOf(player);
+  if (idx >= 0) { FAVORITES.splice(idx,1); btnEl.classList.remove('starred'); btnEl.title='Add to favorites'; }
+  else { FAVORITES.push(player); btnEl.classList.add('starred'); btnEl.title='Remove from favorites'; }
+  saveFavorites();
+}
+function toggleStarredFilter() {
+  showStarredOnly = !showStarredOnly;
+  document.getElementById('starred-filter-btn').classList.toggle('on', showStarredOnly);
+  render();
+}
+loadFavorites();
+
+// ── Injury badge HTML ──────────────────────────────────
+function injuryBadge(sev) {
+  if (!sev) return '';
+  const map = { CRITICAL:'critical', HIGH:'high', MEDIUM:'medium', LOW:'low' };
+  const icons = { CRITICAL:'🔴', HIGH:'🟠', MEDIUM:'🟡', LOW:'🟢' };
+  const cls = map[sev] || '';
+  return `<span class="inj-badge ${cls}">${icons[sev]||''} ${sev}</span>`;
+}
+
+// ── Checklist score HTML ───────────────────────────────
+function checklistHTML(p, cid) {
+  const cl = p.checklist;
+  if (!cl) return '';
+  const items = [
+    ['injury_checked','Injury report'],['lineup_confirmed','Lineup confirmed'],
+    ['weather_checked','Weather checked'],['line_movement','Line movement'],
+    ['back_to_back','Back-to-back'],['public_betting','Public %'],
+    ['sharp_money','Sharp money'],['matchup_checked','Matchup H2H'],
+  ];
+  const score = items.filter(([k]) => cl[k]).length;
+  const scoreClass = score>=7?'sharp':score>=4?'moderate':'risky';
+  const label = score>=7?'SHARP':score>=4?'MODERATE':'RISKY';
+  const rows = items.map(([k,lbl]) => `<div class="checklist-item"><span class="ci-icon">${cl[k]?'✅':'❌'}</span>${lbl}</div>`).join('');
+  return `
+  <button class="checklist-score ${scoreClass}" onclick="tog('cl-${cid}')" title="Checklist">${score}/8 ${label}</button>
+  <div class="checklist-body" id="body-cl-${cid}">${rows}</div>`;
+}
+
 // ── Card HTML ─────────────────────────────────────────
 function cardHTML(p, i) {
   const dir = p.direction === 'OVER' ? 'over' : 'under';
@@ -1438,15 +1965,26 @@ function cardHTML(p, i) {
   const id = 'c'+i;
   const delay = (i%12)*30;
   const tg = (p.tags||[]).map(t => `<span class="tag${es&&t.toLowerCase().includes('esport')?' v':''}">${t}</span>`).join('');
+  const isFav = FAVORITES.includes(p.player);
+  const inParlay = PARLAY.some(x => x.player===p.player && x.stat===p.stat);
+  const steam = STEAM.find(s => s.player?.toLowerCase()===p.player?.toLowerCase() && s.stat?.toLowerCase()===p.stat?.toLowerCase());
+  let steamTag = '';
+  if (steam) {
+    const sameDir = (steam.direction==='UP' && p.direction==='OVER') || (steam.direction==='DOWN' && p.direction==='UNDER');
+    if (sameDir) steamTag = `<span class="tag" style="color:var(--lime);border-color:rgba(184,245,66,0.3)">🔥 Sharp Confirmed</span>`;
+    else steamTag = `<span class="tag" style="color:var(--coral);border-color:rgba(255,89,99,0.3)">⚠️ Steam Fade Risk</span>`;
+  }
+  const clHTML = checklistHTML(p, id);
   return `
-<div class="card ${dir}${es?' esport':''}" style="animation-delay:${delay}ms">
+<div class="card ${dir}${es?' esport':''}${p.injury_severity==='CRITICAL'?' flagged':''}" style="animation-delay:${delay}ms">
   <div class="card-stripe"></div>
+  <button class="star-btn${isFav?' starred':''}" onclick="toggleFav('${p.player.replace(/'/g,"\\'")}',this)" title="${isFav?'Remove from favorites':'Add to favorites'}">${isFav?'⭐':'☆'}</button>
   <div class="card-top">
     <div class="avatar">${p.image_url
       ? `<img src="${p.image_url}" onerror="this.parentNode.textContent='${initials(p.player)}'" alt="">`
       : initials(p.player)}</div>
     <div class="p-col">
-      <div class="p-name">${p.player}</div>
+      <div class="p-name">${p.player}${injuryBadge(p.injury_severity)}</div>
       <div class="p-meta">${emoji(p.sport)} ${p.sport||'Unknown'} · ${p.team||'—'}${p.opponent?' vs '+p.opponent:''}${es?'<span class="esport-chip">Esports</span>':''}</div>
     </div>
     <div class="conf-col">
@@ -1458,20 +1996,35 @@ function cardHTML(p, i) {
     <div class="prop-stat">${p.stat}</div>
     <div class="prop-num">${p.line}</div>
     <div class="dir ${dir}">${p.direction}</div>
+    ${p.checklist ? `<button class="checklist-score ${checklistScore(p)}" onclick="tog('cl-${id}')">${checklistCount(p)}/8</button>` : ''}
+    <button class="parlay-btn${inParlay?' added':''}" onclick="toggleParlay(${i})">${inParlay?'✓ Added':'+ Parlay'}</button>
   </div>
+  ${p.checklist ? `<div class="checklist-body" id="body-cl-${id}">${checklistItems(p)}</div>` : ''}
   <div class="acc-hd" onclick="tog('${id}')">
     <span class="acc-lbl">View AI Reasoning</span>
     <svg class="acc-chevron" id="chev-${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
   </div>
   <div class="acc-body" id="body-${id}">
     <div class="acc-text">${p.reasoning||'No reasoning provided.'}</div>
-    <div class="tags">${tg}</div>
+    <div class="tags">${tg}${steamTag}</div>
     ${(()=>{const s=kellyStake(p.confidence);return s!=null?`<div class="kelly-stake">Recommended: $${s.toFixed(2)}</div>`:''})()}
     ${p.correlation?`<div class="corr-badge">${p.correlation.note}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="share-btn" onclick="sharePick(${i})">📤 Share Pick</button>
+      <button class="share-btn" onclick="addPickToJournal(${i})">📓 Log to Journal</button>
+    </div>
   </div>
   <div class="card-lines" id="card-lines-${i}" style="display:none"></div>
   <div class="card-live-score" id="score-${i}" style="display:none"></div>
 </div>`;
+}
+
+function checklistCount(p) { const cl=p.checklist; if(!cl)return 0; return Object.values(cl).filter(Boolean).length; }
+function checklistScore(p) { const s=checklistCount(p); return s>=7?'sharp':s>=4?'moderate':'risky'; }
+function checklistItems(p) {
+  const cl=p.checklist; if(!cl) return '';
+  const items=[['injury_checked','Injury report'],['lineup_confirmed','Lineup confirmed'],['weather_checked','Weather checked'],['line_movement','Line movement'],['back_to_back','Back-to-back'],['public_betting','Public %'],['sharp_money','Sharp money'],['matchup_checked','Matchup H2H']];
+  return items.map(([k,lbl])=>`<div class="checklist-item"><span class="ci-icon">${cl[k]?'✅':'❌'}</span>${lbl}</div>`).join('');
 }
 
 function tog(id) {
@@ -1479,15 +2032,40 @@ function tog(id) {
   document.getElementById('chev-'+id)?.classList.toggle('open');
 }
 
+// ── Share pick ─────────────────────────────────────────
+function sharePick(i) {
+  const p = ALL[i]; if (!p) return;
+  const text = `${emoji(p.sport)} ${p.player} — ${p.stat} ${p.direction} ${p.line} (${p.confidence}% edge)\n📊 ${p.reasoning?.slice(0,120)||''}...`;
+  navigator.clipboard?.writeText(text).then(()=>pushNotif('Pick Copied','Share text copied to clipboard.','info')).catch(()=>alert(text));
+}
+function addPickToJournal(i) {
+  const p = ALL[i]; if (!p) return;
+  document.getElementById('jrn-pick').value = `${p.player} · ${p.stat}`;
+  document.getElementById('journal-modal').classList.add('open');
+}
+
+// ── Copy all picks as text ─────────────────────────────
+function copyPicksText() {
+  if (!ALL.length) { alert('No picks loaded.'); return; }
+  const text = ALL.map(p => `${emoji(p.sport)} ${p.player} — ${p.stat} ${p.direction} ${p.line} (${p.confidence}% edge)\n   ${p.reasoning?.slice(0,100)||''}...`).join('\n\n');
+  navigator.clipboard?.writeText(text).then(()=>pushNotif('Picks Copied',`${ALL.length} picks copied to clipboard.`,'info')).catch(()=>alert('Could not copy'));
+}
+
 // ── Render Picks ──────────────────────────────────────
 function render() {
+  const search = (document.getElementById('player-search')?.value||'').toLowerCase().trim();
   let list = ALL.filter(p => {
     if (excludedSports.includes(p.sport)) return false;
     if (activeSport !== 'ALL' && !(p.sport||'').toLowerCase().includes(activeSport.toLowerCase())) return false;
     if (activeDir !== 'ALL' && p.direction !== activeDir) return false;
     if (p.confidence < Math.max(activeConf, minConf)) return false;
+    if (showStarredOnly && !FAVORITES.includes(p.player)) return false;
+    if (search && !(p.player||'').toLowerCase().includes(search) && !(p.stat||'').toLowerCase().includes(search)) return false;
     return true;
   }).sort((a,b) => b.confidence - a.confidence);
+  // Flagged (CRITICAL injury) at bottom
+  const flagged = list.filter(p => p.injury_severity === 'CRITICAL');
+  list = [...list.filter(p => p.injury_severity !== 'CRITICAL'), ...flagged];
 
   const main = document.getElementById('main');
   if (ALL.length === 0) {
@@ -1502,20 +2080,25 @@ function render() {
       <div class="state-sub">No picks match your filters. Try adjusting sport, direction, or confidence level.</div></div>`;
     return;
   }
-  const elite = list.filter(p => p.confidence >= 85);
-  const solid = list.filter(p => p.confidence >= 75 && p.confidence < 85);
-  const value = list.filter(p => p.confidence < 75);
+  const elite = list.filter(p => p.confidence >= 85 && p.injury_severity !== 'CRITICAL');
+  const solid = list.filter(p => p.confidence >= 75 && p.confidence < 85 && p.injury_severity !== 'CRITICAL');
+  const value = list.filter(p => p.confidence < 75 && p.injury_severity !== 'CRITICAL');
+  const flaggedList = list.filter(p => p.injury_severity === 'CRITICAL');
   let html = '', i = 0;
-  const sec = (title, picks, sub) => `
-    <div class="sec"><div class="sec-title">${title}</div><div class="sec-rule"></div><div class="sec-count">${picks.length} pick${picks.length!==1?'s':''} · ${sub}</div></div>
+  const sec = (title, picks, sub, secStyle='') => `
+    <div class="sec"${secStyle?` style="${secStyle}"`:''}>
+      <div class="sec-title">${title}</div><div class="sec-rule"></div><div class="sec-count">${picks.length} pick${picks.length!==1?'s':''} · ${sub}</div>
+    </div>
     <div class="grid">${picks.map(p => cardHTML(p, i++)).join('')}</div>`;
   if (elite.length) html += sec('🔥 Elite Plays', elite, '85+ edge score');
   if (solid.length) html += sec('📈 Solid Plays', solid, '75–84 edge score');
   if (value.length) html += sec('💡 Value Leans', value, '60–74 edge score');
+  if (flaggedList.length) html += `<div style="margin:20px 0 10px;padding:10px 14px;background:rgba(255,89,99,0.07);border:1px solid rgba(255,89,99,0.25);border-radius:var(--r)"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--coral)">🔴 FLAGGED — CRITICAL INJURY RISK</span></div>${sec('',flaggedList,'Injury flagged — verify before playing','border:1px solid rgba(255,89,99,0.2)')}`;
   main.innerHTML = html;
   renderSharpSection();
   updatePickCardLines();
   updatePickCardScores();
+  renderOptimalParlay();
 }
 
 function renderSharpSection() {
@@ -1528,6 +2111,70 @@ function renderSharpSection() {
   if (!sharp.length) { section.style.display = 'none'; return; }
   grid.innerHTML = sharp.map(p => cardHTML(p, idx++)).join('');
   section.style.display = 'block';
+}
+
+// ── Steam alerts ───────────────────────────────────────
+function renderSteamSection(alerts) {
+  STEAM = alerts || [];
+  const sec = document.getElementById('steam-section');
+  if (!sec) return;
+  const active = STEAM.filter(a => new Date(a.expiresAt) > new Date());
+  if (!active.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  sec.innerHTML = `<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--smoke);padding:8px 14px 4px">🔥 Steam Move Alerts</div>` +
+    active.map(a => `<div class="steam-alert-item ${a.isSharp?'sharp':'regular'}">
+      <span class="steam-badge ${a.isSharp?'sharp':'regular'}">${a.isSharp?'SHARP STEAM':'STEAM'}</span>
+      <span class="steam-player">${a.player}</span>
+      <span class="steam-meta">${a.stat} · Line ${a.direction} ${a.move} pts · ${a.bookCount} book${a.bookCount!==1?'s':''} · ${a.timeDiff}min ago</span>
+    </div>`).join('');
+}
+
+async function pollSteam() {
+  try {
+    const r = await fetch('/api/steam');
+    if (!r.ok) return;
+    const d = await r.json();
+    const prev = STEAM.length;
+    renderSteamSection(d.alerts || []);
+    // Notify on new sharp steam
+    const newSharp = (d.alerts||[]).filter(a=>a.isSharp && !STEAM.slice(0,prev).some(s=>s.id===a.id));
+    newSharp.forEach(a => pushNotif('🔥 Sharp Steam Detected!',`${a.player} ${a.stat} line moving ${a.direction} on ${a.bookCount} books`,'steam'));
+  } catch(_) {}
+}
+
+// ── Optimal parlay ────────────────────────────────────
+const POWER_PAYOUTS = {2:3,3:5,4:10,5:20,6:40};
+
+function computeOptimalParlay() {
+  if (ALL.length < 2) return null;
+  const eligible = ALL.filter(p => p.injury_severity !== 'CRITICAL').sort((a,b)=>b.confidence-a.confidence);
+  // Score = confidence + correlation bonus (same game)
+  const scored = eligible.map(p => {
+    const sameGameCount = eligible.filter(q=>q!==p&&q.team&&p.team&&q.team===p.team).length;
+    return { p, score: p.confidence + sameGameCount*3 };
+  }).sort((a,b)=>b.score-a.score);
+  const top = scored.slice(0,3).map(x=>x.p);
+  if (top.length < 2) return null;
+  const n = top.length;
+  const payout = POWER_PAYOUTS[n] || n*2;
+  return { picks: top, n, payout };
+}
+
+function renderOptimalParlay() {
+  const banner = document.getElementById('optimal-banner');
+  const result = computeOptimalParlay();
+  OPTIMAL_PICKS = result?.picks || [];
+  if (!result || !banner) return;
+  banner.style.display = 'flex';
+  document.getElementById('optimal-picks-text').textContent = result.picks.map(p=>`${p.player} ${p.direction} ${p.line} ${p.stat}`).join(' · ');
+  document.getElementById('optimal-payout-text').textContent = `Power Play ${result.n}-pick → ${result.payout}x payout`;
+}
+
+function addOptimalToParlay() {
+  if (!OPTIMAL_PICKS.length) { const r=computeOptimalParlay(); OPTIMAL_PICKS=r?.picks||[]; }
+  OPTIMAL_PICKS.forEach(p => { if (!PARLAY.some(x=>x.player===p.player&&x.stat===p.stat)) PARLAY.push(p); });
+  saveParlay();
+  switchTab('parlay');
 }
 
 // ── Results Tab ───────────────────────────────────────
@@ -1580,6 +2227,203 @@ function renderResultsTab(dr) {
       return `<div class="sport-row"><span class="sport-emoji">${emoji(s)}</span><div class="sport-info"><div class="sport-name">${s}</div><div class="sport-rec">${rec.wins}-${rec.losses}</div></div><span class="sport-pct" style="color:${col}">${pct}%</span></div>`;
     }).join('');
     document.getElementById('sport-breakdown-section').style.display = 'block';
+  }
+}
+
+// ── Parlay Builder ────────────────────────────────────
+const FLEX_PAYOUTS = {2:{2:1.25},3:{2:1.5,3:5},4:{3:2,4:10},5:{3:1.5,4:3,5:20},6:{4:2,5:7.5,6:40}};
+
+function saveParlay() { localStorage.setItem('pp_parlay', JSON.stringify(PARLAY)); }
+function loadParlay() { try { PARLAY = JSON.parse(localStorage.getItem('pp_parlay')||'[]'); } catch(e) { PARLAY=[]; } }
+function clearParlay() { PARLAY=[]; saveParlay(); renderParlayTab(); render(); }
+function toggleParlay(i) {
+  const p = ALL[i]; if(!p) return;
+  const idx = PARLAY.findIndex(x=>x.player===p.player&&x.stat===p.stat);
+  if (idx>=0) PARLAY.splice(idx,1); else if(PARLAY.length<6) PARLAY.push(p);
+  saveParlay(); render(); if(document.getElementById('tab-parlay')?.classList.contains('active')) renderParlayTab();
+}
+loadParlay();
+
+function renderParlayTab() {
+  const el = document.getElementById('parlay-content'); if(!el) return;
+  if (!PARLAY.length) {
+    el.innerHTML = `<div class="parlay-empty"><div style="font-size:48px;opacity:0.15">🎯</div><div class="state-title">No Picks Added</div><div class="state-sub">Click the <strong>+ Parlay</strong> button on any pick card to add it here.</div></div>`;
+    return;
+  }
+  const n = PARLAY.length;
+  const entryInput = `<div class="parlay-entry-row">
+    <span class="parlay-entry-label">Entry $</span>
+    <input type="number" id="parlay-entry-amt" value="${getSetting('parlay_entry',10)}" oninput="saveSetting('parlay_entry',+this.value);renderParlayTab()" min="1" step="1"/>
+    <span class="parlay-entry-label" id="parlay-entry-out" style="color:var(--lime);font-weight:700"></span>
+  </div>`;
+  const entry = parseFloat(getSetting('parlay_entry',10)) || 10;
+  const powerPayout = POWER_PAYOUTS[n] || n*2;
+  const powerOut = (entry*powerPayout).toFixed(2);
+
+  // Correlation check
+  const teams = PARLAY.map(p=>p.team).filter(Boolean);
+  const corrPairs = [];
+  PARLAY.forEach((p,i)=>PARLAY.forEach((q,j)=>{if(j<=i)return; if(p.team&&q.team&&p.team===q.team) corrPairs.push(`${p.player} + ${q.player}`); }));
+
+  const pickRows = PARLAY.map((p,i) => {
+    const sameTeam = PARLAY.some((q,j)=>j!==i&&q.team&&p.team&&q.team===p.team);
+    return `<div class="parlay-pick-row">
+      <span>${emoji(p.sport)}</span>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${p.player}</div><div style="font-size:11px;color:var(--smoke)">${p.stat} ${p.direction} ${p.line} · ${p.confidence}% edge</div></div>
+      ${sameTeam?`<span class="parlay-corr good">Correlated</span>`:''}
+      <button class="parlay-pick-remove" onclick="PARLAY.splice(${i},1);saveParlay();renderParlayTab();render()">✕</button>
+    </div>`;
+  }).join('');
+
+  // EV calculation
+  const combinedProb = PARLAY.reduce((acc,p)=>acc*(p.confidence/100),1);
+  const ev = (combinedProb*powerPayout - (1-combinedProb)).toFixed(3);
+  const evColor = ev>0?'var(--lime)':'var(--coral)';
+
+  // Flex payouts for 3+
+  let flexHTML = '';
+  if (n>=3 && FLEX_PAYOUTS[n]) {
+    flexHTML = `<div class="parlay-payout-card"><div class="parlay-payout-label">Flex Payouts</div>` +
+      Object.entries(FLEX_PAYOUTS[n]).map(([hit,mult])=>`<div style="font-size:12px;margin:4px 0;color:var(--smoke)">${hit}/${n} hit → <strong style="color:var(--lime)">$${(entry*mult).toFixed(2)}</strong></div>`).join('') + `</div>`;
+  }
+
+  el.innerHTML = `
+    ${corrPairs.length?`<div style="padding:10px 14px;background:rgba(184,245,66,0.07);border:1px solid rgba(184,245,66,0.2);border-radius:var(--rs);margin-bottom:14px;font-size:12px;color:var(--lime)">✅ Correlated picks detected: ${corrPairs.join(', ')}</div>`:''}
+    <div class="parlay-picks-list">${pickRows}</div>
+    ${entryInput}
+    <div class="parlay-payout-grid">
+      <div class="parlay-payout-card"><div class="parlay-payout-label">Power Play (${n}-pick)</div><div class="parlay-payout-val">$${powerOut}</div><div class="parlay-payout-sub">${powerPayout}x · ${n}/${n} must hit</div></div>
+      ${flexHTML}
+      <div class="parlay-payout-card"><div class="parlay-payout-label">Combined Prob</div><div class="parlay-payout-val" style="color:var(--gold)">${(combinedProb*100).toFixed(1)}%</div><div class="parlay-payout-sub">Based on edge scores</div></div>
+      <div class="parlay-payout-card"><div class="parlay-payout-label">Expected Value</div><div class="parlay-payout-val" style="color:${evColor}">${ev>0?'+':''}${ev}</div><div class="parlay-payout-sub">Per $1 wagered</div></div>
+    </div>
+    <div class="parlay-ev" id="parlay-entry-out-detail" style="margin-top:-10px;margin-bottom:16px">Power payout: $${entry} × ${powerPayout}x = <strong style="color:var(--lime)">$${powerOut}</strong></div>
+  `;
+}
+
+// ── Stats Tab ─────────────────────────────────────────
+function renderStatsTab() {
+  const el = document.getElementById('stats-content'); if(!el) return;
+  const entries = getEntries();
+  if (!entries.length) {
+    el.innerHTML = `<div class="parlay-empty"><div style="font-size:48px;opacity:0.15">📉</div><div class="state-title">No Data Yet</div><div class="state-sub">Log entries in the Bankroll tab to see performance charts here.</div></div>`;
+    return;
+  }
+  const wins=entries.filter(e=>e.hit===true).length, losses=entries.filter(e=>e.hit===false).length, total=wins+losses;
+  const totalStaked=entries.reduce((s,e)=>s+Math.abs(e.stake||0),0);
+  const totalPnl=entries.reduce((s,e)=>s+(e.profit||0),0);
+
+  // By "sport" — if pick field contains a sport
+  const bySport={}, byDay={0:0,1:0,2:0,3:0,4:0,5:0,6:0};
+  entries.forEach(e=>{
+    const sport = (e.pick||'').split('·')[1]?.trim() || 'Unknown';
+    if(!bySport[sport]) bySport[sport]={wins:0,losses:0};
+    if(e.hit===true) bySport[sport].wins++; else if(e.hit===false) bySport[sport].losses++;
+    const d=new Date(e.date).getDay();
+    byDay[d]+=(e.profit||0);
+  });
+
+  el.innerHTML = `
+    <div class="stats-summary-grid">
+      <div class="stats-sum-card"><div class="stats-sum-label">Win Rate</div><div class="stats-sum-val" style="color:var(--lime)">${total?((wins/total)*100).toFixed(1):'—'}%</div></div>
+      <div class="stats-sum-card"><div class="stats-sum-label">Total Entries</div><div class="stats-sum-val" style="color:var(--sky)">${entries.length}</div></div>
+      <div class="stats-sum-card"><div class="stats-sum-label">Total Wagered</div><div class="stats-sum-val" style="color:var(--smoke)">$${totalStaked.toFixed(0)}</div></div>
+      <div class="stats-sum-card"><div class="stats-sum-label">All-Time P&L</div><div class="stats-sum-val" style="color:${totalPnl>=0?'var(--lime)':'var(--coral)'}">${totalPnl>=0?'+':''}$${Math.abs(totalPnl).toFixed(2)}</div></div>
+      <div class="stats-sum-card"><div class="stats-sum-label">Biggest Win</div><div class="stats-sum-val" style="color:var(--lime)">$${Math.max(...entries.map(e=>e.profit||0),0).toFixed(2)}</div></div>
+      <div class="stats-sum-card"><div class="stats-sum-label">Biggest Loss</div><div class="stats-sum-val" style="color:var(--coral)">$${Math.abs(Math.min(...entries.map(e=>e.profit||0),0)).toFixed(2)}</div></div>
+    </div>
+    <div class="stats-chart-card">
+      <div class="stats-chart-title">P&L by Day of Week</div>
+      <canvas id="chart-dow" height="80"></canvas>
+    </div>
+    <div class="stats-chart-card">
+      <div class="stats-chart-title">Win Rate by Book</div>
+      <div id="stats-book-table"></div>
+    </div>
+  `;
+
+  // Day of week chart
+  requestAnimationFrame(()=>{
+    const ctx=document.getElementById('chart-dow');
+    if(!ctx) return;
+    if(chartInstances['dow']) chartInstances['dow'].destroy();
+    const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    chartInstances['dow'] = new Chart(ctx,{type:'bar',data:{labels:days,datasets:[{data:days.map((_,i)=>byDay[i]||0),backgroundColor:days.map((_,i)=>byDay[i]>=0?'rgba(184,245,66,0.6)':'rgba(255,89,99,0.6)'),borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,0.05)'}}},responsive:true}});
+  });
+
+  // Book table
+  const byBook={};
+  entries.forEach(e=>{ const bk=e.book||'Unknown'; if(!byBook[bk]) byBook[bk]={wins:0,losses:0,pnl:0}; if(e.hit===true) byBook[bk].wins++; else if(e.hit===false) byBook[bk].losses++; byBook[bk].pnl+=(e.profit||0); });
+  const bookEl=document.getElementById('stats-book-table');
+  if(bookEl) bookEl.innerHTML=`<table class="stats-table"><thead><tr><th>Book</th><th>W-L</th><th>Win %</th><th>P&L</th></tr></thead><tbody>${Object.entries(byBook).map(([bk,r])=>{const t=r.wins+r.losses;return `<tr><td>${bk}</td><td>${r.wins}-${r.losses}</td><td style="color:${t&&r.wins/t>=0.5?'var(--lime)':'var(--coral)'}">${t?((r.wins/t)*100).toFixed(0):0}%</td><td style="color:${r.pnl>=0?'var(--lime)':'var(--coral)'}">${r.pnl>=0?'+':''}$${Math.abs(r.pnl).toFixed(2)}</td></tr>`;}).join('')}</tbody></table>`;
+}
+
+// ── Journal ───────────────────────────────────────────
+function getJournal() { try { return JSON.parse(localStorage.getItem('pp_journal')||'[]'); } catch(e) { return []; } }
+function saveJEntry(arr) { localStorage.setItem('pp_journal', JSON.stringify(arr)); }
+function clearJournal() { if(!confirm('Clear all journal entries?')) return; localStorage.removeItem('pp_journal'); renderJournalTab(); }
+function saveJournalEntry() {
+  const e = {
+    id: Date.now(),
+    date: document.getElementById('jrn-date').value || new Date().toLocaleDateString('en-CA'),
+    pick: document.getElementById('jrn-pick').value.trim(),
+    book: document.getElementById('jrn-book').value,
+    type: document.getElementById('jrn-type').value,
+    count: +document.getElementById('jrn-count').value,
+    result: document.getElementById('jrn-result').value,
+    amount: parseFloat(document.getElementById('jrn-amount').value)||0,
+    payout: parseFloat(document.getElementById('jrn-payout').value)||0,
+    notes: document.getElementById('jrn-notes').value.trim(),
+  };
+  e.pnl = e.result==='win' ? e.payout - e.amount : e.result==='loss' ? -e.amount : 0;
+  const arr = getJournal(); arr.push(e); saveJEntry(arr);
+  document.getElementById('journal-modal').classList.remove('open');
+  ['jrn-pick','jrn-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderJournalTab();
+}
+function exportJournalCSV() {
+  const arr = getJournal();
+  if (!arr.length) { alert('No journal entries to export.'); return; }
+  const hdr = ['Date','Pick','Book','Type','#Picks','Amount','Result','Payout','P&L','Notes'];
+  const rows = arr.map(e=>[e.date,e.pick,e.book,e.type,e.count,e.amount,e.result,e.payout,e.pnl,e.notes].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [hdr.join(','),...rows].join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='props_edge_journal.csv'; a.click();
+}
+function renderJournalTab() {
+  const arr = getJournal();
+  // Summary
+  const wins=arr.filter(e=>e.result==='win').length, losses=arr.filter(e=>e.result==='loss').length;
+  const totalW=arr.reduce((s,e)=>s+(e.amount||0),0), totalR=arr.reduce((s,e)=>s+(e.result==='win'?e.payout:0),0);
+  const totalPnl=arr.reduce((s,e)=>s+(e.pnl||0),0);
+  const now=new Date(); const monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthPnl=arr.filter(e=>e.date.startsWith(monthKey)).reduce((s,e)=>s+(e.pnl||0),0);
+  const sumEl=document.getElementById('journal-summary');
+  if(sumEl) sumEl.innerHTML=`
+    <div class="stats-sum-card"><div class="stats-sum-label">Total Entries</div><div class="stats-sum-val" style="color:var(--sky)">${arr.length}</div></div>
+    <div class="stats-sum-card"><div class="stats-sum-label">W-L</div><div class="stats-sum-val" style="color:var(--lime)">${wins}-${losses}</div></div>
+    <div class="stats-sum-card"><div class="stats-sum-label">Win Rate</div><div class="stats-sum-val" style="color:var(--gold)">${wins+losses?((wins/(wins+losses))*100).toFixed(1):'—'}%</div></div>
+    <div class="stats-sum-card"><div class="stats-sum-label">All-Time P&L</div><div class="stats-sum-val" style="color:${totalPnl>=0?'var(--lime)':'var(--coral)'}">${totalPnl>=0?'+':''}$${Math.abs(totalPnl).toFixed(2)}</div></div>
+    <div class="stats-sum-card"><div class="stats-sum-label">Total Wagered</div><div class="stats-sum-val" style="color:var(--smoke)">$${totalW.toFixed(0)}</div></div>
+    <div class="stats-sum-card"><div class="stats-sum-label">Month P&L</div><div class="stats-sum-val" style="color:${monthPnl>=0?'var(--lime)':'var(--coral)'}">${monthPnl>=0?'+':''}$${Math.abs(monthPnl).toFixed(2)}</div></div>
+  `;
+  // Table
+  const tbody=document.getElementById('journal-tbody');
+  if(tbody) tbody.innerHTML=!arr.length
+    ?`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--smoke)">No entries yet. Click "+ Log Entry" to start.</td></tr>`
+    :[...arr].reverse().map(e=>{
+      const rc=e.result==='win'?'journal-row-win':e.result==='loss'?'journal-row-loss':'journal-row-pending';
+      const icon=e.result==='win'?'✅':e.result==='loss'?'❌':'⏳';
+      const pnlClr=e.pnl>=0?'var(--lime)':'var(--coral)';
+      return `<tr class="${rc}"><td>${e.date}</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis">${e.pick||'—'}</td><td>${e.book||'—'}</td><td style="font-size:10px">${e.type||'—'}</td><td>${e.count||'—'}</td><td>$${(e.amount||0).toFixed(2)}</td><td>${icon}</td><td>$${(e.payout||0).toFixed(2)}</td><td style="color:${pnlClr};font-weight:600">${e.pnl>=0?'+':''}$${Math.abs(e.pnl||0).toFixed(2)}</td><td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;color:var(--smoke)">${e.notes||'—'}</td></tr>`;
+    }).join('');
+  // Monthly chart
+  const byMonth={};
+  arr.forEach(e=>{const m=e.date.slice(0,7); if(!byMonth[m]) byMonth[m]=0; byMonth[m]+=(e.pnl||0);});
+  const months=Object.keys(byMonth).sort().slice(-12);
+  const ctx=document.getElementById('journal-chart');
+  if(ctx) {
+    if(chartInstances['journal']) chartInstances['journal'].destroy();
+    chartInstances['journal']=new Chart(ctx,{type:'bar',data:{labels:months,datasets:[{data:months.map(m=>byMonth[m]),backgroundColor:months.map(m=>byMonth[m]>=0?'rgba(184,245,66,0.6)':'rgba(255,89,99,0.6)'),borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,0.05)'}}},responsive:true}});
   }
 }
 
@@ -1700,11 +2544,7 @@ function resetSettings() {
   location.reload();
 }
 
-// ── Restore theme ─────────────────────────────────────
-const savedTheme = getSetting('theme', 'dark');
-if (savedTheme === 'light') document.documentElement.setAttribute('data-theme', 'light');
-
-// ── Boot ──────────────────────────────────────────────
+// ── Lines ─────────────────────────────────────────────
 document.getElementById('main').innerHTML = `
   <div class="center-state">
     <div class="spin-ring"></div>
@@ -2034,9 +2874,44 @@ function updatePickCardScores() {
   }
 }
 
+// ── Boot ──────────────────────────────────────────────
+// Restore theme
+const savedThemeVal = getSetting('theme','dark');
+document.documentElement.setAttribute('data-theme', savedThemeVal);
+const quickBtn = document.getElementById('theme-quick-btn');
+if (quickBtn) quickBtn.textContent = savedThemeVal === 'light' ? '☀️' : '🌙';
+
+// Restore theme toggle in settings (avoid duplicate init)
+document.addEventListener('DOMContentLoaded', ()=>{
+  const tt = document.getElementById('theme-toggle');
+  if (tt) tt.checked = savedThemeVal === 'light';
+});
+
+// Journal date default
+const jrnDate = document.getElementById('jrn-date');
+if (jrnDate) jrnDate.value = new Date().toLocaleDateString('en-CA');
+
 loadPicks();
 // Load scores in background on boot — no API cost, hits ESPN then caches in KV
 loadScores();
+// Poll steam every 10 min
+pollSteam();
+setInterval(pollSteam, 10 * 60 * 1000);
+
+// Check for live games every 5 min and notify if pick game goes live
+setInterval(()=>{
+  const liveGames = SCORES.filter(g=>g.status==='live');
+  liveGames.forEach(g=>{
+    const picks = ALL.filter(p=>p.team?.toUpperCase()===g.home.team.toUpperCase()||p.team?.toUpperCase()===g.away.team.toUpperCase());
+    picks.forEach(p=>{
+      const notifKey='live_notif_'+p.player+g.home.team;
+      if(!sessionStorage.getItem(notifKey)){
+        sessionStorage.setItem(notifKey,'1');
+        pushNotif('🏀 Game Is Live!',`${g.away.team} vs ${g.home.team} — ${p.player} ${p.direction} ${p.line} ${p.stat} is in play`,'live');
+      }
+    });
+  });
+}, 5 * 60 * 1000);
 </script>
 </body>
 </html>
