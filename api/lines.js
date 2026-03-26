@@ -71,8 +71,9 @@ async function fetchWithTimeout(url, ms = 9000) {
  */
 async function getTodayEvents(sportKey, apiKey) {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-  const from = new Date(`${today}T00:00:00-07:00`).toISOString();
-  const to   = new Date(`${today}T23:59:59-07:00`).toISOString();
+  const toISO = d => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+  const from = toISO(new Date(`${today}T00:00:00-07:00`));
+  const to   = toISO(new Date(`${today}T23:59:59-07:00`));
   const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/events?apiKey=${apiKey}&dateFormat=iso&commenceTimeFrom=${from}&commenceTimeTo=${to}`;
   const events = await fetchWithTimeout(url);
   return Array.isArray(events) ? events : [];

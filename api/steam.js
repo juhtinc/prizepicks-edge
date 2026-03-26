@@ -32,8 +32,9 @@ const MARKET_LABEL = {
 
 async function fetchCurrentLines(apiKey) {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-  const from = new Date(`${today}T00:00:00-07:00`).toISOString();
-  const to   = new Date(`${today}T23:59:59-07:00`).toISOString();
+  const toISO = d => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+  const from = toISO(new Date(`${today}T00:00:00-07:00`));
+  const to   = toISO(new Date(`${today}T23:59:59-07:00`));
 
   const allLines = {}; // "PLAYER|STAT" → { player, stat, sport, books: {book: line} }
 
