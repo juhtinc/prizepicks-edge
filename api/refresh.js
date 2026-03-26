@@ -18,8 +18,9 @@ module.exports = async function handler(req, res) {
     });
     let rawText = "";
     for (const block of response.content || []) { if (block.type === "text") rawText += block.text; }
+    rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error("No JSON found");
+    if (!jsonMatch) throw new Error("No JSON found. Raw: " + rawText.slice(0, 200));
     const picks = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(picks) || picks.length === 0) throw new Error("Empty picks");
     const leaguesSeen = [...new Set(picks.map(p => p.sport).filter(Boolean))];
