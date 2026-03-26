@@ -506,6 +506,26 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 .lines-gap.alert{color:var(--lime);background:rgba(184,245,66,0.08);border:1px solid rgba(184,245,66,0.15)}
 .lines-gap.normal{color:var(--fog)}
 .lines-pp-cell{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--violet)}
+.track-btn{background:none;border:1px solid var(--line);color:var(--fog);border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;transition:all .15s}
+.track-btn:hover{border-color:var(--lime);color:var(--lime);background:rgba(184,245,66,0.07)}
+.plays-panel{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.plays-panel-hd{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.plays-panel-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--lime)}
+.plays-record{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--smoke);margin-left:auto}
+.play-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--ink3);border-radius:6px;margin-bottom:6px;font-size:12px}
+.play-dir{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:3px;cursor:default}
+.play-dir.over{color:var(--lime);background:rgba(184,245,66,0.1);border:1px solid rgba(184,245,66,0.2)}
+.play-dir.under{color:var(--sky);background:rgba(90,180,255,0.08);border:1px solid rgba(90,180,255,0.15)}
+.play-status{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:3px;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.play-status.pending{color:#f5a623;background:rgba(245,166,35,0.1);border-color:rgba(245,166,35,0.2)}
+.play-status.won{color:#4caf50;background:rgba(76,175,80,0.1);border-color:rgba(76,175,80,0.2)}
+.play-status.lost{color:#f44336;background:rgba(244,67,54,0.1);border-color:rgba(244,67,54,0.2)}
+.play-remove{margin-left:auto;background:none;border:none;color:var(--fog);cursor:pointer;font-size:14px;padding:0 2px;line-height:1}
+.play-remove:hover{color:var(--text)}
+.track-modal .dir-toggle{display:flex;gap:8px;margin-bottom:12px}
+.track-modal .dir-btn{flex:1;padding:9px;border:1px solid var(--line);background:none;color:var(--smoke);border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;transition:all .15s}
+.track-modal .dir-btn.active-over{border-color:var(--lime);color:var(--lime);background:rgba(184,245,66,0.08)}
+.track-modal .dir-btn.active-under{border-color:var(--sky);color:var(--sky);background:rgba(90,180,255,0.08)}
 
 /* Pick card line comparison */
 .card-lines{
@@ -960,6 +980,28 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
   </div>
 </div>
 
+<!-- Track Play Modal -->
+<div class="modal-bg" id="track-modal" onclick="if(event.target===this)closeTrackModal()">
+  <div class="modal track-modal" style="max-width:380px">
+    <div class="modal-title">Track This Play</div>
+    <div id="track-modal-player" style="font-weight:700;font-size:15px;margin-bottom:2px"></div>
+    <div id="track-modal-stat" style="font-size:11px;color:var(--smoke);margin-bottom:14px"></div>
+    <div class="field-label" style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);margin-bottom:6px">Direction</div>
+    <div class="dir-toggle">
+      <button class="dir-btn active-over" id="dir-over" onclick="setTrackDir('over')">OVER</button>
+      <button class="dir-btn" id="dir-under" onclick="setTrackDir('under')">UNDER</button>
+    </div>
+    <div class="field-label" style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);margin-bottom:4px">Book</div>
+    <select id="track-book" style="width:100%;margin-bottom:12px;background:var(--ink3);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13px"></select>
+    <div class="field-label" style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);margin-bottom:4px">Stake (optional)</div>
+    <input id="track-stake" type="number" min="0" step="0.01" placeholder="e.g. 10.00" style="width:100%;margin-bottom:16px;background:var(--ink3);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box">
+    <div style="display:flex;gap:10px">
+      <button class="btn-cancel" onclick="closeTrackModal()">Cancel</button>
+      <button class="btn-go" onclick="saveTrackedPlay()">Add to Tracker</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-shell">
 
   <!-- ── Sidebar ── -->
@@ -1363,6 +1405,8 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
         <button class="pill on" data-lines-filter="ALL">All Sports</button>
       </div>
 
+      <div id="lines-plays-panel" style="display:none"></div>
+
       <div id="lines-shop-banner" style="display:none;margin-bottom:16px;padding:12px 16px;background:rgba(184,245,66,0.07);border:1px solid rgba(184,245,66,0.2);border-radius:var(--r)">
         <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--lime)">⚡ LINE SHOP ALERTS</span>
         <span id="lines-shop-count" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);margin-left:10px"></span>
@@ -1580,7 +1624,7 @@ function switchTab(tabId) {
   document.querySelectorAll('.sb-tab,[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
   if (tabId === 'bankroll') renderBankrollTab();
-  if (tabId === 'lines') renderLinesTab();
+  if (tabId === 'lines') { renderLinesPlays(); renderLinesTab(); }
   if (tabId === 'scores' && !SCORES.length) loadScores();
   if (tabId === 'settings') initSettings();
   if (tabId === 'parlay') renderParlayTab();
@@ -2584,6 +2628,139 @@ async function loadLines(manual = false) {
   }
 }
 
+// ── Lines Play Tracker ──────────────────────────────────────────────
+let _trackDir = 'over';
+let _trackData = null;
+
+function loadLinesPlays() {
+  try { return JSON.parse(localStorage.getItem('lines_plays') || '[]'); } catch(_) { return []; }
+}
+function saveLinesPlays(plays) {
+  localStorage.setItem('lines_plays', JSON.stringify(plays));
+}
+
+function openTrackModal(p) {
+  _trackData = p;
+  _trackDir = 'over';
+  document.getElementById('track-modal-player').textContent = p.player;
+  document.getElementById('track-modal-stat').textContent = p.stat;
+  document.getElementById('dir-over').className = 'dir-btn active-over';
+  document.getElementById('dir-under').className = 'dir-btn';
+  // populate book dropdown
+  const sel = document.getElementById('track-book');
+  sel.innerHTML = '';
+  const books = Object.keys(p.books || {});
+  if (p.bestOver) {
+    // put best over first
+    const opt = document.createElement('option');
+    opt.value = p.bestOver.book;
+    opt.textContent = bookLabel(p.bestOver.book) + ' @ ' + p.bestOver.line + ' (Best Over)';
+    sel.appendChild(opt);
+  }
+  books.filter(b => b !== p.bestOver?.book).forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b;
+    opt.textContent = bookLabel(b) + ' @ ' + p.books[b];
+    sel.appendChild(opt);
+  });
+  document.getElementById('track-stake').value = '';
+  document.getElementById('track-modal').classList.add('open');
+}
+
+function closeTrackModal() {
+  document.getElementById('track-modal').classList.remove('open');
+  _trackData = null;
+}
+
+function setTrackDir(dir) {
+  _trackDir = dir;
+  document.getElementById('dir-over').className = 'dir-btn' + (dir === 'over' ? ' active-over' : '');
+  document.getElementById('dir-under').className = 'dir-btn' + (dir === 'under' ? ' active-under' : '');
+  // swap best book suggestion
+  const sel = document.getElementById('track-book');
+  if (_trackData) {
+    const best = dir === 'over' ? _trackData.bestOver : _trackData.bestUnder;
+    if (best) {
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === best.book) { sel.selectedIndex = i; break; }
+      }
+    }
+  }
+}
+
+function saveTrackedPlay() {
+  if (!_trackData) return;
+  const book = document.getElementById('track-book').value;
+  const stake = parseFloat(document.getElementById('track-stake').value) || null;
+  const line = _trackData.books[book] ?? _trackData.bestOver?.line ?? null;
+  const plays = loadLinesPlays();
+  plays.unshift({
+    id: Date.now(),
+    player: _trackData.player,
+    stat: _trackData.stat,
+    dir: _trackDir,
+    book,
+    line,
+    stake,
+    status: 'pending',
+    addedAt: new Date().toISOString(),
+  });
+  saveLinesPlays(plays);
+  closeTrackModal();
+  renderLinesPlays();
+}
+
+function cyclePlayStatus(id) {
+  const plays = loadLinesPlays();
+  const p = plays.find(x => x.id === id);
+  if (!p) return;
+  const cycle = { pending: 'won', won: 'lost', lost: 'pending' };
+  p.status = cycle[p.status] || 'pending';
+  saveLinesPlays(plays);
+  renderLinesPlays();
+}
+
+function removePlay(id) {
+  saveLinesPlays(loadLinesPlays().filter(x => x.id !== id));
+  renderLinesPlays();
+}
+
+function renderLinesPlays() {
+  const panel = document.getElementById('lines-plays-panel');
+  if (!panel) return;
+  const plays = loadLinesPlays();
+  if (!plays.length) { panel.style.display = 'none'; return; }
+
+  const wins = plays.filter(p => p.status === 'won').length;
+  const losses = plays.filter(p => p.status === 'lost').length;
+  const pending = plays.filter(p => p.status === 'pending').length;
+  const stakeWon = plays.filter(p => p.status === 'won' && p.stake).reduce((s,p) => s + p.stake, 0);
+  const stakeLost = plays.filter(p => p.status === 'lost' && p.stake).reduce((s,p) => s + p.stake, 0);
+  const pnl = stakeWon - stakeLost;
+
+  const items = plays.map(p => `
+    <div class="play-item">
+      <span class="play-dir ${p.dir}">${p.dir.toUpperCase()}</span>
+      <span style="font-weight:600;font-size:12px">${p.player}</span>
+      <span style="color:var(--smoke);font-size:11px">${p.stat}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--fog)">${bookLabel(p.book)}${p.line != null ? ' @'+p.line : ''}</span>
+      ${p.stake ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--smoke)">$${p.stake.toFixed(2)}</span>` : ''}
+      <span class="play-status ${p.status}" onclick="cyclePlayStatus(${p.id})" title="Click to update result">${p.status.toUpperCase()}</span>
+      <button class="play-remove" onclick="removePlay(${p.id})" title="Remove">×</button>
+    </div>`).join('');
+
+  const pnlStr = pnl !== 0 ? ` · P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}` : '';
+  panel.style.display = 'block';
+  panel.innerHTML = `<div class="plays-panel">
+    <div class="plays-panel-hd">
+      <span class="plays-panel-title">My Plays</span>
+      <span style="font-size:11px;color:var(--smoke)">${wins}W-${losses}L-${pending} pending${pnlStr}</span>
+      <button class="play-remove" onclick="if(confirm('Clear all plays?')){saveLinesPlays([]);renderLinesPlays()}" title="Clear all" style="margin-left:auto;font-size:16px">×</button>
+    </div>
+    ${items}
+  </div>`;
+}
+
 function renderLinesTab() {
   const grid = document.getElementById('lines-grid');
   if (!grid) return;
@@ -2662,6 +2839,7 @@ function renderLinesTab() {
       const cls = isBestOver ? 'best-over' : isBestUnder ? 'best-under' : '';
       return `<td><span class="lines-book-cell ${cls}">${line}</span></td>`;
     }).join('');
+    const pJson = encodeURIComponent(JSON.stringify({player:p.player,stat:p.stat,books:p.books,bestOver:p.bestOver,bestUnder:p.bestUnder}));
     return `<tr class="${p.lineShopAlert?'shop-alert':''}">
       <td style="font-weight:600">${p.player}</td>
       <td style="color:var(--smoke);font-size:11px">${p.stat}</td>
@@ -2670,6 +2848,7 @@ function renderLinesTab() {
       <td>${gap}</td>
       <td style="font-size:10px;color:var(--smoke)">${p.bestOver ? bookLabel(p.bestOver.book)+'@'+p.bestOver.line : '—'}</td>
       <td style="font-size:10px;color:var(--smoke)">${p.bestUnder ? bookLabel(p.bestUnder.book)+'@'+p.bestUnder.line : '—'}</td>
+      <td><button class="track-btn" onclick="openTrackModal(JSON.parse(decodeURIComponent('${pJson}')))">+</button></td>
     </tr>`;
   }).join('');
 
@@ -2678,11 +2857,13 @@ function renderLinesTab() {
       <thead><tr>
         <th>Player</th><th>Stat</th><th>Line</th>
         ${bookHeaders}
-        <th>Gap</th><th>Best OVER</th><th>Best UNDER</th>
+        <th>Gap</th><th>Best OVER</th><th>Best UNDER</th><th></th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </div>`;
+
+  renderLinesPlays();
 }
 
 function bookLabel(key) {
