@@ -481,6 +481,68 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 .admin-link{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--fog);opacity:0.5;cursor:pointer;background:none;border:none;padding:0}
 .admin-link:hover{opacity:1;color:var(--lime)}
 
+/* ── Scores Tab ── */
+.scores-sport-group{margin-bottom:28px}
+.scores-sport-label{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--smoke);margin-bottom:10px;display:flex;align-items:center;gap:8px;
+}
+.scores-sport-label::after{content:'';flex:1;height:1px;background:var(--line)}
+.scores-games-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;
+}
+.game-card{
+  background:var(--ink2);border:1px solid var(--line);border-radius:var(--rm);
+  padding:14px 16px;transition:border-color 0.2s;position:relative;overflow:hidden;
+}
+.game-card.has-pick{border-color:rgba(184,245,66,0.35);box-shadow:0 0 0 1px rgba(184,245,66,0.12)}
+.game-card.live{border-color:rgba(184,245,66,0.2)}
+.game-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.game-status-badge{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;
+  padding:3px 8px;border-radius:4px;text-transform:uppercase;
+}
+.game-status-badge.live{background:rgba(184,245,66,0.12);color:var(--lime);border:1px solid rgba(184,245,66,0.2)}
+.game-status-badge.final{background:var(--ink4);color:var(--smoke);border:1px solid var(--line)}
+.game-status-badge.pregame{background:var(--ink3);color:var(--sky);border:1px solid rgba(90,180,255,0.2);font-size:9px}
+.live-dot{
+  width:6px;height:6px;border-radius:50%;background:var(--lime);
+  display:inline-block;margin-right:5px;animation:pulse 1.5s infinite;
+}
+.game-pick-badge{
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;
+  background:rgba(184,245,66,0.1);color:var(--lime);border:1px solid rgba(184,245,66,0.2);
+  padding:2px 7px;border-radius:3px;
+}
+.game-teams{display:flex;flex-direction:column;gap:6px}
+.game-team-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.game-team-abbr{
+  font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-0.3px;
+  min-width:36px;
+}
+.game-team-name{font-size:11px;color:var(--smoke);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.game-score{
+  font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-0.5px;
+  min-width:32px;text-align:right;
+}
+.game-score.winner{color:var(--lime)}
+.game-score.pregame{color:var(--fog);font-size:13px}
+.game-detail{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--fog);margin-top:8px;text-align:center}
+.game-pick-info{
+  margin-top:8px;padding-top:8px;border-top:1px solid rgba(184,245,66,0.1);
+  font-size:11px;color:var(--lime);font-family:'JetBrains Mono',monospace;
+}
+
+/* Pick card live score chip */
+.card-live-score{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 16px;border-top:1px solid var(--line);
+  background:rgba(184,245,66,0.04);font-size:11px;
+  font-family:'JetBrains Mono',monospace;color:var(--smoke);
+}
+.card-live-score .live-dot{margin-right:0}
+.card-live-score strong{color:var(--text)}
+
 /* ── Responsive ── */
 @media(max-width:1100px){
   .main-content{padding:24px 24px 80px}
@@ -570,6 +632,9 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       </button>
       <button class="sb-tab" data-tab="results" onclick="switchTab('results')">
         <span class="sb-icon">📈</span><span class="sb-label">RESULTS</span>
+      </button>
+      <button class="sb-tab" data-tab="scores" onclick="switchTab('scores')">
+        <span class="sb-icon">🏟️</span><span class="sb-label">SCORES</span>
       </button>
       <button class="sb-tab" data-tab="settings" onclick="switchTab('settings')">
         <span class="sb-icon">⚙️</span><span class="sb-label">SETTINGS</span>
@@ -807,6 +872,30 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       </div>
     </div>
 
+    <!-- ════ TAB: SCORES ════ -->
+    <div class="tab-panel" id="tab-scores">
+      <div class="tab-hd">
+        <div>
+          <div class="tab-title">🏟️ Live <em>Scores</em></div>
+          <div class="tab-sub">ESPN · Updates every 2 minutes · Free</div>
+        </div>
+        <button class="btn-refresh" id="btn-scores-refresh" onclick="loadScores(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Refresh
+        </button>
+      </div>
+      <div class="news-status-bar">
+        <span class="status-dot amber" id="scores-dot"></span>
+        <span id="scores-status">Loading scores...</span>
+        <span style="margin-left:auto;font-size:9px;color:var(--fog)">Auto-updates every 2 min</span>
+      </div>
+      <div id="scores-grid">
+        <div class="center-state"><div class="spin-ring"></div><div class="state-mono">Fetching scores...</div></div>
+      </div>
+    </div>
+
     <!-- ════ TAB: SETTINGS ════ -->
     <div class="tab-panel" id="tab-settings">
       <div class="tab-hd">
@@ -924,6 +1013,7 @@ function switchTab(tabId) {
   document.querySelectorAll('.sb-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
   if (tabId === 'bankroll') renderBankrollTab();
+  if (tabId === 'scores' && !SCORES.length) loadScores();
   // News loads only on manual button click
   if (tabId === 'settings') initSettings();
 }
@@ -1291,6 +1381,7 @@ function cardHTML(p, i) {
     ${(()=>{const s=kellyStake(p.confidence);return s!=null?`<div class="kelly-stake">Recommended: $${s.toFixed(2)}</div>`:''})()}
     ${p.correlation?`<div class="corr-badge">${p.correlation.note}</div>`:''}
   </div>
+  <div class="card-live-score" id="score-${i}" style="display:none"></div>
 </div>`;
 }
 
@@ -1334,6 +1425,7 @@ function render() {
   if (value.length) html += sec('💡 Value Leans', value, '60–74 edge score');
   main.innerHTML = html;
   renderSharpSection();
+  updatePickCardScores();
 }
 
 function renderSharpSection() {
@@ -1530,7 +1622,158 @@ document.getElementById('main').innerHTML = `
     <div class="state-mono">Connecting to API...</div>
   </div>`;
 
+// ── Scores ────────────────────────────────────────────
+let SCORES = [];
+let scoresTimer = null;
+
+async function loadScores(manual = false) {
+  const dot = document.getElementById('scores-dot');
+  const status = document.getElementById('scores-status');
+  if (dot) dot.className = 'status-dot amber';
+  if (status) status.textContent = 'Loading scores...';
+
+  try {
+    const r = await fetch('/api/scores');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    SCORES = d.games || [];
+
+    const liveCount = SCORES.filter(g => g.status === 'live').length;
+    const fetched = d.fetchedAt ? new Date(d.fetchedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : 'now';
+    if (dot) dot.className = liveCount > 0 ? 'status-dot green' : 'status-dot amber';
+    if (status) status.textContent = `${SCORES.length} games · ${liveCount} live · Updated ${fetched}`;
+
+    if (document.getElementById('tab-scores')?.classList.contains('active')) renderScoresGrid();
+    updatePickCardScores();
+
+    // Auto-refresh every 2 min (just hits KV cache — free)
+    if (scoresTimer) clearInterval(scoresTimer);
+    scoresTimer = setInterval(() => loadScores(), 2 * 60 * 1000);
+  } catch(e) {
+    if (dot) dot.className = 'status-dot red';
+    if (status) status.textContent = 'Scores unavailable: ' + e.message;
+    if (document.getElementById('scores-grid') && !SCORES.length) {
+      document.getElementById('scores-grid').innerHTML =
+        `<div class="center-state"><div style="font-size:32px;opacity:0.2">🏟️</div><div class="state-title">Scores Unavailable</div><div class="state-sub">${e.message}</div></div>`;
+    }
+  }
+}
+
+function renderScoresGrid() {
+  const grid = document.getElementById('scores-grid');
+  if (!grid) return;
+  if (!SCORES.length) {
+    grid.innerHTML = `<div class="center-state"><div style="font-size:40px;opacity:0.15">🏟️</div><div class="state-title">No Games Today</div><div class="state-sub">Check back later for today's matchups.</div></div>`;
+    return;
+  }
+
+  // Group by sport, order: live first, then pregame, then final
+  const bySport = {};
+  const sportOrder = ['NBA','MLB','NHL','NFL','MLS','Tennis'];
+  for (const g of SCORES) {
+    if (!bySport[g.sport]) bySport[g.sport] = [];
+    bySport[g.sport].push(g);
+  }
+  for (const s of Object.keys(bySport)) {
+    bySport[s].sort((a,b) => {
+      const order = {live:0, pregame:1, final:2};
+      return (order[a.status]??1) - (order[b.status]??1);
+    });
+  }
+
+  // Build set of team abbreviations in today's picks for highlighting
+  const pickTeams = new Set(ALL.map(p => [p.team, p.opponent]).flat().filter(Boolean).map(t => t.toUpperCase()));
+
+  const sportsToShow = [...sportOrder, ...Object.keys(bySport).filter(s => !sportOrder.includes(s))];
+  let html = '';
+  for (const sport of sportsToShow) {
+    const games = bySport[sport];
+    if (!games?.length) continue;
+    html += `<div class="scores-sport-group">
+      <div class="scores-sport-label">${emoji(sport)} ${sport} &nbsp;·&nbsp; ${games.length} game${games.length !== 1 ? 's' : ''}</div>
+      <div class="scores-games-grid">${games.map(g => gameCardHTML(g, pickTeams)).join('')}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function gameCardHTML(g, pickTeams) {
+  const isLive = g.status === 'live';
+  const isFinal = g.status === 'final';
+  const hasPick = pickTeams.has(g.home.team.toUpperCase()) || pickTeams.has(g.away.team.toUpperCase());
+
+  // Status badge
+  let badge = '';
+  if (isLive) {
+    badge = `<span class="game-status-badge live"><span class="live-dot"></span>${g.statusDetail || 'LIVE'}</span>`;
+  } else if (isFinal) {
+    badge = `<span class="game-status-badge final">FINAL</span>`;
+  } else {
+    badge = `<span class="game-status-badge pregame">${g.startTime || 'TBD'}</span>`;
+  }
+
+  // Team rows
+  function teamRow(side) {
+    const scoreClass = isFinal && side.winner ? 'winner' : (!isLive && !isFinal) ? 'pregame' : '';
+    const score = (isLive || isFinal) && side.score != null
+      ? `<span class="game-score ${scoreClass}">${side.score}</span>`
+      : `<span class="game-score pregame">—</span>`;
+    return `<div class="game-team-row">
+      <span class="game-team-abbr">${side.team}</span>
+      <span class="game-team-name">${side.name}</span>
+      ${score}
+    </div>`;
+  }
+
+  // Picks on this game
+  const gamePicks = ALL.filter(p =>
+    p.team?.toUpperCase() === g.home.team.toUpperCase() ||
+    p.team?.toUpperCase() === g.away.team.toUpperCase() ||
+    p.opponent?.toUpperCase() === g.home.team.toUpperCase() ||
+    p.opponent?.toUpperCase() === g.away.team.toUpperCase()
+  );
+  const pickInfo = gamePicks.length
+    ? `<div class="game-pick-info">📊 ${gamePicks.map(p => `${p.player} ${p.direction} ${p.line} ${p.stat}`).join(' · ')}</div>`
+    : '';
+
+  return `<div class="game-card${isLive?' live':''}${hasPick?' has-pick':''}">
+    <div class="game-card-top">
+      ${badge}
+      ${hasPick ? '<span class="game-pick-badge">HAS PICK</span>' : ''}
+    </div>
+    <div class="game-teams">
+      ${teamRow(g.away)}
+      ${teamRow(g.home)}
+    </div>
+    ${g.venue || g.statusDetail ? `<div class="game-detail">${[g.statusDetail, g.venue].filter(Boolean).join(' · ')}</div>` : ''}
+    ${pickInfo}
+  </div>`;
+}
+
+function updatePickCardScores() {
+  if (!SCORES.length || !ALL.length) return;
+  // Find live/final games that match any pick's team
+  for (const game of SCORES) {
+    if (game.status !== 'live' && game.status !== 'final') continue;
+    const gameTeams = new Set([game.home.team.toUpperCase(), game.away.team.toUpperCase()]);
+
+    ALL.forEach((p, i) => {
+      if (!gameTeams.has((p.team||'').toUpperCase())) return;
+      const el = document.getElementById('score-'+i);
+      if (!el) return;
+      const isLive = game.status === 'live';
+      const label = isLive ? `<span class="live-dot"></span>` : '🏁 ';
+      const scoreStr = `${game.away.team} ${game.away.score ?? '—'} – ${game.home.score ?? '—'} ${game.home.team}`;
+      const detail = game.statusDetail ? ` · ${game.statusDetail}` : '';
+      el.innerHTML = `${label}<strong>${scoreStr}</strong><span style="color:var(--fog)">${detail}</span>`;
+      el.style.display = 'flex';
+    });
+  }
+}
+
 loadPicks();
+// Load scores in background on boot — no API cost, hits ESPN then caches in KV
+loadScores();
 </script>
 </body>
 </html>
