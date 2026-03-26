@@ -454,6 +454,18 @@ footer{
 .result-miss { color:#f87171; }
 .result-null { color:rgba(255,255,255,0.3); }
 .result-reason { font-size:11px; color:rgba(255,255,255,0.45); margin-top:4px; }
+.bankroll-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--ink2); border:1px solid var(--line); border-radius:var(--rs); margin-bottom:12px; font-size:12px; }
+.bankroll-label { color:rgba(255,255,255,0.5); }
+.bankroll-edit { font-size:11px; color:var(--lime); background:transparent; border:1px solid rgba(184,245,66,0.3); padding:2px 8px; border-radius:4px; cursor:pointer; }
+.kelly-stake { font-size:11px; color:var(--gold); margin-top:6px; font-family:'JetBrains Mono',monospace; }
+.corr-badge { font-size:10px; color:var(--violet); background:rgba(192,132,252,0.12); padding:3px 8px; border-radius:4px; margin-top:4px; display:inline-block; }
+.news-ticker { display:flex; align-items:center; gap:12px; background:var(--ink2); border:1px solid var(--line); border-radius:var(--rs); padding:8px 12px; margin-bottom:20px; overflow:hidden; height:36px; }
+.ticker-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--lime); font-weight:700; white-space:nowrap; flex-shrink:0; }
+.ticker-wrap { flex:1; overflow:hidden; }
+.ticker-track { white-space:nowrap; }
+.ticker-track span { display:inline-block; animation:ticker-scroll 60s linear infinite; font-size:12px; color:var(--text); opacity:0.75; }
+.ticker-item { color:rgba(255,255,255,0.3); font-size:12px; }
+@keyframes ticker-scroll { 0%{transform:translateX(100vw)} 100%{transform:translateX(-100%)} }
 </style>
 </head>
 <body>
@@ -492,6 +504,14 @@ footer{
     </div>
   </nav>
 
+  <div class="news-ticker">
+    <span class="ticker-label">LIVE NEWS</span>
+    <div class="ticker-wrap">
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-item">Loading injury news...</span>
+      </div>
+    </div>
+  </div>
   <!-- Stats Hero -->
   <div class="hero">
     <div class="hero-card"><div class="hc-label">Total Picks</div><div class="hc-val sky" id="h-total">—</div></div>
@@ -500,8 +520,26 @@ footer{
     <div class="hero-card"><div class="hc-label">Avg Edge</div><div class="hc-val gold" id="h-conf">—</div></div>
     <div class="hero-card"><div class="hc-label">Props Scanned</div><div class="hc-val violet" id="h-scanned">—</div></div>
     <div class="hero-card"><div class="hc-label">W-L Record</div><div class="hc-val lime" id="h-record">—</div></div>
+    <div class="hero-card"><div class="hc-label">Win %</div><div class="hc-val gold" id="h-roi">—</div></div>
+    <div class="hero-card"><div class="hc-label">Avg CLV</div><div class="hc-val sky" id="h-clv">—</div></div>
   </div>
 
+  <div class="bankroll-bar" id="bankroll-bar">
+    <span class="bankroll-label">💰 Bankroll:</span>
+    <span id="bankroll-display">Not set</span>
+    <button class="bankroll-edit" onclick="openBankrollModal()">Set</button>
+  </div>
+  <div id="bankroll-modal" class="modal-bg" style="display:none">
+    <div class="modal-box">
+      <div class="modal-title">Set Your Bankroll</div>
+      <input type="number" id="bankroll-input" class="modal-input" placeholder="e.g. 1000" min="1"/>
+      <div id="bankroll-err" class="modal-err" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeBankrollModal()">Cancel</button>
+        <button class="btn-go" onclick="saveBankroll()">Save</button>
+      </div>
+    </div>
+  </div>
   <!-- Toolbar -->
   <div class="toolbar">
     <div class="pill-group" id="sport-pills">
@@ -535,6 +573,13 @@ footer{
     <span class="status-rhs" id="sleagues"></span>
   </div>
 
+  <div id="sharp-section" style="display:none">
+    <div class="section-header">
+      <span class="section-title">⚡ Sharp Picks</span>
+      <span class="section-sub">Line movement + public fade alignment</span>
+    </div>
+    <div id="sharp-grid" class="grid"></div>
+  </div>
   <!-- Main -->
   <div id="main"></div>
 
@@ -587,6 +632,37 @@ document.querySelectorAll('[data-conf]').forEach(b=>b.addEventListener('click',(
 
 function setPills(sel,cls){document.querySelectorAll(sel).forEach(x=>x.classList.remove(cls))}
 
+// ── Bankroll ───────────────────────────────────────────
+let BANKROLL = parseFloat(localStorage.getItem('bankroll')) || 0;
+
+function updateBankrollDisplay() {
+  document.getElementById('bankroll-display').textContent = BANKROLL > 0 ? '$' + BANKROLL.toLocaleString() : 'Not set';
+}
+function openBankrollModal() {
+  document.getElementById('bankroll-input').value = BANKROLL || '';
+  document.getElementById('bankroll-err').style.display = 'none';
+  document.getElementById('bankroll-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('bankroll-input').focus(), 50);
+}
+function closeBankrollModal() { document.getElementById('bankroll-modal').style.display = 'none'; }
+function saveBankroll() {
+  const val = parseFloat(document.getElementById('bankroll-input').value);
+  if (!val || val <= 0) {
+    const e = document.getElementById('bankroll-err');
+    e.textContent = 'Enter a positive number'; e.style.display = 'block'; return;
+  }
+  BANKROLL = val;
+  localStorage.setItem('bankroll', val);
+  closeBankrollModal();
+  updateBankrollDisplay();
+  render();
+}
+function kellyStake(confidence) {
+  if (!BANKROLL) return null;
+  return Math.max(0, Math.round((confidence / 100 * 2 - 1) * BANKROLL * 0.25 * 100) / 100);
+}
+updateBankrollDisplay();
+
 // ── Fetch picks ───────────────────────────────────────
 async function loadPicks(){
   try{
@@ -608,6 +684,15 @@ async function loadPicks(){
     set('h-scanned',m.totalProps||'—');
     const rec = dr.record || {};
     set('h-record', (rec.wins != null && rec.losses != null) ? rec.wins+'-'+rec.losses : '—');
+    const recW = rec.wins || 0;
+    const recL = rec.losses || 0;
+    const recTotal = recW + recL;
+    if (recTotal > 0) {
+      const winRate = (recW / recTotal * 100).toFixed(1);
+      set('h-roi', winRate + '%');
+    } else { set('h-roi', '—'); }
+    const clvAvg = dr.clv_record?.avg;
+    set('h-clv', clvAvg != null ? (clvAvg >= 0 ? '+' : '') + clvAvg.toFixed(2) : '—');
 
     // Status bar
     const sdot=document.getElementById('sdot');
@@ -777,6 +862,8 @@ function cardHTML(p,i){
   <div class="acc-body" id="body-${id}">
     <div class="acc-text">${p.reasoning||'No reasoning provided.'}</div>
     <div class="tags">${tg}</div>
+    ${(()=>{const s=kellyStake(p.confidence);return s!=null?`<div class="kelly-stake">Recommended: $${s.toFixed(2)}</div>`:''})()}
+    ${p.correlation?`<div class="corr-badge">${p.correlation.note}</div>`:''}
   </div>
 </div>`;
 }
@@ -824,6 +911,7 @@ function render(){
   if(value.length) html+=sec('💡 Value Leans',value,'60–74 edge score');
 
   main.innerHTML=html;
+  renderSharpSection();
 }
 
 // ── Boot ──────────────────────────────────────────────
@@ -866,6 +954,34 @@ function renderResults(dr) {
 
   section.style.display = 'block';
 }
+
+function renderSharpSection() {
+  const section = document.getElementById('sharp-section');
+  const grid = document.getElementById('sharp-grid');
+  let idx = 1000;
+  const sharp = ALL.filter(p =>
+    p.sharp_move === true ||
+    (p.tags && (p.tags.includes('Sharp Action') || p.tags.includes('Fade Public')))
+  );
+  if (sharp.length === 0) { section.style.display = 'none'; return; }
+  grid.innerHTML = sharp.map(p => cardHTML(p, idx++)).join('');
+  section.style.display = 'block';
+}
+
+async function loadNews() {
+  try {
+    const r = await fetch('/api/news');
+    if (!r.ok) return;
+    const d = await r.json();
+    const items = d.items || [];
+    if (!items.length) return;
+    const track = document.getElementById('ticker-track');
+    const text = items.map(i => `[${i.sport}] ${i.text}  ·  `).join('');
+    track.innerHTML = `<span>${text}</span>`;
+  } catch(e) { console.warn('[ticker]', e.message); }
+}
+loadNews();
+setInterval(loadNews, 30 * 60 * 1000);
 
 loadPicks();
 </script>
