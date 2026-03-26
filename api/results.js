@@ -11,15 +11,16 @@ module.exports = async function handler(req, res) {
   const yesterdayStr = new Date(y, m - 1, d - 1).toLocaleDateString("en-CA");
 
   try {
-    const [results, record] = await Promise.all([
+    const [results, record, clvRecord] = await Promise.all([
       kv.get(`picks:results:${yesterdayStr}`),
       kv.get("picks:record"),
+      kv.get("picks:clv_record"),
     ]);
 
     return res.status(200).json({
       results: results || null,
       record: record || { wins: 0, losses: 0 },
-      // Use stored date when available to avoid clock-skew mismatch
+      clv_record: clvRecord || { positive: 0, negative: 0, avg: 0 },
       date: results?.date || yesterdayStr,
     });
 

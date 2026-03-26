@@ -158,6 +158,70 @@ Example:
     await kv.set("picks:record", updatedRecord);
     console.log("[grade] Updated picks:record:", updatedRecord);
 
+    // CLV tracking (non-fatal — wrapped in try/catch)
+    try {
+      const clvPlayerList = gradedPicks
+        .filter(p => p.hit !== null)
+        .map(p => `${p.player} ${p.stat}`)
+        .join(", ");
+
+      if (clvPlayerList) {
+        const clvResp = await client.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [{
+            role: "user",
+            content: `What were the closing PrizePicks lines for these players on ${picksForDate}: ${clvPlayerList}?
+Search "PrizePicks closing lines ${picksForDate}" and "lineups.com PrizePicks ${picksForDate}".
+Return ONLY a JSON object — keys are exact player names, values are closing line numbers (or null):
+{"LeBron James": 25.5, "Joel Embiid": null}`,
+          }],
+        });
+
+        let clvRaw = "";
+        for (const b of clvResp.content || []) { if (b.type === "text") clvRaw += b.text; }
+
+        let closingLines = {};
+        const clvCleaned = clvRaw.replace(/```json/gi,"").replace(/```/g,"").trim();
+        const clvMatch = clvCleaned.match(/\{[\s\S]*\}/);
+        if (clvMatch) {
+          try { closingLines = JSON.parse(clvMatch[0]); } catch(e) {
+            console.error("[grade] CLV parse:", e.message);
+          }
+        }
+
+        let clvPos = 0, clvNeg = 0, clvPts = 0;
+        for (const pick of gradedPicks) {
+          const closing = closingLines[pick.player];
+          if (closing == null) { pick.clv = null; continue; }
+          pick.clv = pick.direction === "OVER"
+            ? parseFloat((closing - pick.line).toFixed(2))
+            : parseFloat((pick.line - closing).toFixed(2));
+          if (pick.clv > 0) clvPos++; else clvNeg++;
+          clvPts += pick.clv;
+        }
+
+        // Re-save results with CLV data added to picks
+        resultsPayload.picks = gradedPicks;
+        await kv.set(`picks:results:${picksForDate}`, resultsPayload, 86400 * 30);
+
+        const clvRecord = await kv.get("picks:clv_record") || { positive: 0, negative: 0, total_pts: 0 };
+        const newClv = {
+          positive: clvRecord.positive + clvPos,
+          negative: clvRecord.negative + clvNeg,
+          total_pts: parseFloat((clvRecord.total_pts + clvPts).toFixed(2)),
+          lastUpdated: new Date().toISOString(),
+        };
+        const clvTotal = newClv.positive + newClv.negative;
+        newClv.avg = clvTotal > 0 ? parseFloat((newClv.total_pts / clvTotal).toFixed(2)) : 0;
+        await kv.set("picks:clv_record", newClv);
+        console.log("[grade] CLV record:", newClv);
+      }
+    } catch (clvErr) {
+      console.error("[grade] CLV step failed (non-fatal):", clvErr.message);
+    }
+
     return res.status(200).json({ ok: true, wins, losses, total: gradedPicks.length });
 
   } catch (err) {
