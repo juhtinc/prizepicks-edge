@@ -19,12 +19,16 @@ module.exports = async function handler(req, res) {
   try {
     console.log("[refresh] Starting AI analysis...");
 
-    // Archive current picks before overwriting
-    const prev = await kv.get("picks:latest");
-    if (prev) {
-      const picksForDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-      await kv.set("picks:previous", { ...prev, picksForDate }, 86400 * 2);
-      console.log("[refresh] Archived picks:latest to picks:previous for date", picksForDate);
+    // Archive current picks before overwriting (isolated — failure must not block refresh)
+    try {
+      const prev = await kv.get("picks:latest");
+      if (prev) {
+        const picksForDate = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+        await kv.set("picks:previous", { ...prev, picksForDate }, 86400 * 2);
+        console.log("[refresh] Archived picks:latest to picks:previous for date", picksForDate);
+      }
+    } catch (archiveErr) {
+      console.error("[refresh] Archive step failed (non-fatal):", archiveErr.message);
     }
 
     const response = await client.messages.create({
