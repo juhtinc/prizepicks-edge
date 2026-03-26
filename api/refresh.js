@@ -64,6 +64,7 @@ module.exports = async function handler(req, res) {
 
     const leaguesSeen = [...new Set(picks.map(p => p.sport).filter(Boolean))];
 
+    console.log("[refresh] Saving", picks.length, "picks to KV...");
     await kv.set("picks:latest", {
       picks,
       scrapedAt: new Date().toISOString(),
@@ -72,6 +73,7 @@ module.exports = async function handler(req, res) {
       totalProps: picks.length,
     }, 86400 * 2);
 
+    console.log("[refresh] KV save done. Returning", picks.length, "picks.");
     return res.status(200).json({ ok: true, total: picks.length });
 
   } catch (err) {

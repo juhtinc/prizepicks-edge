@@ -31,12 +31,16 @@ async function kvGet(key) {
 
 async function kvSet(key, value, exSeconds = 86400 * 2) {
   if (!KV_URL || !KV_TOKEN) return false;
-  const body = JSON.stringify(["SET", key, JSON.stringify(value), "EX", exSeconds]);
+  // Pipeline expects an array of commands: [["SET", key, val, "EX", secs]]
+  const body = JSON.stringify([["SET", key, JSON.stringify(value), "EX", exSeconds]]);
   const res = await fetch(`${KV_URL}/pipeline`, {
     method: "POST",
     headers: kvHeaders(),
     body,
   });
+  if (!res.ok) {
+    console.error("[kv] pipeline set failed:", res.status, await res.text());
+  }
   return res.ok;
 }
 
