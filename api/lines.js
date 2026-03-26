@@ -212,11 +212,13 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Serve from cache
-  try {
-    const cached = await kv.get("lines:combined");
-    if (cached) return res.status(200).json(cached);
-  } catch (_) {}
+  // Serve from cache (skip with ?bust=1)
+  if (req.query?.bust !== "1") {
+    try {
+      const cached = await kv.get("lines:combined");
+      if (cached) return res.status(200).json(cached);
+    } catch (_) {}
+  }
 
   const apiKey = process.env.ODDS_API_KEY;
   const [oddsResult, sleeperResult] = await Promise.allSettled([

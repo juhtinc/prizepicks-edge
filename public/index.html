@@ -2563,7 +2563,7 @@ async function loadLines(manual = false) {
   if (status) status.textContent = 'Fetching lines from sportsbooks...';
 
   try {
-    const r = await fetch('/api/lines');
+    const r = await fetch('/api/lines?bust=1');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     LINES = await r.json();
 
