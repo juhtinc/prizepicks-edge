@@ -25,35 +25,43 @@ module.exports = async function handler(req, res) {
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{
         role: "user",
-        content: `Today is ${today}. You are compiling real PrizePicks prop lines from multiple sources. Run ALL of these searches before returning results:
+        content: `Today is ${today}. You are finding real PrizePicks lines and cross-referencing them against RotoWire projections to identify the biggest edges. Follow these steps in order:
 
-1. Search "site:lineups.com/prizepicks PrizePicks props today"
-2. Search "lineups.com PrizePicks today"
-3. Search "site:rotowire.com player props today PrizePicks"
-4. Search "site:pickswise.com PrizePicks picks today"
-5. Search "site:oddsjam.com PrizePicks props today"
-6. Search "site:bettingpros.com PrizePicks picks today"
-7. Search "r/prizepicks daily slate today 2026" and "site:reddit.com/r/prizepicks today slate"
-8. Search "PrizePicks slate today March 26 2026"
-9. Search "@PrizePicks @PrizePicksProps @EamonMcAteer @WatsonPicks @PropBetGuy props today"
-10. Search "PrizePicks NBA props today 2026" and "PrizePicks MLB props today 2026"
+STEP 1 — Get the actual PrizePicks lines:
+- Search "lineups.com PrizePicks NBA today"
+- Search "lineups.com PrizePicks picks today"
+- Search "PrizePicks slate today ${today}"
+Record every player name, stat, and line number you find.
 
-After all searches: compile every player prop line you found across all sources into one master list, remove duplicates (keep the line that appeared in the most sources), then analyze and select the 20 best picks with the strongest edges.
+STEP 2 — Get RotoWire projections for those players:
+- Search "rotowire.com PrizePicks NBA today"
+- Search "rotowire player projections today NBA"
+- Search "rotowire.com prizepicks picks today"
+For each player from Step 1, find RotoWire's projected stat total.
 
-Use ONLY lines found in search results. Tag each pick as "Confirmed Line" if the exact PrizePicks line was found in at least one source, or "Approximate Line" if you had to estimate from season averages.
+STEP 3 — Find the edges:
+For each player where you have both a PrizePicks line AND a RotoWire projection:
+- If RotoWire projects HIGHER than the PrizePicks line → strong OVER edge
+- If RotoWire projects LOWER than the PrizePicks line → strong UNDER edge
+- The bigger the gap between projection and line, the higher the confidence
+Prioritize picks where the RotoWire projection differs from the PrizePicks line by the largest margin.
 
-You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
+STEP 4 — Supplement with other sources if needed to reach 20 picks:
+- Search "pickswise.com PrizePicks picks today"
+- Search "bettingpros.com PrizePicks today"
+
+After all steps, return the 20 best picks ranked by edge size. You MUST respond with ONLY a JSON array — no text before or after, no explanation, just the raw JSON array starting with [ and ending with ].
 
 Each object must have exactly these fields:
 - player (string): full name
 - team (string): team abbreviation
 - sport (string): NBA, MLB, NHL, etc.
 - stat (string): e.g. "Points", "Rebounds", "Strikeouts"
-- line (number): the prop line
+- line (number): the actual PrizePicks line
 - direction (string): "OVER" or "UNDER"
-- confidence (integer 60-95)
-- reasoning (string): name the source(s) where this line was found and cite supporting stats
-- tags (array of strings): include "Confirmed Line" or "Approximate Line"`,
+- confidence (integer 60-95): higher when RotoWire gap is larger
+- reasoning (string): state the PrizePicks line, the RotoWire projection, the gap, and why it's the right side
+- tags (array of strings): include "RotoWire Edge" if cross-referenced, "Confirmed Line" if line was found on lineups.com, or "Approximate Line" if estimated`,
       }],
     });
 
