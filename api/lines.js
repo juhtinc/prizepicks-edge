@@ -26,30 +26,19 @@ const kv = require("./_kv");
 const ODDS_SPORT_MAP = {
   NBA: {
     key: "basketball_nba",
-    markets: [
-      "player_points","player_rebounds","player_assists",
-      "player_points_rebounds_assists","player_points_rebounds","player_points_assists",
-      "player_threes","player_steals","player_blocks","player_turnovers","player_double_double",
-    ].join(","),
+    markets: "player_points,player_rebounds,player_assists,player_threes",
   },
   MLB: {
     key: "baseball_mlb",
-    markets: [
-      "batter_hits","batter_home_runs","batter_rbis","batter_total_bases","batter_walks",
-      "pitcher_strikeouts","pitcher_hits_allowed","pitcher_earned_runs","pitcher_walks",
-    ].join(","),
+    markets: "batter_hits,batter_home_runs,pitcher_strikeouts,batter_total_bases",
   },
   NHL: {
     key: "icehockey_nhl",
-    markets: [
-      "player_goals","player_assists","player_points","player_shots_on_goal","goalie_saves",
-    ].join(","),
+    markets: "player_points,player_assists,player_goals,player_shots_on_goal",
   },
   NFL: {
     key: "americanfootball_nfl",
-    markets: [
-      "player_pass_yds","player_pass_tds","player_rush_yds","player_reception_yds","player_receptions",
-    ].join(","),
+    markets: "player_pass_yds,player_rush_yds,player_reception_yds,player_receptions",
   },
 };
 
@@ -129,7 +118,9 @@ async function getTodayEvents(sportKey, apiKey) {
  */
 async function getEventPlayerProps(sportKey, eventId, markets, apiKey) {
   const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/events/${eventId}/odds?apiKey=${apiKey}&regions=us&markets=${markets}&oddsFormat=american`;
+  console.log(`[lines] Fetching props: ${sportKey} event ${eventId}, markets: ${markets}`);
   const data = await fetchWithTimeout(url);
+  console.log(`[lines] Event ${eventId}: ${data.bookmakers?.length || 0} bookmakers returned`);
   if (!data.bookmakers) return [];
 
   // Normalize: player → stat → book → line
@@ -270,13 +261,15 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Serve from cache (skip with ?bust=1)
-  if (req.query?.bust !== "1") {
-    try {
-      const cached = await kv.get("lines:combined");
-      if (cached) return res.status(200).json(cached);
-    } catch (_) {}
-  }
+  // Serve from cache — only bust if manual AND cache is older than 30 min
+  try {
+    const cached = await kv.get("lines:combined");
+    if (cached) {
+      const age = Date.now() - new Date(cached.fetchedAt).getTime();
+      const forceRefresh = req.query?.bust === "1" && age > 30 * 60 * 1000;
+      if (!forceRefresh) return res.status(200).json(cached);
+    }
+  } catch (_) {}
 
   const apiKey = process.env.ODDS_API_KEY;
   const [oddsResult, sleeperResult] = await Promise.allSettled([
@@ -307,7 +300,7 @@ module.exports = async function handler(req, res) {
     errors: [...(oddsErrors || [])].filter(Boolean),
   };
 
-  try { await kv.set("lines:combined", payload, 1800); } catch (_) {}
+  try { await kv.set("lines:combined", payload, 7200); } catch (_) {} // 2 hour cache
 
   return res.status(200).json(payload);
 };

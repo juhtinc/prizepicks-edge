@@ -2937,12 +2937,11 @@ async function freeRefreshAll() {
   if (dataStatus) dataStatus.textContent = '📊 Data: refreshing...';
 
   try {
-    // Fire all FREE data sources in parallel (zero Anthropic API cost)
+    // Fire all FREE data sources in parallel (ESPN = free, no quota)
+    // Lines/Steam use Odds API quota — only via Fetch Lines button
     await Promise.allSettled([
-      loadLines(true),      // Odds API lines (bust cache)
-      loadScores(true),     // ESPN scores
-      pollSteam(),          // Steam detection (Odds API)
-      refreshNews(),        // ESPN news (free now!)
+      loadScores(true),     // ESPN scores (free)
+      refreshNews(),        // ESPN news (free)
     ]);
 
     _lastFreeRefresh = new Date();
@@ -3741,28 +3740,28 @@ if (savedFreeRefresh) { _lastFreeRefresh = new Date(savedFreeRefresh); updateDat
 loadNewsFromCache();
 restoreScanResults();
 
-// Parallel pre-fetch ALL data sources from KV caches
+// Pre-fetch free data on boot (ESPN only — no Odds API quota usage)
+// Lines load from KV cache only (no fresh Odds API call)
 Promise.all([
-  loadLines(false),
-  loadScores(),
-  pollSteam(),
+  loadLines(false),   // KV cache only, no API call if empty
+  loadScores(),       // ESPN (free)
 ]).then(() => {
   _lastFreeRefresh = new Date();
   saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
   updateDataStatus();
 });
 
-// Background news refresh (uses Anthropic if KV cache expired, otherwise free from KV)
+// Background news refresh (ESPN — free)
 refreshNews();
 
 // Auto-refresh scores every 2 min silently (free ESPN, hits KV cache)
 setInterval(() => loadScores(), 2 * 60 * 1000);
 
-// Auto free-refresh lines + steam + news every 15 min (all free APIs)
+// Auto-refresh news + scores every 15 min (ESPN = free, no quota)
+// Lines and Steam use Odds API quota — only refresh manually via Fetch Lines button
 setInterval(() => {
-  loadLines(true);
-  pollSteam();
   refreshNews();
+  loadScores();
   _lastFreeRefresh = new Date();
   saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
   updateDataStatus();
