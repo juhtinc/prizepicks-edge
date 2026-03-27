@@ -201,7 +201,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Build prompt ─────────────────────────────────────────────────────────
-    const systemPrompt = "You are a JSON API. You only ever respond with valid JSON arrays. Never include any text, explanation, or markdown outside of the JSON array.";
+    const systemPrompt = "You are a JSON API. Be extremely concise. Short reasoning only. JSON only. You only ever respond with valid JSON arrays. Never include any text, explanation, or markdown outside of the JSON array.";
 
     const jsonSchema = `Use this exact JSON schema for each pick:
 - player (string): full name
@@ -221,7 +221,7 @@ module.exports = async function handler(req, res) {
 - alt_lines (object|null): {"dk": number|null, "fd": number|null} per-book lines when books disagree
 - injury_severity (string|null): "CRITICAL" (player out/doubtful — drop confidence <60 or skip), "HIGH" (significant injury, questionable — drop confidence 15pts), "MEDIUM" (minor injury, probable — drop confidence 8pts), "LOW" (minor soreness, listed), or null if healthy. CRITICAL picks should be removed or have confidence forced below 60.
 - checklist (object): based on your research, mark each true/false — { injury_checked: bool, lineup_confirmed: bool, weather_checked: bool, line_movement: bool, back_to_back: bool, public_betting: bool, sharp_money: bool, matchup_checked: bool }
-- reasoning (string): MUST include the sportsbook line, player's last 5 and 10 game averages for this stat, matchup context, injury status, projection vs line, and specifically why this is a value play
+- reasoning (string): 2 sentences max. Include the line, recent avg vs line, and why this is a value play
 - tags (array of strings): "Sharp Number" if books agree tightly, "Book Disagreement" if gap ≥ 1pt between books, "Sharp Action", "Fade Public", "Weather Factor", "Trap Spot", "RotoWire Edge"`;
 
     let researchPrompt;
@@ -236,31 +236,20 @@ Format: SPORT | PLAYER | STAT | BOOK:LINE ... [⚡ Xpt gap if books disagree]
 
 ${propsContext}
 
-These lines are authoritative. Do NOT search for alternative lines for these players. Focus all searches on player performance and injury data.
+These lines are authoritative. Do NOT search for prop lines, odds, or today's schedule — the Odds API already provides all of that above.
 
-PHASE 1 — Research every player in the list above:
-For each player, run these targeted searches:
-- "[player name] injury status today" — immediately skip anyone listed out/doubtful
-- "[player name] last 10 games [stat]" — what is their actual recent average vs the line above?
-- "[player name] vs [opponent] stats" — how do they perform against tonight's specific opponent?
-- "rotowire [player name] projection ${today}" — what does the industry project?
-- "[player name] back to back rest days" — schedule context (flag trap games)
-For MLB/NFL only: "[city] weather forecast ${today}" — flag wind >15mph or rain.
+RESEARCH (7 searches maximum — be efficient):
+1. Search "NBA MLB NHL NFL injury report today ${today}" — 1 search to find all injury updates
+2. Search "sharp line movement props today" — 1 search for line movement data
+3-7. For the 5 players with the biggest book gaps (marked ⚡ above) or most lopsided averages, search "[player name] recent stats injury" — one search each, max 5
 
-PHASE 2 — Find props for sports NOT in the list above (these have no Odds API coverage):
-For Tennis: search "tennis props today ${today}", "best tennis bets today", "ATP WTA picks today"
-For Esports: search "esports props today", "vlr.gg matches today", "hltv.org today", "LoL props today"
-For Golf: search "PGA tour props ${today}", "golf DFS picks today", "golf player props today"
-For MMA: search "UFC props today", "MMA player props today"
-For each player found: research their recent form and H2H the same way as Phase 1.
+DO NOT search for: prop lines, odds, which games are today, or any sportsbook data. It's all above.
 
-PHASE 3 — Select the 15 best plays total:
-Rank strictly by:
-1. Recent average vs line gap — player averaging 28pts over last 10 games on a 24.5 line is a strong OVER
-2. Matchup advantage — opponent gives up the most/least of that stat
-3. Health confirmed — player is active and not carrying an injury
-4. Projection support — at least one projection source (RotoWire, ESPN) agrees with direction
-Confidence 85+ only when the 10-game average, matchup, and projection all point the same direction.
+Select the 10 best plays total. Rank by:
+1. Recent average vs line gap (biggest edge first)
+2. Matchup advantage
+3. Health confirmed — skip anyone injured
+Confidence 85+ only when average, matchup, and projection all align.
 
 ${jsonSchema}`;
 
@@ -286,7 +275,7 @@ PHASE 2 — Research each candidate:
 For Tennis: H2H record, surface record, serve stats
 For Esports: team recent results, player KDA/stats, tournament context
 
-PHASE 3 — Select the 15 best plays:
+PHASE 3 — Select the 10 best plays:
 - Only include if you found a specific verifiable line from a real source
 - Rank by edge: recent average vs line gap
 - Require 2+ independent signals supporting the direction
@@ -298,7 +287,7 @@ ${jsonSchema}`;
     console.log(`[refresh] Starting Turn 1 research (${oddsMode ? "Odds API mode" : "web-search mode"})...`);
     const researchResponse = await client.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 4000,
+      max_tokens: 3000,
       system: systemPrompt,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [{ role: "user", content: researchPrompt }],
@@ -313,12 +302,12 @@ ${jsonSchema}`;
     // ── Turn 2: Force pure JSON output ───────────────────────────────────────
     const jsonResponse = await client.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 4000,
+      max_tokens: 3000,
       system: systemPrompt,
       messages: [
         { role: "user", content: researchPrompt },
         { role: "assistant", content: researchText || "Research complete." },
-        { role: "user", content: "Now output ONLY the JSON array of your 15 best picks. Start with [ and end with ]. No other text." },
+        { role: "user", content: "Now output ONLY the JSON array of your 10 best picks. Start with [ and end with ]. No other text. Keep reasoning to 2 sentences max." },
       ],
     });
 
