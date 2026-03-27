@@ -1531,7 +1531,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       <div class="tab-hd">
         <div>
           <div class="tab-title">📰 <em>News Feed</em></div>
-          <div class="tab-sub">Injuries · Lineups · Weather · Line movement · Sharp money</div>
+          <div class="tab-sub">ESPN · Injuries · Headlines · Free · Auto-refreshes</div>
         </div>
         <button class="btn-refresh" id="btn-news-refresh" onclick="refreshNews()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
@@ -1544,7 +1544,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       <div class="news-status-bar">
         <span class="status-dot amber" id="news-dot"></span>
         <span id="news-status">Loading news...</span>
-        <span style="margin-left:auto;font-size:9px;color:var(--fog)" id="news-next">Manual refresh only — uses Anthropic API</span>
+        <span style="margin-left:auto;font-size:9px;color:var(--fog)" id="news-next">Free · ESPN · Auto-refreshes every 15 min</span>
       </div>
 
       <div class="news-filter">
@@ -2777,15 +2777,20 @@ function renderNewsCards() {
     const m = {injury:'news-type-injury',lineup:'news-type-lineup',weather:'news-type-weather',lines:'news-type-lines',sharp:'news-type-sharp'};
     return m[(t||'').toLowerCase()] || '';
   };
-  grid.innerHTML = items.map(item => `
-    <div class="news-card">
+  grid.innerHTML = items.map(item => {
+    const linkHTML = item.link ? `<a href="${item.link}" target="_blank" rel="noopener" style="font-size:10px;color:var(--sky);text-decoration:none;margin-top:6px;display:inline-block">Read more →</a>` : '';
+    const descHTML = item.description ? `<div style="font-size:11px;color:var(--fog);margin-top:4px;line-height:1.5">${item.description.slice(0,150)}${item.description.length>150?'...':''}</div>` : '';
+    return `<div class="news-card">
       <div class="news-card-top">
         <span class="news-sport-tag">${item.sport||'News'}</span>
         ${item.type ? `<span class="news-type-tag ${typeClass(item.type)}">${item.type}</span>` : ''}
-        <span class="news-time">${item.timestamp||''}</span>
+        <span class="news-time">${item.time||item.timestamp||''}</span>
       </div>
       <div class="news-text">${item.text||item.headline||''}</div>
-    </div>`).join('');
+      ${descHTML}
+      ${linkHTML}
+    </div>`;
+  }).join('');
 }
 
 // ── Settings ──────────────────────────────────────────
@@ -2887,6 +2892,7 @@ async function freeRefreshAll() {
       loadLines(true),      // Odds API lines (bust cache)
       loadScores(true),     // ESPN scores
       pollSteam(),          // Steam detection (Odds API)
+      refreshNews(),        // ESPN news (free now!)
     ]);
 
     _lastFreeRefresh = new Date();
@@ -3702,10 +3708,11 @@ refreshNews();
 // Auto-refresh scores every 2 min silently (free ESPN, hits KV cache)
 setInterval(() => loadScores(), 2 * 60 * 1000);
 
-// Auto free-refresh lines + steam every 15 min (free APIs only)
+// Auto free-refresh lines + steam + news every 15 min (all free APIs)
 setInterval(() => {
   loadLines(true);
   pollSteam();
+  refreshNews();
   _lastFreeRefresh = new Date();
   saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
   updateDataStatus();

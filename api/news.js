@@ -1,43 +1,119 @@
-const Anthropic = require("@anthropic-ai/sdk");
+/**
+ * api/news.js  →  GET /api/news
+ * Fetches sports news from ESPN's free public API — zero Anthropic cost.
+ * Covers NBA, MLB, NHL, NFL injuries and headlines.
+ * Cache: 15 minutes in KV.
+ */
+
 const kv = require("./_kv");
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const ESPN_FEEDS = [
+  { sport: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news" },
+  { sport: "MLB", url: "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/news" },
+  { sport: "NHL", url: "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/news" },
+  { sport: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/news" },
+];
+
+// ESPN injury endpoints
+const ESPN_INJURIES = [
+  { sport: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries" },
+  { sport: "MLB", url: "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/injuries" },
+  { sport: "NHL", url: "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries" },
+  { sport: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries" },
+];
+
+async function fetchWithTimeout(url, ms = 8000) {
+  const r = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; PropsEdge/1.0)" },
+    signal: AbortSignal.timeout(ms),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "no-store");
   if (req.method === "OPTIONS") return res.status(200).end();
 
+  // Serve from cache (15 min TTL)
   try {
     const cached = await kv.get("news:latest");
     if (cached) return res.status(200).json(cached);
+  } catch (_) {}
 
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 4000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{
-        role: "user",
-        content: `Search for the 10 most recent sports injury updates and lineup news across NBA, MLB, NHL, and soccer.
-Search: "NBA injury report today", "MLB lineup news today", "sports injury updates today".
-Return ONLY a JSON array of exactly 10 items, most recent first:
-[{"sport":"NBA","text":"LeBron James questionable vs PHX — knee soreness","time":"2h ago"}]`,
-      }],
-    });
+  const items = [];
 
-    let rawText = "";
-    for (const b of response.content || []) { if (b.type === "text") rawText += b.text; }
-    let items = [];
-    const cleaned = rawText.replace(/```json/gi,"").replace(/```/g,"").trim();
-    const arr = cleaned.match(/\[[\s\S]*\]/);
-    if (arr) { try { items = JSON.parse(arr[0]); } catch(e) { console.error("[news] parse:", e.message); } }
-    if (!Array.isArray(items)) items = [];
+  // Fetch news headlines from all sports in parallel
+  const [newsResults, injuryResults] = await Promise.all([
+    Promise.allSettled(ESPN_FEEDS.map(async ({ sport, url }) => {
+      const d = await fetchWithTimeout(url);
+      return (d.articles || []).slice(0, 5).map(a => ({
+        sport,
+        type: "news",
+        text: a.headline || a.title || "",
+        description: a.description || "",
+        time: timeAgo(a.published),
+        link: a.links?.web?.href || "",
+      }));
+    })),
+    Promise.allSettled(ESPN_INJURIES.map(async ({ sport, url }) => {
+      try {
+        const d = await fetchWithTimeout(url);
+        const injuries = [];
+        for (const team of (d.items || [])) {
+          for (const entry of (team.injuries || []).slice(0, 3)) {
+            const athlete = entry.athlete || {};
+            const status = entry.status || entry.type || "";
+            if (!athlete.displayName) continue;
+            injuries.push({
+              sport,
+              type: "injury",
+              text: `${athlete.displayName} (${team.team?.abbreviation || "?"}) — ${status}${entry.details?.detail ? ": " + entry.details.detail : ""}`,
+              description: entry.longComment || entry.shortComment || "",
+              time: timeAgo(entry.date),
+              link: "",
+            });
+          }
+        }
+        return injuries;
+      } catch (_) {
+        return [];
+      }
+    })),
+  ]);
 
-    const payload = { items, fetchedAt: new Date().toISOString() };
-    await kv.set("news:latest", payload, 1800);
-    return res.status(200).json(payload);
-
-  } catch (err) {
-    console.error("[news] Error:", err.message);
-    return res.status(500).json({ error: err.message });
+  // Collect results
+  for (const r of newsResults) {
+    if (r.status === "fulfilled") items.push(...r.value);
   }
+  for (const r of injuryResults) {
+    if (r.status === "fulfilled") items.push(...r.value);
+  }
+
+  // Sort: injuries first, then by recency
+  items.sort((a, b) => {
+    if (a.type === "injury" && b.type !== "injury") return -1;
+    if (a.type !== "injury" && b.type === "injury") return 1;
+    return 0;
+  });
+
+  const payload = {
+    items: items.slice(0, 30),
+    fetchedAt: new Date().toISOString(),
+    source: "espn",
+  };
+
+  try { await kv.set("news:latest", payload, 900); } catch (_) {} // 15 min cache
+
+  return res.status(200).json(payload);
 };
