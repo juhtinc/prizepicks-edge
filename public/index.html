@@ -370,6 +370,20 @@ body::before{
 .state-mono{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--lime);opacity:0.6}
 .err-box{border:1px solid rgba(255,89,99,0.2);background:rgba(255,89,99,0.04);border-radius:var(--rm);padding:32px}
 
+/* ── Skeleton Loading ── */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:0}
+.skel-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-height:120px}
+.skel-line{height:12px;border-radius:4px;margin-bottom:10px;background:linear-gradient(90deg,var(--ink3) 25%,var(--ink4) 50%,var(--ink3) 75%);background-size:800px 100%;animation:shimmer 1.5s infinite linear}
+.skel-line.w60{width:60%}
+.skel-line.w40{width:40%}
+.skel-line.w80{width:80%}
+.skel-line.w100{width:100%}
+.skel-line.thick{height:18px;margin-bottom:12px}
+.skel-score-card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px}
+.skel-score-row{display:flex;justify-content:space-between;align-items:center}
+.skel-circle{width:28px;height:28px;border-radius:50%;background:linear-gradient(90deg,var(--ink3) 25%,var(--ink4) 50%,var(--ink3) 75%);background-size:800px 100%;animation:shimmer 1.5s infinite linear;flex-shrink:0}
+
 /* ── Modals ── */
 .modal-bg{
   position:fixed;inset:0;background:rgba(0,0,0,0.6);
@@ -1488,7 +1502,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       </div>
 
       <div class="news-grid" id="news-grid">
-        <div class="center-state"><div class="spin-ring"></div><div class="state-mono">Fetching news...</div></div>
+        <div class="skel-grid"><div class="skel-card"><div class="skel-line thick w60"></div><div class="skel-line w100"></div><div class="skel-line w80"></div></div><div class="skel-card"><div class="skel-line thick w40"></div><div class="skel-line w100"></div><div class="skel-line w60"></div></div><div class="skel-card"><div class="skel-line thick w60"></div><div class="skel-line w80"></div><div class="skel-line w40"></div></div></div>
       </div>
     </div>
 
@@ -1593,7 +1607,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
         <span style="margin-left:auto;font-size:9px;color:var(--fog)">Auto-updates every 2 min</span>
       </div>
       <div id="scores-grid">
-        <div class="center-state"><div class="spin-ring"></div><div class="state-mono">Fetching scores...</div></div>
+        <div class="skel-grid"><div class="skel-score-card"><div class="skel-score-row"><div class="skel-line w40" style="margin:0"></div><div class="skel-circle"></div></div><div class="skel-score-row"><div class="skel-line w40" style="margin:0"></div><div class="skel-circle"></div></div></div><div class="skel-score-card"><div class="skel-score-row"><div class="skel-line w40" style="margin:0"></div><div class="skel-circle"></div></div><div class="skel-score-row"><div class="skel-line w40" style="margin:0"></div><div class="skel-circle"></div></div></div><div class="skel-score-card"><div class="skel-score-row"><div class="skel-line w40" style="margin:0"></div><div class="skel-circle"></div></div><div class="skel-score-row"><div class="skel-line w40" style="margin:0"></div><div class="skel-circle"></div></div></div></div>
       </div>
     </div>
 
@@ -1783,7 +1797,8 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabId));
   if (tabId === 'bankroll') renderBankrollTab();
   if (tabId === 'lines') { renderLinesPlays(); renderLinesTab(); }
-  if (tabId === 'scores' && !SCORES.length) loadScores();
+  if (tabId === 'scores') { if (SCORES.length) renderScoresGrid(); }
+  if (tabId === 'news') { if (newsItems.length) renderNewsCards(); }
   if (tabId === 'settings') initSettings();
   if (tabId === 'parlay') renderParlayTab();
   if (tabId === 'stats') renderStatsTab();
@@ -2634,25 +2649,48 @@ function renderJournalTab() {
 }
 
 // ── News Tab ──────────────────────────────────────────
+function loadNewsFromCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem('pp_news_cache') || 'null');
+    if (cached?.items?.length) {
+      newsItems = cached.items;
+      const dot = document.getElementById('news-dot');
+      const status = document.getElementById('news-status');
+      if (dot) dot.className = 'status-dot amber';
+      const fetched = cached.fetchedAt ? new Date(cached.fetchedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '';
+      if (status) status.textContent = `${newsItems.length} items · Cached ${fetched}`;
+      renderNewsCards();
+      return true;
+    }
+  } catch(_) {}
+  return false;
+}
+
 async function refreshNews() {
-  const grid = document.getElementById('news-grid');
   const dot = document.getElementById('news-dot');
   const status = document.getElementById('news-status');
-  dot.className = 'status-dot amber';
-  status.textContent = 'Fetching news...';
+  if (!newsItems.length) {
+    // Only show loading state if no cached data
+    if (dot) dot.className = 'status-dot amber';
+    if (status) status.textContent = 'Fetching news...';
+  }
   try {
     const r = await fetch('/api/news');
     if (!r.ok) throw new Error('Status '+r.status);
     const d = await r.json();
     newsItems = d.items || [];
+    // Cache in localStorage
+    try { localStorage.setItem('pp_news_cache', JSON.stringify(d)); } catch(_){}
     const fetched = d.fetchedAt ? new Date(d.fetchedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : 'just now';
-    dot.className = 'status-dot green';
-    status.textContent = `${newsItems.length} items · Updated ${fetched}`;
+    if (dot) dot.className = 'status-dot green';
+    if (status) status.textContent = `${newsItems.length} items · Updated ${fetched}`;
     renderNewsCards();
   } catch(e) {
-    dot.className = 'status-dot red';
-    status.textContent = 'Failed to load news: ' + e.message;
-    grid.innerHTML = `<div class="center-state"><div style="font-size:32px;opacity:0.2">📰</div><div class="state-title">News Unavailable</div><div class="state-sub">${e.message}</div></div>`;
+    // Only show error if no cached data to display
+    if (!newsItems.length) {
+      if (dot) dot.className = 'status-dot red';
+      if (status) status.textContent = 'Failed to load news: ' + e.message;
+    }
   }
 }
 
@@ -2757,10 +2795,10 @@ function resetSettings() {
 
 // ── Lines ─────────────────────────────────────────────
 document.getElementById('main').innerHTML = `
-  <div class="center-state">
-    <div class="spin-ring"></div>
-    <div class="state-title">Loading Picks</div>
-    <div class="state-mono">Connecting to API...</div>
+  <div class="skel-grid" style="padding:20px">
+    <div class="skel-card"><div class="skel-line thick w60"></div><div class="skel-line w100"></div><div class="skel-line w80"></div><div class="skel-line w40"></div></div>
+    <div class="skel-card"><div class="skel-line thick w40"></div><div class="skel-line w100"></div><div class="skel-line w60"></div><div class="skel-line w80"></div></div>
+    <div class="skel-card"><div class="skel-line thick w80"></div><div class="skel-line w60"></div><div class="skel-line w100"></div><div class="skel-line w40"></div></div>
   </div>`;
 
 // ── Free Refresh All ─────────────────────────────────
@@ -3151,8 +3189,11 @@ let scoresTimer = null;
 async function loadScores(manual = false) {
   const dot = document.getElementById('scores-dot');
   const status = document.getElementById('scores-status');
-  if (dot) dot.className = 'status-dot amber';
-  if (status) status.textContent = 'Loading scores...';
+  // Only show loading state if no cached data
+  if (!SCORES.length) {
+    if (dot) dot.className = 'status-dot amber';
+    if (status) status.textContent = 'Loading scores...';
+  }
 
   try {
     const r = await fetch('/api/scores');
@@ -3165,12 +3206,9 @@ async function loadScores(manual = false) {
     if (dot) dot.className = liveCount > 0 ? 'status-dot green' : 'status-dot amber';
     if (status) status.textContent = `${SCORES.length} games · ${liveCount} live · Updated ${fetched}`;
 
-    if (document.getElementById('tab-scores')?.classList.contains('active')) renderScoresGrid();
+    // Always pre-render so tab switch is instant
+    renderScoresGrid();
     updatePickCardScores();
-
-    // Auto-refresh every 2 min (just hits KV cache — free)
-    if (scoresTimer) clearInterval(scoresTimer);
-    scoresTimer = setInterval(() => loadScores(), 2 * 60 * 1000);
   } catch(e) {
     if (dot) dot.className = 'status-dot red';
     if (status) status.textContent = 'Scores unavailable: ' + e.message;
@@ -3318,15 +3356,29 @@ loadPicks();
 const savedFreeRefresh = getSetting('lastFreeRefresh', null);
 if (savedFreeRefresh) { _lastFreeRefresh = new Date(savedFreeRefresh); updateDataStatus(); }
 
-// Initial free data load from KV caches (no Odds API quota hit)
-loadLines(false);
-loadScores();
-pollSteam();
+// Instant: load news from localStorage cache (shows in <50ms)
+loadNewsFromCache();
 
-// Auto free-refresh every 15 min (free APIs only, zero cost)
+// Parallel pre-fetch ALL data sources from KV caches
+Promise.all([
+  loadLines(false),
+  loadScores(),
+  pollSteam(),
+]).then(() => {
+  _lastFreeRefresh = new Date();
+  saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
+  updateDataStatus();
+});
+
+// Background news refresh (uses Anthropic if KV cache expired, otherwise free from KV)
+refreshNews();
+
+// Auto-refresh scores every 2 min silently (free ESPN, hits KV cache)
+setInterval(() => loadScores(), 2 * 60 * 1000);
+
+// Auto free-refresh lines + steam every 15 min (free APIs only)
 setInterval(() => {
   loadLines(true);
-  loadScores();
   pollSteam();
   _lastFreeRefresh = new Date();
   saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
