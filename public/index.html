@@ -747,6 +747,28 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 .bs-plays li .play-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog);margin-right:6px}
 .bs-loading{display:flex;align-items:center;justify-content:center;padding:60px 0;color:var(--fog)}
 
+/* ── Scan Board Modal ── */
+.scan-modal .modal-sub{font-size:12px;color:var(--smoke);margin-bottom:14px}
+.scan-drop{border:2px dashed var(--line2);border-radius:var(--r);padding:32px 20px;text-align:center;transition:all .2s;cursor:pointer}
+.scan-drop.over{border-color:var(--lime);background:rgba(184,245,66,0.04)}
+.scan-drop-icon{font-size:32px;margin-bottom:8px;opacity:0.4}
+.scan-drop-text{font-size:13px;color:var(--smoke);margin-bottom:4px}
+.scan-drop-text kbd{background:var(--ink3);border:1px solid var(--line2);border-radius:3px;padding:1px 5px;font-family:'JetBrains Mono',monospace;font-size:10px}
+.scan-drop-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog);letter-spacing:1px}
+.scan-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.scan-thumb{position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.scan-thumb img{width:100%;height:100%;object-fit:cover}
+.scan-thumb-x{position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:18px;text-align:center;padding:0}
+.scan-prog-item{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--smoke)}
+.scan-prog-icon{width:16px;text-align:center;flex-shrink:0}
+.scan-compare-table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}
+.scan-compare-table th{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--fog);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);background:var(--ink2)}
+.scan-compare-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--smoke)}
+.scan-edge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:3px}
+.scan-edge.pos{color:var(--lime);background:rgba(184,245,66,0.08)}
+.scan-edge.neg{color:var(--coral);background:rgba(255,89,99,0.08)}
+.scan-edge.zero{color:var(--fog)}
+
 /* Pick card live score chip */
 .card-live-score{
   display:flex;align-items:center;gap:6px;
@@ -1149,6 +1171,39 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
   </div>
 </div>
 
+<!-- Scan Board Modal -->
+<div class="modal-bg" id="scan-modal" onclick="if(event.target===this)closeScanModal()">
+  <div class="modal scan-modal" style="max-width:600px">
+    <div class="modal-title">📸 Scan Board</div>
+    <div class="modal-sub">Upload or paste PrizePicks screenshots. AI extracts props and compares against sportsbook lines.</div>
+
+    <div class="scan-drop" id="scan-drop" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleScanDrop(event)">
+      <div class="scan-drop-icon">📋</div>
+      <div class="scan-drop-text">Drop screenshots here or press <kbd>Ctrl+V</kbd> to paste</div>
+      <div class="scan-drop-sub">PNG, JPG, WEBP · Max 10 images</div>
+      <input type="file" id="scan-file-input" accept="image/*" multiple style="display:none" onchange="handleScanFiles(this.files)">
+      <button class="btn-cancel" style="margin-top:10px;font-size:11px" onclick="document.getElementById('scan-file-input').click()">Or browse files</button>
+    </div>
+
+    <div id="scan-thumbs" class="scan-thumbs"></div>
+    <div id="scan-count" style="display:none;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--smoke);margin:8px 0"></div>
+
+    <div id="scan-secret-row" style="display:none;margin-top:12px">
+      <div class="field-label" style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--fog);margin-bottom:4px">CRON_SECRET</div>
+      <input type="password" id="scan-secret" placeholder="Enter secret..." style="width:100%;background:var(--ink3);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;margin-bottom:8px">
+      <div id="scan-cost" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#f5a623;margin-bottom:10px"></div>
+    </div>
+
+    <div id="scan-progress" style="display:none;margin-top:12px"></div>
+    <div id="scan-results" style="display:none;margin-top:16px"></div>
+
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-cancel" onclick="closeScanModal()">Close</button>
+      <button class="btn-go" id="scan-go-btn" onclick="runScan()" style="display:none">Scan Now</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-shell">
 
   <!-- ── Sidebar ── -->
@@ -1546,12 +1601,15 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="tab-title">📐 <em>Lines</em></div>
           <div class="tab-sub">Multi-book comparison · DraftKings · FanDuel · BetMGM · Line shop alerts</div>
         </div>
-        <button class="btn-refresh" onclick="loadLines(true)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-          Fetch Lines
-        </button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ai-refresh" onclick="openScanModal()" style="padding:7px 14px">📸 Scan Board</button>
+          <button class="btn-refresh" onclick="loadLines(true)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Fetch Lines
+          </button>
+        </div>
       </div>
 
       <div class="news-status-bar">
@@ -3329,6 +3387,223 @@ function updatePickCardScores() {
       el.style.display = 'flex';
     });
   }
+}
+
+// ── Board Scanner ────────────────────────────────────
+let _scanImages = []; // array of {dataUrl, file}
+
+function openScanModal() {
+  _scanImages = [];
+  renderScanThumbs();
+  document.getElementById('scan-progress').style.display = 'none';
+  document.getElementById('scan-progress').innerHTML = '';
+  document.getElementById('scan-results').style.display = 'none';
+  document.getElementById('scan-results').innerHTML = '';
+  document.getElementById('scan-secret-row').style.display = 'none';
+  document.getElementById('scan-go-btn').style.display = 'none';
+  document.getElementById('scan-modal').classList.add('open');
+}
+
+function closeScanModal() {
+  document.getElementById('scan-modal').classList.remove('open');
+}
+
+function handleScanDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('over');
+  if (e.dataTransfer?.files?.length) handleScanFiles(e.dataTransfer.files);
+}
+
+function handleScanFiles(files) {
+  for (const f of files) {
+    if (_scanImages.length >= 10) break;
+    if (!f.type.startsWith('image/')) continue;
+    const reader = new FileReader();
+    reader.onload = () => {
+      _scanImages.push({ dataUrl: reader.result });
+      renderScanThumbs();
+    };
+    reader.readAsDataURL(f);
+  }
+}
+
+function handleScanPaste(e) {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/') && _scanImages.length < 10) {
+      const file = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = () => {
+        _scanImages.push({ dataUrl: reader.result });
+        // Auto-open modal if not open
+        if (!document.getElementById('scan-modal').classList.contains('open')) {
+          openScanModal();
+          // Re-add the image since openScanModal clears
+          _scanImages = [{ dataUrl: reader.result }];
+        }
+        renderScanThumbs();
+      };
+      reader.readAsDataURL(file);
+      e.preventDefault();
+    }
+  }
+}
+
+// Global paste listener
+document.addEventListener('paste', handleScanPaste);
+
+function removeScanImage(i) {
+  _scanImages.splice(i, 1);
+  renderScanThumbs();
+}
+
+function renderScanThumbs() {
+  const wrap = document.getElementById('scan-thumbs');
+  const countEl = document.getElementById('scan-count');
+  const secretRow = document.getElementById('scan-secret-row');
+  const goBtn = document.getElementById('scan-go-btn');
+  const costEl = document.getElementById('scan-cost');
+
+  wrap.innerHTML = _scanImages.map((img, i) =>
+    `<div class="scan-thumb"><img src="${img.dataUrl}"><button class="scan-thumb-x" onclick="removeScanImage(${i})">×</button></div>`
+  ).join('');
+
+  if (_scanImages.length) {
+    countEl.style.display = 'block';
+    countEl.textContent = `${_scanImages.length} screenshot${_scanImages.length > 1 ? 's' : ''} queued`;
+    secretRow.style.display = 'block';
+    goBtn.style.display = '';
+    const est = (_scanImages.length * 0.02).toFixed(2);
+    costEl.textContent = `Scanning ${_scanImages.length} image${_scanImages.length>1?'s':''} ≈ $${est} in AI credits`;
+  } else {
+    countEl.style.display = 'none';
+    secretRow.style.display = 'none';
+    goBtn.style.display = 'none';
+  }
+}
+
+async function runScan() {
+  const secret = document.getElementById('scan-secret').value.trim();
+  if (!secret) { alert('Please enter your CRON_SECRET'); return; }
+  if (!_scanImages.length) return;
+
+  if (!confirm(`Scan ${_scanImages.length} image${_scanImages.length>1?'s':''}? Estimated cost: ~$${(_scanImages.length * 0.02).toFixed(2)}`)) return;
+
+  const goBtn = document.getElementById('scan-go-btn');
+  goBtn.disabled = true; goBtn.textContent = 'Scanning...';
+
+  const progEl = document.getElementById('scan-progress');
+  progEl.style.display = 'block';
+  progEl.innerHTML = _scanImages.map((_, i) =>
+    `<div class="scan-prog-item" id="scan-prog-${i}"><span class="scan-prog-icon">⏳</span>Image ${i+1}: Queued</div>`
+  ).join('');
+
+  // Update progress to "scanning" for all
+  _scanImages.forEach((_, i) => {
+    const el = document.getElementById(`scan-prog-${i}`);
+    if (el) el.innerHTML = `<span class="scan-prog-icon">⏳</span>Image ${i+1}: Scanning...`;
+  });
+
+  try {
+    const r = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-secret': secret },
+      body: JSON.stringify({ images: _scanImages.map(img => img.dataUrl) }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Scan failed');
+
+    // Update progress
+    (d.imageResults || []).forEach(ir => {
+      const el = document.getElementById(`scan-prog-${ir.image - 1}`);
+      if (el) el.innerHTML = `<span class="scan-prog-icon">✅</span>Image ${ir.image}: Found ${ir.propsFound} props`;
+    });
+
+    renderScanResults(d);
+  } catch(e) {
+    progEl.innerHTML += `<div class="scan-prog-item" style="color:var(--coral)"><span class="scan-prog-icon">❌</span>${e.message}</div>`;
+  }
+
+  goBtn.disabled = false; goBtn.textContent = 'Scan Now';
+}
+
+function renderScanResults(d) {
+  const el = document.getElementById('scan-results');
+  el.style.display = 'block';
+
+  if (!d.props?.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--fog);padding:20px">No props extracted from screenshots.</div>';
+    return;
+  }
+
+  const hasOdds = d.hasOddsData;
+  let html = `<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);margin-bottom:10px">
+    ${d.totalProps} props found · Cost: $${d.estimatedCost}
+  </div>`;
+
+  html += `<div style="overflow-x:auto"><table class="scan-compare-table">
+    <thead><tr>
+      <th>Player</th><th>Stat</th><th>Board Line</th><th>Dir</th>
+      ${hasOdds ? '<th>Consensus</th><th>Best Over</th><th>Best Under</th><th>Edge</th>' : ''}
+      <th>Src</th>
+    </tr></thead><tbody>`;
+
+  d.props.forEach(p => {
+    const edge = p.odds?.edge;
+    const edgeCls = edge > 0 ? 'pos' : edge < 0 ? 'neg' : 'zero';
+    const edgeStr = edge != null ? (edge > 0 ? '+' : '') + edge : '—';
+
+    html += `<tr>
+      <td style="font-weight:600">${p.player || '—'}</td>
+      <td style="color:var(--smoke);font-size:10px">${p.stat || '—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.line ?? '—'}</td>
+      <td><span style="color:${p.direction==='OVER'?'var(--lime)':'var(--sky)'};font-size:10px;font-weight:600">${p.direction || '—'}</span></td>`;
+
+    if (hasOdds) {
+      html += `<td style="font-family:'JetBrains Mono',monospace">${p.odds?.consensus ?? '—'}</td>`;
+      html += `<td style="font-size:10px;color:var(--smoke)">${p.odds?.bestOver ? bookLabel(p.odds.bestOver.book)+'@'+p.odds.bestOver.line : '—'}</td>`;
+      html += `<td style="font-size:10px;color:var(--smoke)">${p.odds?.bestUnder ? bookLabel(p.odds.bestUnder.book)+'@'+p.odds.bestUnder.line : '—'}</td>`;
+      html += `<td><span class="scan-edge ${edgeCls}">${edgeStr}</span></td>`;
+    }
+
+    html += `<td style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog)">Img ${p.sourceImage}</td></tr>`;
+  });
+
+  html += '</tbody></table></div>';
+
+  // Copy button
+  html += `<div style="margin-top:12px;display:flex;gap:8px">
+    <button class="export-btn" onclick="copyScanResults()">📋 Copy Results</button>
+  </div>`;
+
+  el.innerHTML = html;
+
+  // Save to scan history
+  saveScanHistory(d);
+}
+
+function copyScanResults() {
+  const el = document.getElementById('scan-results');
+  const table = el?.querySelector('table');
+  if (!table) return;
+  const rows = [...table.querySelectorAll('tr')];
+  const text = rows.map(r => [...r.querySelectorAll('th,td')].map(c => c.textContent.trim()).join('\t')).join('\n');
+  navigator.clipboard.writeText(text).then(() => alert('Copied!')).catch(() => {});
+}
+
+function saveScanHistory(d) {
+  try {
+    let hist = JSON.parse(localStorage.getItem('pp_scan_history') || '[]');
+    hist.unshift({
+      ts: new Date().toISOString(),
+      count: d.totalProps,
+      bestEdge: d.props?.[0]?.odds?.edge || null,
+      cost: d.estimatedCost,
+    });
+    hist = hist.slice(0, 10);
+    localStorage.setItem('pp_scan_history', JSON.stringify(hist));
+  } catch(_) {}
 }
 
 // ── Boot ──────────────────────────────────────────────
