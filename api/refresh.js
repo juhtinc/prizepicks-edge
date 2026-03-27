@@ -201,15 +201,15 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Build prompt ─────────────────────────────────────────────────────────
-    const systemPrompt = "You are a JSON API. Be extremely concise. Short reasoning only. JSON only. You only ever respond with valid JSON arrays. Never include any text, explanation, or markdown outside of the JSON array.";
+    const systemPrompt = "You are an expert sports betting analyst. Be extremely concise. Short reasoning only. JSON only. You only ever respond with valid JSON arrays. Never include any text, explanation, or markdown outside of the JSON array.";
 
     const jsonSchema = `Use this exact JSON schema for each pick:
 - player (string): full name
 - team (string): team abbreviation
 - opponent (string|null): opponent team abbreviation, or null if unknown
-- sport (string): NBA, MLB, NHL, NFL, Tennis, Valorant, LoL, CS2, Dota2, RocketLeague, Golf, MMA, or other
-- stat (string): e.g. "Points", "Rebounds", "Kills", "Aces"
-- line (number): the consensus line (from sportsbooks for NBA/MLB/NHL/NFL, from your research for other sports)
+- sport (string): NBA, MLB, NHL, NFL, or other
+- stat (string): e.g. "Points", "Rebounds", "Strikeouts"
+- line (number): the consensus sportsbook line from the data above
 - line_open (number|null): opening line if you found line movement data, else null
 - direction (string): "OVER" or "UNDER"
 - confidence (integer 60-95): higher when recent averages strongly support the direction vs the line
@@ -219,66 +219,35 @@ module.exports = async function handler(req, res) {
 - weather_flag (boolean|null): true if adverse weather for MLB/NFL, null otherwise
 - trap_game (boolean|null): true if back-to-back, travel, or letdown spot detected
 - alt_lines (object|null): {"dk": number|null, "fd": number|null} per-book lines when books disagree
-- injury_severity (string|null): "CRITICAL" (player out/doubtful — drop confidence <60 or skip), "HIGH" (significant injury, questionable — drop confidence 15pts), "MEDIUM" (minor injury, probable — drop confidence 8pts), "LOW" (minor soreness, listed), or null if healthy. CRITICAL picks should be removed or have confidence forced below 60.
-- checklist (object): based on your research, mark each true/false — { injury_checked: bool, lineup_confirmed: bool, weather_checked: bool, line_movement: bool, back_to_back: bool, public_betting: bool, sharp_money: bool, matchup_checked: bool }
+- injury_severity (string|null): "CRITICAL" / "HIGH" / "MEDIUM" / "LOW" / null
+- checklist (object): { injury_checked: bool, lineup_confirmed: bool, weather_checked: bool, line_movement: bool, back_to_back: bool, public_betting: bool, sharp_money: bool, matchup_checked: bool }
 - reasoning (string): 2 sentences max. Include the line, recent avg vs line, and why this is a value play
-- tags (array of strings): "Sharp Number" if books agree tightly, "Book Disagreement" if gap ≥ 1pt between books, "Sharp Action", "Fade Public", "Weather Factor", "Trap Spot", "RotoWire Edge"`;
+- tags (array of strings): "Sharp Number", "Book Disagreement", "Sharp Action", "Fade Public", "Weather Factor", "Trap Spot"`;
 
     let researchPrompt;
 
     if (oddsMode) {
-      // ── ODDS API MODE ─────────────────────────────────────────────────────────
-      // Lines come from The Odds API. Claude ONLY does injury/news research + niche sports.
-      researchPrompt = `Today is ${today}. You are a sharp sports analyst. You have been given real sportsbook player prop lines. Your job is to identify the best OVER/UNDER plays by researching each player's recent form and health.
-
-TODAY'S PLAYER PROP LINES (DraftKings / FanDuel / BetMGM — via The Odds API):
-Format: SPORT | PLAYER | STAT | BOOK:LINE ... [⚡ Xpt gap if books disagree]
+      // ── ODDS API MODE — analyze lines already provided ─────────────────────
+      researchPrompt = `Today is ${today}. You are an expert sports betting analyst. Here are today's prop lines from major sportsbooks (DraftKings, FanDuel, BetMGM) via The Odds API:
 
 ${propsContext}
 
-These lines are authoritative. Do NOT search for prop lines, odds, or today's schedule — the Odds API already provides all of that above.
+DO NOT search for prop lines, odds, schedules, or sportsbook data — it is ALL provided above.
 
-RESEARCH (7 searches maximum — be efficient):
-1. Search "NBA MLB NHL NFL injury report today ${today}" — 1 search to find all injury updates
-2. Search "sharp line movement props today" — 1 search for line movement data
-3-7. For the 5 players with the biggest book gaps (marked ⚡ above) or most lopsided averages, search "[player name] recent stats injury" — one search each, max 5
+RESEARCH (5 searches maximum):
+1. Search "NBA MLB NHL NFL injury report ${today}" — find who is out/questionable
+2. Search "NBA MLB NHL lineup confirmations ${today}" — confirm starting lineups
+3. Search "MLB NFL weather forecast ${today}" — flag rain/wind for outdoor games
+4. Search "sharp money line movement props ${today}" — where is sharp action going
+5. Search "NBA NHL back to back schedule ${today}" — flag fatigue/rest spots
 
-DO NOT search for: prop lines, odds, which games are today, or any sportsbook data. It's all above.
-
-Select the 10 best plays total. Rank by:
-1. Recent average vs line gap (biggest edge first)
-2. Matchup advantage
-3. Health confirmed — skip anyone injured
-Confidence 85+ only when average, matchup, and projection all align.
+Using the lines above + your research, identify the 10 best edges where the market line appears mispriced. Skip injured players. Rank by biggest gap between recent player average and the posted line.
 
 ${jsonSchema}`;
 
     } else {
-      // ── NO ODDS API — WEB SEARCH FOR NICHE SPORTS ONLY ───────────────────────
-      // Without an API key we cannot get reliable NBA/MLB/NHL/NFL lines.
-      // Only cover sports with publicly available prop data via web search.
-      researchPrompt = `Today is ${today}. You are a sharp sports analyst. ODDS_API_KEY is not configured, so you will focus on sports where prop lines are available via free public sources: Tennis, Esports, Golf, and MMA.
-
-PHASE 1 — Find today's props for niche sports:
-For Tennis: search "tennis props today ${today}", "best tennis bets today", "ATP WTA picks today", "tennisabstract.com", "atptour.com match today"
-For Esports: search "esports props today", "vlr.gg today", "gol.gg today", "hltv.org today", "LoL esports props today", "CS2 match props today"
-For Golf: search "PGA tour props ${today}", "golf player props today", "golf DFS picks today"
-For MMA/UFC: search "UFC fight props today", "MMA player props today"
-Build a list of 20-30 players with lines from at least one source.
-
-PHASE 2 — Research each candidate:
-- "[player name] injury status today"
-- "[player name] recent form last 5 matches [stat]"
-- "[player name] vs [opponent] H2H history"
-- "[player name] projection today"
-- "[player name] public betting percentage"
-For Tennis: H2H record, surface record, serve stats
-For Esports: team recent results, player KDA/stats, tournament context
-
-PHASE 3 — Select the 10 best plays:
-- Only include if you found a specific verifiable line from a real source
-- Rank by edge: recent average vs line gap
-- Require 2+ independent signals supporting the direction
+      // ── NO ODDS API — cannot analyze without lines ─────────────────────────
+      researchPrompt = `Today is ${today}. ODDS_API_KEY is not configured. Without sportsbook lines I cannot perform proper analysis. Return an empty JSON array: []
 
 ${jsonSchema}`;
     }

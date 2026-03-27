@@ -1021,7 +1021,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
     <div class="modal-title">Admin Refresh</div>
-    <div class="modal-sub">Enter your CRON_SECRET to trigger a manual scrape + AI analysis. This takes ~60s.</div>
+    <div class="modal-sub">Enter your CRON_SECRET to analyze today's market lines with AI. Takes ~30s.</div>
     <div class="modal-err" id="modal-err"></div>
     <input type="password" id="secret-input" placeholder="Enter CRON_SECRET..." autocomplete="off"/>
     <div class="modal-actions">
@@ -2090,7 +2090,7 @@ async function submitRefresh() {
   const btn = document.getElementById('btn-refresh');
   btn.disabled = true; btn.classList.add('spinning');
   document.getElementById('sdot').className = 'status-dot amber';
-  document.getElementById('stext').textContent = 'Running AI analysis (~60s)...';
+  document.getElementById('stext').textContent = '🤖 Analyzing market lines (~30s)...';
   try {
     const r1 = await fetch('/api/refresh', {method:'POST', headers:{'x-secret':sec}});
     const d1 = await r1.json();
@@ -2292,7 +2292,7 @@ function render() {
   if (ALL.length === 0) {
     main.innerHTML = `<div class="center-state"><div style="font-size:52px;opacity:0.2">📊</div>
       <div class="state-title">No Picks Yet</div>
-      <div class="state-sub">Click Refresh Picks, enter your admin secret, and the AI will research today's props and return the best plays with reasoning.</div></div>`;
+      <div class="state-sub">Click "Run AI Analysis", enter your secret, and the AI will analyze today's sportsbook lines for the best edges.</div></div>`;
     return;
   }
   if (list.length === 0) {
