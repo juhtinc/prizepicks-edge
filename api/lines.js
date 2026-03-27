@@ -261,13 +261,14 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Serve from cache — only bust if manual AND cache is older than 30 min
+  // Serve from cache — bust if manual OR if cached result has 0 props
   try {
     const cached = await kv.get("lines:combined");
     if (cached) {
-      const age = Date.now() - new Date(cached.fetchedAt).getTime();
-      const forceRefresh = req.query?.bust === "1" && age > 30 * 60 * 1000;
-      if (!forceRefresh) return res.status(200).json(cached);
+      const isEmpty = !cached.propCount || cached.propCount === 0;
+      const isBust = req.query?.bust === "1";
+      if (!isEmpty && !isBust) return res.status(200).json(cached);
+      // If empty cache + manual bust, fall through to fresh fetch
     }
   } catch (_) {}
 
