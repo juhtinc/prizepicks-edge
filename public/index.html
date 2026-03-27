@@ -2777,20 +2777,66 @@ function renderNewsCards() {
     const m = {injury:'news-type-injury',lineup:'news-type-lineup',weather:'news-type-weather',lines:'news-type-lines',sharp:'news-type-sharp'};
     return m[(t||'').toLowerCase()] || '';
   };
-  grid.innerHTML = items.map(item => {
-    const linkHTML = item.link ? `<a href="${item.link}" target="_blank" rel="noopener" style="font-size:10px;color:var(--sky);text-decoration:none;margin-top:6px;display:inline-block">Read more →</a>` : '';
-    const descHTML = item.description ? `<div style="font-size:11px;color:var(--fog);margin-top:4px;line-height:1.5">${item.description.slice(0,150)}${item.description.length>150?'...':''}</div>` : '';
-    return `<div class="news-card">
+  grid.innerHTML = items.map((item, idx) => {
+    const linkHTML = item.link ? `<a href="${item.link}" target="_blank" rel="noopener" style="font-size:10px;color:var(--sky);text-decoration:none;margin-top:6px;display:inline-block" onclick="event.stopPropagation()">ESPN article →</a>` : '';
+    const desc = item.description || '';
+    const isInjury = (item.type||'').toLowerCase() === 'injury';
+
+    // Parse injury details from text
+    let detailHTML = '';
+    if (isInjury) {
+      const parts = (item.text||'').match(/^(.+?)\s*\((\w+)\)\s*—\s*(.+)$/);
+      const player = parts?.[1] || item.text || '';
+      const team = parts?.[2] || '';
+      const detail = parts?.[3] || '';
+      const status = detail.toLowerCase();
+      const sevClass = status.includes('out') || status.includes('ruled out') ? 'critical'
+        : status.includes('questionable') || status.includes('doubtful') ? 'high'
+        : status.includes('week') || status.includes('season') ? 'critical'
+        : status.includes('probable') || status.includes('day-to-day') ? 'medium' : 'low';
+      const sevLabel = sevClass === 'critical' ? 'OUT/MAJOR' : sevClass === 'high' ? 'QUESTIONABLE' : sevClass === 'medium' ? 'PROBABLE' : 'MINOR';
+      const impactText = sevClass === 'critical' ? 'Fade all props for this player. Consider opponent boost plays.'
+        : sevClass === 'high' ? 'Monitor pregame — if active, usage may be limited. Lower confidence on props.'
+        : sevClass === 'medium' ? 'Likely to play. Minimal impact expected on props.'
+        : 'Full participation expected. No impact on props.';
+
+      detailHTML = `<div class="news-expand" id="news-exp-${idx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span class="inj-badge ${sevClass}" style="font-size:9px;padding:2px 8px">${sevLabel}</span>
+          ${team ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--fog)">${team}</span>` : ''}
+          ${item.time ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog);margin-left:auto">${item.time}</span>` : ''}
+        </div>
+        ${desc ? `<div style="font-size:12px;color:var(--smoke);line-height:1.6;margin-bottom:8px">${desc}</div>` : ''}
+        <div style="font-size:11px;color:var(--fog);margin-bottom:6px"><strong style="color:var(--smoke)">Betting Impact:</strong> ${impactText}</div>
+        ${linkHTML}
+      </div>`;
+    } else {
+      detailHTML = `<div class="news-expand" id="news-exp-${idx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+        ${desc ? `<div style="font-size:12px;color:var(--smoke);line-height:1.6;margin-bottom:8px">${desc}</div>` : '<div style="font-size:11px;color:var(--fog)">No additional details available.</div>'}
+        ${linkHTML}
+      </div>`;
+    }
+
+    return `<div class="news-card" onclick="toggleNewsExpand(${idx})" style="cursor:pointer">
       <div class="news-card-top">
         <span class="news-sport-tag">${item.sport||'News'}</span>
         ${item.type ? `<span class="news-type-tag ${typeClass(item.type)}">${item.type}</span>` : ''}
         <span class="news-time">${item.time||item.timestamp||''}</span>
       </div>
       <div class="news-text">${item.text||item.headline||''}</div>
-      ${descHTML}
-      ${linkHTML}
+      <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--fog);margin-top:6px;opacity:0.5" id="news-hint-${idx}">TAP FOR DETAILS ▾</div>
+      ${detailHTML}
     </div>`;
   }).join('');
+}
+
+function toggleNewsExpand(idx) {
+  const el = document.getElementById('news-exp-' + idx);
+  const hint = document.getElementById('news-hint-' + idx);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (hint) hint.textContent = open ? 'TAP FOR DETAILS ▾' : 'COLLAPSE ▴';
 }
 
 // ── Settings ──────────────────────────────────────────
