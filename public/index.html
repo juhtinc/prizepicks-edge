@@ -3005,6 +3005,7 @@ async function loadLines(manual = false) {
 
     if (document.getElementById('tab-lines')?.classList.contains('active')) renderLinesTab();
     updatePickCardLines();
+    recompareScanResults(); // Re-match scan results against fresh lines
   } catch(e) {
     if (dot) dot.className = 'status-dot red';
     if (status) status.textContent = 'Failed: ' + e.message;
@@ -3631,46 +3632,121 @@ async function runScan() {
   goBtn.disabled = false; goBtn.textContent = 'Scan Now';
 }
 
+// Re-compare scan results against current LINES data (called after Fetch Lines too)
+function recompareScanResults() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('pp_scan_results') || 'null');
+    if (!saved?.props?.length) return;
+    // Re-match against current LINES data
+    saved.props.forEach(p => {
+      p.odds = clientMatchOdds(p);
+    });
+    saved.hasOddsData = !!(LINES.props?.length);
+    localStorage.setItem('pp_scan_results', JSON.stringify(saved));
+    const linesEl = document.getElementById('lines-scan-results');
+    if (linesEl) { linesEl.style.display = 'block'; linesEl.innerHTML = buildScanTableHTML(saved, true); }
+  } catch(_) {}
+}
+
+function clientMatchOdds(prop) {
+  if (!LINES.props?.length) return null;
+  const playerLower = (prop.player || '').toLowerCase().trim();
+  const statLower = (prop.stat || '').toLowerCase().trim();
+  const match = LINES.props.find(p => {
+    const nl = (p.player||'').toLowerCase();
+    const nameMatch = nl === playerLower || nl.includes(playerLower) || playerLower.includes(nl.split(' ').pop());
+    if (!nameMatch) return false;
+    const sl = (p.stat||'').toLowerCase();
+    return sl.includes(statLower) || statLower.includes(sl);
+  });
+  if (!match) return null;
+  const bookLines = Object.values(match.books || {});
+  const consensus = bookLines.length ? bookLines.reduce((a,b) => a+b, 0) / bookLines.length : null;
+  return {
+    books: match.books,
+    bestOver: match.bestOver,
+    bestUnder: match.bestUnder,
+    consensus: consensus ? parseFloat(consensus.toFixed(1)) : null,
+    edge: consensus != null && prop.line != null ? parseFloat((prop.line - consensus).toFixed(1)) : null,
+    discrepancy: match.discrepancy,
+  };
+}
+
 function buildScanTableHTML(d, showClear) {
   if (!d?.props?.length) return '';
 
-  const hasOdds = d.hasOddsData;
   const ts = d.scannedAt ? new Date(d.scannedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '';
+  const matched = d.props.filter(p => p.odds?.consensus != null).length;
 
   let html = `<div style="background:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:4px">`;
-  html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+  html += `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
     <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime)">
-      📸 ${d.totalProps} props scanned${ts ? ' · '+ts : ''}${d.estimatedCost ? ' · $'+d.estimatedCost : ''}
+      📸 BOARD vs SPORTSBOOKS
+    </span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--smoke)">
+      ${d.totalProps} props${matched ? ' · '+matched+' matched' : ''}${ts ? ' · '+ts : ''}
     </span>
     <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="export-btn" onclick="recompareScanResults()" style="font-size:10px">🔄 Re-compare</button>
       <button class="export-btn" onclick="copyScanResults()" style="font-size:10px">📋 Copy</button>
       ${showClear ? '<button class="export-btn" onclick="clearScanResults()" style="font-size:10px;color:var(--coral)">× Clear</button>' : ''}
     </div>
   </div>`;
 
+  // Sort: matched with edge first (biggest abs edge), then unmatched
+  const sorted = [...d.props].sort((a, b) => {
+    const ae = Math.abs(a.odds?.edge || 0);
+    const be = Math.abs(b.odds?.edge || 0);
+    if (a.odds?.edge != null && b.odds?.edge == null) return -1;
+    if (a.odds?.edge == null && b.odds?.edge != null) return 1;
+    return be - ae;
+  });
+
   html += `<div style="overflow-x:auto"><table class="scan-compare-table">
     <thead><tr>
-      <th>Player</th><th>Stat</th><th>Board Line</th><th>Dir</th>
-      ${hasOdds ? '<th>Consensus</th><th>Best Over</th><th>Best Under</th><th>Edge</th>' : ''}
-      <th>Src</th>
+      <th>Player</th>
+      <th>Stat</th>
+      <th style="text-align:center;background:rgba(245,166,35,0.08);color:#f5a623">PP Line</th>
+      <th style="text-align:center">DK</th>
+      <th style="text-align:center">FD</th>
+      <th style="text-align:center">MGM</th>
+      <th style="text-align:center">Avg</th>
+      <th style="text-align:center">Edge</th>
+      <th>Verdict</th>
     </tr></thead><tbody>`;
 
-  d.props.forEach(p => {
+  sorted.forEach(p => {
+    const books = p.odds?.books || {};
+    const dk = books.draftkings ?? books.draftkings_promo ?? '—';
+    const fd = books.fanduel ?? '—';
+    const mgm = books.betmgm ?? '—';
+    const avg = p.odds?.consensus ?? '—';
     const edge = p.odds?.edge;
     const edgeCls = edge > 0 ? 'pos' : edge < 0 ? 'neg' : 'zero';
     const edgeStr = edge != null ? (edge > 0 ? '+' : '') + edge : '—';
-    html += `<tr>
+
+    // Verdict: if PP line < consensus and you take OVER, that's good (lower bar)
+    let verdict = '';
+    if (edge != null) {
+      if (edge > 0.5) verdict = `<span style="color:var(--lime);font-weight:600">✓ OVER edge</span>`;
+      else if (edge < -0.5) verdict = `<span style="color:var(--sky);font-weight:600">✓ UNDER edge</span>`;
+      else verdict = `<span style="color:var(--fog)">Fair line</span>`;
+    }
+
+    // Highlight row if there's an edge
+    const rowStyle = Math.abs(edge||0) > 0.5 ? 'background:rgba(184,245,66,0.03)' : '';
+
+    html += `<tr style="${rowStyle}">
       <td style="font-weight:600">${p.player || '—'}</td>
       <td style="color:var(--smoke);font-size:10px">${p.stat || '—'}</td>
-      <td style="font-family:'JetBrains Mono',monospace">${p.line ?? '—'}</td>
-      <td><span style="color:${p.direction==='OVER'?'var(--lime)':'var(--sky)'};font-size:10px;font-weight:600">${p.direction || '—'}</span></td>`;
-    if (hasOdds) {
-      html += `<td style="font-family:'JetBrains Mono',monospace">${p.odds?.consensus ?? '—'}</td>`;
-      html += `<td style="font-size:10px;color:var(--smoke)">${p.odds?.bestOver ? bookLabel(p.odds.bestOver.book)+'@'+p.odds.bestOver.line : '—'}</td>`;
-      html += `<td style="font-size:10px;color:var(--smoke)">${p.odds?.bestUnder ? bookLabel(p.odds.bestUnder.book)+'@'+p.odds.bestUnder.line : '—'}</td>`;
-      html += `<td><span class="scan-edge ${edgeCls}">${edgeStr}</span></td>`;
-    }
-    html += `<td style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog)">Img ${p.sourceImage}</td></tr>`;
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-weight:700;background:rgba(245,166,35,0.06);color:#f5a623">${p.line ?? '—'}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;color:var(--smoke)">${dk}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;color:var(--smoke)">${fd}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;color:var(--smoke)">${mgm}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-weight:600">${avg}</td>
+      <td style="text-align:center"><span class="scan-edge ${edgeCls}">${edgeStr}</span></td>
+      <td style="font-size:10px">${verdict}</td>
+    </tr>`;
   });
 
   html += '</tbody></table></div></div>';
