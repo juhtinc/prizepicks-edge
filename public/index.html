@@ -29,10 +29,63 @@ a{color:inherit;text-decoration:none}
   --sb-w:220px;
 }
 [data-theme="light"]{
-  --ink:#f0f4f8;--ink2:#ffffff;--ink3:#e8edf3;--ink4:#dde4ec;
-  --line:rgba(0,0,0,0.07);--line2:rgba(0,0,0,0.12);
-  --smoke:#5a7080;--fog:#7a9aaa;--text:#1a2535;
+  --ink:#F0F2F5;--ink2:#FFFFFF;--ink3:#E8EAED;--ink4:#DFE1E5;
+  --line:#E2E5EA;--line2:#D0D4DA;
+  --smoke:#5F6B7A;--fog:#8A95A3;--text:#1A1D23;
+  --lime:#94C520;--lime2:#7BA81A;
+  --coral:#E8404F;--gold:#D4A017;
+  --sky:#3B8FD9;--violet:#8B6FC0;
 }
+/* Light mode: cards get subtle shadow */
+[data-theme="light"] .pick-card,
+[data-theme="light"] .game-card,
+[data-theme="light"] .news-card,
+[data-theme="light"] .plays-panel,
+[data-theme="light"] .bs-panel{
+  box-shadow:0 1px 3px rgba(0,0,0,0.08);
+}
+/* Light mode: keep sidebar dark for trading terminal feel */
+[data-theme="light"] .sidebar{
+  background:#1A1F2E;border-right:1px solid #252B3B;
+  --ink2:#1A1F2E;--ink3:#252B3B;--ink4:#2F3647;
+  --line:#252B3B;--line2:#353D50;
+  --text:#E0E4EA;--smoke:#A0AAB8;--fog:#6B7788;
+  --lime:#B8F542;--lime2:#B8F542;
+}
+[data-theme="light"] .sidebar .sb-brand,
+[data-theme="light"] .sidebar .sb-nav,
+[data-theme="light"] .sidebar .sb-stats,
+[data-theme="light"] .sidebar .sb-theme-toggle{
+  border-color:#252B3B;
+}
+[data-theme="light"] .sidebar .sb-tab{color:#A0AAB8}
+[data-theme="light"] .sidebar .sb-tab:hover{background:rgba(255,255,255,0.04);color:#E0E4EA}
+[data-theme="light"] .sidebar .sb-tab.active{color:#B8F542;background:rgba(184,245,66,0.08);border-left-color:#B8F542}
+[data-theme="light"] .sidebar .sb-logo{background:#B8F542;color:#1A1F2E}
+[data-theme="light"] .sidebar .sb-name{color:#E0E4EA}
+[data-theme="light"] .sidebar .sb-name span{color:#B8F542}
+[data-theme="light"] .sidebar .sb-tag{color:#6B7788}
+[data-theme="light"] .sidebar .sb-stat-label{color:#6B7788}
+[data-theme="light"] .sidebar .sb-stat-val{color:#A0AAB8}
+[data-theme="light"] .sidebar .sb-theme-toggle{border-color:#353D50;color:#A0AAB8}
+[data-theme="light"] .sidebar .sb-theme-toggle:hover{background:rgba(255,255,255,0.04);border-color:#4A5568}
+[data-theme="light"] .sidebar .sb-theme-label{color:#6B7788}
+/* Light mode: status bar and toolbar backgrounds */
+[data-theme="light"] .status-bar,
+[data-theme="light"] .toolbar,
+[data-theme="light"] .news-filter,
+[data-theme="light"] .news-status-bar{
+  background:#F0F2F5;border-color:#E2E5EA;
+}
+/* Light mode: keep bottom nav dark (mobile) */
+[data-theme="light"] .bottom-nav{
+  background:#1A1F2E;border-top-color:#252B3B;
+}
+[data-theme="light"] .bottom-nav-btn{color:#6B7788}
+[data-theme="light"] .bottom-nav-btn.active{color:#B8F542}
+/* Light mode: soften glow effects */
+[data-theme="light"] body::before{opacity:0}
+[data-theme="light"] .glow-orb{opacity:0}
 
 /* ── Base ── */
 html{scroll-behavior:smooth}
