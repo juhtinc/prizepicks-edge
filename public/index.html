@@ -214,6 +214,22 @@ body::before{
 .btn-refresh svg{width:13px;height:13px;flex-shrink:0}
 .btn-refresh.spinning svg{animation:spin 0.7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.btn-free-refresh{
+  display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--r);
+  border:1px solid rgba(76,175,80,0.5);color:#4caf50;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+  background:transparent;transition:all 0.15s;white-space:nowrap;cursor:pointer;
+}
+.btn-free-refresh:hover{background:rgba(76,175,80,0.1);border-color:#4caf50}
+.btn-free-refresh:disabled{opacity:0.3;cursor:not-allowed}
+.btn-ai-refresh{
+  display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--r);
+  border:1px solid rgba(245,166,35,0.5);color:#f5a623;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+  background:transparent;transition:all 0.15s;white-space:nowrap;cursor:pointer;
+}
+.btn-ai-refresh:hover{background:rgba(245,166,35,0.1);border-color:#f5a623}
+.btn-ai-refresh:disabled{opacity:0.3;cursor:not-allowed}
 
 /* ── Status Bar ── */
 .status-bar{
@@ -1176,24 +1192,31 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
         <button class="pill" id="starred-filter-btn" onclick="toggleStarredFilter()">⭐ Starred</button>
       </div>
 
-      <!-- Toolbar row 2: export + refresh -->
+      <!-- Toolbar row 2: export + dual refresh -->
       <div class="toolbar">
         <button class="export-btn" onclick="copyPicksText()" title="Copy picks as text">📋 Copy</button>
         <button class="export-btn" onclick="window.print()" title="Print / Save as PDF">🖨 Print</button>
         <div class="spacer"></div>
-        <button class="btn-refresh" id="btn-refresh" onclick="openModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-          Refresh Picks
+        <button class="btn-free-refresh" id="btn-free-refresh" onclick="freeRefreshAll()">
+          🔄 Refresh Data
+        </button>
+        <button class="btn-ai-refresh" id="btn-refresh" onclick="openModal()">
+          🤖 Run AI Analysis
         </button>
       </div>
 
-      <!-- Status Bar -->
+      <!-- Dual Status Bar -->
       <div class="status-bar">
+        <span class="status-dot green" id="data-dot"></span>
+        <span id="data-status" style="margin-right:14px">📊 Data: not loaded</span>
         <span class="status-dot amber" id="sdot"></span>
-        <span id="stext">Loading picks...</span>
+        <span id="stext">🤖 AI Picks: loading...</span>
         <span class="status-rhs" id="sleagues"></span>
+      </div>
+
+      <!-- Stale picks warning banner -->
+      <div id="stale-picks-banner" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:var(--r);font-size:12px;color:#f5a623">
+        ⚠️ New data loaded since last AI analysis — consider re-running AI
       </div>
 
       <!-- Steam Alerts -->
@@ -1937,20 +1960,21 @@ async function loadPicks() {
     const clvAvg = dr.clv_record?.avg;
     set('h-clv', clvAvg != null ? (clvAvg >= 0 ? '+' : '') + clvAvg.toFixed(2) : '—');
 
-    // Status bar
+    // AI Status bar
     const sdot = document.getElementById('sdot');
     const stext = document.getElementById('stext');
     if (m.empty) {
       sdot.className = 'status-dot amber';
-      stext.textContent = "No picks cached — click Refresh Picks to analyze today's props";
+      stext.textContent = "🤖 AI Picks: none — run AI Analysis";
     } else if (m.analyzedAt) {
       sdot.className = 'status-dot green';
       const t = new Date(m.analyzedAt);
-      stext.textContent = 'Last updated ' + t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) + ' · Auto-refreshes 9am, 1pm, 6pm PT';
+      stext.textContent = '🤖 AI Picks: ' + t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
       document.getElementById('sb-refresh-time').textContent = t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      window._lastAITime = t;
     } else {
       sdot.className = 'status-dot amber';
-      stext.textContent = 'Analysis running...';
+      stext.textContent = '🤖 AI: running...';
     }
     if (m.leaguesSeen?.length) document.getElementById('sleagues').textContent = m.leaguesSeen.length + ' leagues active';
 
@@ -1993,6 +2017,7 @@ async function submitRefresh() {
   const errEl = document.getElementById('modal-err');
   errEl.style.display = 'none';
   if (!sec) { errEl.textContent = 'Please enter your CRON_SECRET'; errEl.style.display = 'block'; return; }
+  if (!confirm('This will use ~$0.05-0.10 of Anthropic API credits. Continue?')) return;
   closeModal();
   const btn = document.getElementById('btn-refresh');
   btn.disabled = true; btn.classList.add('spinning');
@@ -2007,6 +2032,8 @@ async function submitRefresh() {
       btn.disabled = false; btn.classList.remove('spinning'); return;
     }
     await loadPicks();
+    window._lastAITime = new Date();
+    checkStalePicks();
     pushNotif('✅ Picks Refreshed!', `${ALL.length} new picks loaded.`, 'success');
   } catch(e) {
     document.getElementById('stext').textContent = 'Error: '+e.message;
@@ -2683,6 +2710,59 @@ document.getElementById('main').innerHTML = `
     <div class="state-mono">Connecting to API...</div>
   </div>`;
 
+// ── Free Refresh All ─────────────────────────────────
+let _lastFreeRefresh = null;
+
+async function freeRefreshAll() {
+  const btn = document.getElementById('btn-free-refresh');
+  if (btn) { btn.disabled = true; btn.textContent = '🔄 Refreshing...'; }
+  const dataDot = document.getElementById('data-dot');
+  const dataStatus = document.getElementById('data-status');
+  if (dataDot) dataDot.className = 'status-dot amber';
+  if (dataStatus) dataStatus.textContent = '📊 Data: refreshing...';
+
+  try {
+    // Fire all FREE data sources in parallel (zero Anthropic API cost)
+    await Promise.allSettled([
+      loadLines(true),      // Odds API lines (bust cache)
+      loadScores(true),     // ESPN scores
+      pollSteam(),          // Steam detection (Odds API)
+    ]);
+
+    _lastFreeRefresh = new Date();
+    saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
+    updateDataStatus();
+    checkStalePicks();
+  } catch(e) {
+    console.error('[freeRefresh]', e);
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Data'; }
+}
+
+function updateDataStatus() {
+  const dot = document.getElementById('data-dot');
+  const el = document.getElementById('data-status');
+  if (!_lastFreeRefresh) {
+    if (dot) dot.className = 'status-dot amber';
+    if (el) el.textContent = '📊 Data: not loaded';
+    return;
+  }
+  if (dot) dot.className = 'status-dot green';
+  const t = _lastFreeRefresh.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  if (el) el.textContent = `📊 Data: ${t}`;
+}
+
+function checkStalePicks() {
+  const banner = document.getElementById('stale-picks-banner');
+  if (!banner) return;
+  if (_lastFreeRefresh && window._lastAITime) {
+    banner.style.display = _lastFreeRefresh > window._lastAITime ? 'block' : 'none';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 // ── Lines ─────────────────────────────────────────────
 let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
 let activeLinesSportFilter = 'ALL';
@@ -3180,13 +3260,26 @@ const jrnDate = document.getElementById('jrn-date');
 if (jrnDate) jrnDate.value = new Date().toLocaleDateString('en-CA');
 
 loadPicks();
-// Auto-load lines from KV cache on boot (no Odds API call if cache is fresh)
+
+// Restore last free refresh time
+const savedFreeRefresh = getSetting('lastFreeRefresh', null);
+if (savedFreeRefresh) { _lastFreeRefresh = new Date(savedFreeRefresh); updateDataStatus(); }
+
+// Initial free data load from KV caches (no Odds API quota hit)
 loadLines(false);
-// Load scores in background on boot — no API cost, hits ESPN then caches in KV
 loadScores();
-// Poll steam every 10 min
 pollSteam();
-setInterval(pollSteam, 10 * 60 * 1000);
+
+// Auto free-refresh every 15 min (free APIs only, zero cost)
+setInterval(() => {
+  loadLines(true);
+  loadScores();
+  pollSteam();
+  _lastFreeRefresh = new Date();
+  saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
+  updateDataStatus();
+  checkStalePicks();
+}, 15 * 60 * 1000);
 
 // Check for live games every 5 min and notify if pick game goes live
 setInterval(()=>{
