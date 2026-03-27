@@ -102,24 +102,27 @@ async function extractProps(base64Img, index) {
         },
         {
           type: "text",
-          text: `This is a PrizePicks board screenshot. Each player card shows:
-- Player name (bold text)
-- A stat category (Points, Rebounds, Assists, Pts+Rebs+Asts, Fantasy Score, Strikeouts, Hits, Goals, etc.)
-- A line number (e.g. 24.5)
-- Sometimes "More" or "Less" direction indicators
-- Green shield icon means "Goblin" (hot streak)
-- Red/orange icon means "Demon" (cold streak)
+          text: `This is a PrizePicks board screenshot. Each player card has this layout:
+- Player photo at top
+- Player FULL NAME in bold white text below the photo
+- A small pencil/edit icon followed by the LINE NUMBER (this is the most important number — read it VERY carefully)
+- Below that: a stat label like "Points", "Rebounds", "Assists", "3-Pt Made", "Pts+Rebs+Asts", etc.
+- At bottom: "More" and "Less" buttons
 
-Extract EVERY player prop visible. Return ONLY a valid JSON array:
-[{"player":"Full Name","stat":"Points","line":24.5,"direction":null},...]
+CRITICAL: The line number is the number next to the pencil icon (e.g. 28.5, 6.5, 0.5).
+Read each digit carefully — 2 vs 8, 1 vs 7, 5 vs 6, and decimal points matter.
+Double-check: NBA points lines for starters are typically 15-35. Rebounds 3-12. Assists 2-12.
+
+Extract EVERY player prop. Return ONLY a valid JSON array:
+[{"player":"Full Name","stat":"Points","line":28.5,"direction":null},...]
 
 Rules:
 - player: exact full name as shown on the card
-- stat: the stat type shown (Points, Rebounds, Assists, 3-Pt Made, Pts+Rebs+Asts, Fantasy Score, Strikeouts, Hits Allowed, Goals, Saves, etc.)
-- line: the number shown (e.g. 24.5, 6.5, 0.5)
-- direction: "OVER" or "UNDER" if indicated, otherwise null
-- Include ALL cards visible, even if partially shown
-- This may be a long scrolling page — extract every single card
+- stat: standardized (Points, Rebounds, Assists, 3-Pt Made, Pts+Rebs+Asts, Fantasy Score, Strikeouts, Hits Allowed, Goals, Saves, etc.)
+- line: THE EXACT NUMBER shown next to the pencil icon. Read carefully. Do not guess.
+- direction: null (PrizePicks doesn't show direction on the board)
+- Include ALL cards visible, even partially shown
+- This may be a long scrolling page with many rows of 5 cards each
 JSON array only. No other text.`,
         },
       ],

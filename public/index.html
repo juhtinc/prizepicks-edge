@@ -3481,17 +3481,37 @@ function handleScanDrop(e) {
   if (e.dataTransfer?.files?.length) handleScanFiles(e.dataTransfer.files);
 }
 
-// Auto-slice tall images into chunks under 7000px for Claude Vision (8000px limit)
+// Enhance image: boost contrast + brightness for better OCR
+function enhanceForOCR(canvas) {
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = imgData.data;
+  const contrast = 1.4; // 40% more contrast
+  const brightness = 15; // slight brightness boost
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.min(255, Math.max(0, contrast * (d[i] - 128) + 128 + brightness));
+    d[i+1] = Math.min(255, Math.max(0, contrast * (d[i+1] - 128) + 128 + brightness));
+    d[i+2] = Math.min(255, Math.max(0, contrast * (d[i+2] - 128) + 128 + brightness));
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+// Auto-slice tall images into chunks under 7000px + enhance for OCR
 const MAX_IMG_H = 7000;
 function sliceImageIfNeeded(dataUrl) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
       if (img.height <= MAX_IMG_H) {
-        resolve([dataUrl]);
+        // Still enhance even if no slicing needed
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        enhanceForOCR(c);
+        resolve([c.toDataURL('image/png')]);
         return;
       }
-      // Slice into chunks
+      // Slice into chunks + enhance each
       const chunks = [];
       const numChunks = Math.ceil(img.height / MAX_IMG_H);
       for (let i = 0; i < numChunks; i++) {
@@ -3501,7 +3521,8 @@ function sliceImageIfNeeded(dataUrl) {
         canvas.width = img.width;
         canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, y, img.width, h, 0, 0, img.width, h);
-        chunks.push(canvas.toDataURL('image/jpeg', 0.9));
+        enhanceForOCR(canvas);
+        chunks.push(canvas.toDataURL('image/png'));
       }
       resolve(chunks);
     };
