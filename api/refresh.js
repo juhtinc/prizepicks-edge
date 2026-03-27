@@ -151,9 +151,10 @@ module.exports = async function handler(req, res) {
   const authBearer = req.headers.authorization?.startsWith("Bearer ")
     ? req.headers.authorization.slice(7)
     : null;
-  const secret = req.headers["x-secret"] || req.query?.secret || authBearer;
+  const secret = req.headers["x-secret"] || req.query?.secret || authBearer || req.body?.secret;
+  console.log("[refresh] Expected secret:", process.env.CRON_SECRET, "Received:", secret);
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: "Unauthorized", received: secret ? "provided but wrong" : "missing" });
   }
 
   const today = new Date().toLocaleDateString("en-US", {
