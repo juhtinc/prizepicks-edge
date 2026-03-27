@@ -108,13 +108,19 @@ async function fetchWithTimeout(url, ms = 9000) {
  * Returns [{id, home_team, away_team, commence_time}, ...]
  */
 async function getTodayEvents(sportKey, apiKey) {
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-  const toISO = d => d.toISOString().replace(/\.\d{3}Z$/, "Z");
-  const from = toISO(new Date(`${today}T00:00:00-07:00`));
-  const to   = toISO(new Date(`${today}T23:59:59-07:00`));
-  const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/events?apiKey=${apiKey}&dateFormat=iso&commenceTimeFrom=${from}&commenceTimeTo=${to}`;
+  // Get upcoming events (no date filter — Odds API returns upcoming by default)
+  // Then filter to today + tomorrow in PT to catch evening games
+  const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/events?apiKey=${apiKey}&dateFormat=iso`;
   const events = await fetchWithTimeout(url);
-  return Array.isArray(events) ? events : [];
+  if (!Array.isArray(events)) return [];
+
+  // Filter to events starting within next 24 hours
+  const now = Date.now();
+  const cutoff = now + 24 * 60 * 60 * 1000;
+  return events.filter(e => {
+    const t = new Date(e.commence_time).getTime();
+    return t >= now - 6 * 60 * 60 * 1000 && t <= cutoff; // include games started up to 6h ago (live)
+  });
 }
 
 /**

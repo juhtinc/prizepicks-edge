@@ -31,22 +31,24 @@ const MARKET_LABEL = {
 };
 
 async function fetchCurrentLines(apiKey) {
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-  const toISO = d => d.toISOString().replace(/\.\d{3}Z$/, "Z");
-  const from = toISO(new Date(`${today}T00:00:00-07:00`));
-  const to   = toISO(new Date(`${today}T23:59:59-07:00`));
-
   const allLines = {}; // "PLAYER|STAT" → { player, stat, sport, books: {book: line} }
+  const now = Date.now();
+  const cutoff = now + 24 * 60 * 60 * 1000;
 
   for (const { sport, key, markets } of ODDS_SPORTS) {
     try {
       const evR = await fetch(
-        `https://api.the-odds-api.com/v4/sports/${key}/events?apiKey=${apiKey}&dateFormat=iso&commenceTimeFrom=${from}&commenceTimeTo=${to}`,
+        `https://api.the-odds-api.com/v4/sports/${key}/events?apiKey=${apiKey}&dateFormat=iso`,
         { signal: AbortSignal.timeout(9000) }
       );
       if (!evR.ok) continue;
-      const events = await evR.json();
-      const batch = (Array.isArray(events) ? events : []).slice(0, 4); // limit quota usage
+      const rawEvents = await evR.json();
+      // Filter to next 24h + live games
+      const events = (Array.isArray(rawEvents) ? rawEvents : []).filter(e => {
+        const t = new Date(e.commence_time).getTime();
+        return t >= now - 6 * 60 * 60 * 1000 && t <= cutoff;
+      });
+      const batch = events.slice(0, 4); // limit quota usage
 
       await Promise.allSettled(batch.map(async event => {
         try {

@@ -63,21 +63,24 @@ async function getSportsbookProps(apiKey) {
 
   console.log("[refresh] No cached lines — fetching fresh from The Odds API...");
   const allProps = [];
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-  const from = new Date(`${today}T00:00:00-07:00`).toISOString();
-  const to   = new Date(`${today}T23:59:59-07:00`).toISOString();
+  const now = Date.now();
+  const cutoff = now + 24 * 60 * 60 * 1000;
 
   for (const { sport, key, markets } of ODDS_SPORTS) {
     try {
-      // Step 1: get today's event IDs
+      // Step 1: get upcoming event IDs (no date filter — more reliable)
       const evR = await fetch(
-        `https://api.the-odds-api.com/v4/sports/${key}/events?apiKey=${apiKey}&dateFormat=iso&commenceTimeFrom=${from}&commenceTimeTo=${to}`,
+        `https://api.the-odds-api.com/v4/sports/${key}/events?apiKey=${apiKey}&dateFormat=iso`,
         { signal: AbortSignal.timeout(9000) }
       );
       if (!evR.ok) { console.warn(`[refresh] ${sport} events HTTP ${evR.status}`); continue; }
-      const events = await evR.json();
-      const batch = (Array.isArray(events) ? events : []).slice(0, 8); // max 8 events/sport
-      console.log(`[refresh] ${sport}: ${events.length} events today, fetching props for ${batch.length}`);
+      const rawEvents = await evR.json();
+      const events = (Array.isArray(rawEvents) ? rawEvents : []).filter(e => {
+        const t = new Date(e.commence_time).getTime();
+        return t >= now - 6 * 60 * 60 * 1000 && t <= cutoff;
+      });
+      const batch = events.slice(0, 8);
+      console.log(`[refresh] ${sport}: ${events.length} events upcoming, fetching props for ${batch.length}`);
 
       // Step 2: fetch player props per event
       await Promise.allSettled(batch.map(async event => {
