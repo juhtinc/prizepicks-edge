@@ -3747,18 +3747,24 @@ function buildScanTableHTML(d, showClear) {
     const edgeStr = edge != null ? (edge > 0 ? '+' : '') + edge : '—';
 
     // Verdict: if PP line < consensus and you take OVER, that's good (lower bar)
+    // Boost badge
+    const boost = p.boost;
+    const boostBadge = boost === 'goblin' ? ' <span style="font-size:10px;color:#4caf50" title="Goblin — boosted line, lower payout">🟢</span>'
+      : boost === 'demon' ? ' <span style="font-size:10px;color:#f44336" title="Demon — harder line, higher payout">🔴</span>'
+      : '';
+
     let verdict = '';
     if (edge != null) {
-      if (edge > 0.5) verdict = `<span style="color:var(--lime);font-weight:600">✓ OVER edge</span>`;
-      else if (edge < -0.5) verdict = `<span style="color:var(--sky);font-weight:600">✓ UNDER edge</span>`;
-      else verdict = `<span style="color:var(--fog)">Fair line</span>`;
+      if (edge > 0.5) verdict = `<span style="color:var(--lime);font-weight:600">✓ OVER</span>`;
+      else if (edge < -0.5) verdict = `<span style="color:var(--sky);font-weight:600">✓ UNDER</span>`;
+      else verdict = `<span style="color:var(--fog)">Fair</span>`;
     }
 
     // Highlight row if there's an edge
     const rowStyle = Math.abs(edge||0) > 0.5 ? 'background:rgba(184,245,66,0.03)' : '';
 
     html += `<tr style="${rowStyle}">
-      <td style="font-weight:600">${p.player || '—'}</td>
+      <td style="font-weight:600">${p.player || '—'}${boostBadge}</td>
       <td style="color:var(--smoke);font-size:10px">${p.stat || '—'}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-weight:700;background:rgba(245,166,35,0.06);color:#f5a623">${p.line ?? '—'}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;color:var(--smoke)">${dk}</td>

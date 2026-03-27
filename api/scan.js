@@ -114,13 +114,14 @@ Read each digit carefully — 2 vs 8, 1 vs 7, 5 vs 6, and decimal points matter.
 Double-check: NBA points lines for starters are typically 15-35. Rebounds 3-12. Assists 2-12.
 
 Extract EVERY player prop. Return ONLY a valid JSON array:
-[{"player":"Full Name","stat":"Points","line":28.5,"direction":null},...]
+[{"player":"Full Name","stat":"Points","line":28.5,"direction":null,"boost":"goblin"},...]
 
 Rules:
 - player: exact full name as shown on the card
 - stat: standardized (Points, Rebounds, Assists, 3-Pt Made, Pts+Rebs+Asts, Fantasy Score, Strikeouts, Hits Allowed, Goals, Saves, etc.)
 - line: THE EXACT NUMBER shown next to the pencil icon. Read carefully. Do not guess.
 - direction: null (PrizePicks doesn't show direction on the board)
+- boost: "goblin" if green shield icon visible on card, "demon" if red/orange icon visible, null if neither
 - Include ALL cards visible, even partially shown
 - This may be a long scrolling page with many rows of 5 cards each
 JSON array only. No other text.`,
