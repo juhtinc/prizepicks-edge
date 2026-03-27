@@ -3480,13 +3480,45 @@ function handleScanDrop(e) {
   if (e.dataTransfer?.files?.length) handleScanFiles(e.dataTransfer.files);
 }
 
+// Auto-slice tall images into chunks under 7000px for Claude Vision (8000px limit)
+const MAX_IMG_H = 7000;
+function sliceImageIfNeeded(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.height <= MAX_IMG_H) {
+        resolve([dataUrl]);
+        return;
+      }
+      // Slice into chunks
+      const chunks = [];
+      const numChunks = Math.ceil(img.height / MAX_IMG_H);
+      for (let i = 0; i < numChunks; i++) {
+        const canvas = document.createElement('canvas');
+        const y = i * MAX_IMG_H;
+        const h = Math.min(MAX_IMG_H, img.height - y);
+        canvas.width = img.width;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, y, img.width, h, 0, 0, img.width, h);
+        chunks.push(canvas.toDataURL('image/jpeg', 0.9));
+      }
+      resolve(chunks);
+    };
+    img.src = dataUrl;
+  });
+}
+
 function handleScanFiles(files) {
   for (const f of files) {
     if (_scanImages.length >= 10) break;
     if (!f.type.startsWith('image/')) continue;
     const reader = new FileReader();
-    reader.onload = () => {
-      _scanImages.push({ dataUrl: reader.result });
+    reader.onload = async () => {
+      const chunks = await sliceImageIfNeeded(reader.result);
+      for (const chunk of chunks) {
+        if (_scanImages.length >= 10) break;
+        _scanImages.push({ dataUrl: chunk });
+      }
       renderScanThumbs();
     };
     reader.readAsDataURL(f);
@@ -3500,13 +3532,18 @@ function handleScanPaste(e) {
     if (item.type.startsWith('image/') && _scanImages.length < 10) {
       const file = item.getAsFile();
       const reader = new FileReader();
-      reader.onload = () => {
-        _scanImages.push({ dataUrl: reader.result });
+      reader.onload = async () => {
+        const chunks = await sliceImageIfNeeded(reader.result);
+        const newImages = chunks.map(c => ({ dataUrl: c }));
         // Auto-open modal if not open
         if (!document.getElementById('scan-modal').classList.contains('open')) {
           openScanModal();
-          // Re-add the image since openScanModal clears
-          _scanImages = [{ dataUrl: reader.result }];
+          _scanImages = newImages.slice(0, 10);
+        } else {
+          for (const img of newImages) {
+            if (_scanImages.length >= 10) break;
+            _scanImages.push(img);
+          }
         }
         renderScanThumbs();
       };
