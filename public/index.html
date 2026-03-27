@@ -1601,21 +1601,27 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
           <div class="tab-title">📐 <em>Lines</em></div>
           <div class="tab-sub">Multi-book comparison · DraftKings · FanDuel · BetMGM · Line shop alerts</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-refresh" onclick="openScanModal()">📸 Scan Board</button>
-          <button class="btn-refresh" onclick="loadLines(true)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
-              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            Fetch Lines
-          </button>
-        </div>
+        <button class="btn-refresh" onclick="loadLines(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Fetch Lines
+        </button>
       </div>
 
       <div class="news-status-bar">
         <span class="status-dot amber" id="lines-dot"></span>
         <span id="lines-status">Lines not loaded — click Fetch Lines</span>
         <span style="margin-left:auto;font-size:9px;color:var(--fog)" id="lines-quota"></span>
+      </div>
+
+      <div style="margin-bottom:14px;padding:12px 16px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:8px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:20px">📸</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">Board Scanner</div>
+          <div style="font-size:11px;color:var(--smoke)">Upload PrizePicks screenshots to compare lines against sportsbooks</div>
+        </div>
+        <button class="btn-refresh" onclick="openScanModal()" style="white-space:nowrap">📸 Scan Board</button>
       </div>
 
       <div class="news-filter" id="lines-sport-filter">
