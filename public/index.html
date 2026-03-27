@@ -1624,6 +1624,9 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
         <button class="btn-refresh" onclick="openScanModal()" style="white-space:nowrap">📸 Scan Board</button>
       </div>
 
+      <!-- Persistent scan results (outside modal) -->
+      <div id="lines-scan-results" style="display:none;margin-bottom:16px"></div>
+
       <div class="news-filter" id="lines-sport-filter">
         <button class="pill on" data-lines-filter="ALL">All Sports</button>
       </div>
@@ -3534,18 +3537,21 @@ async function runScan() {
   goBtn.disabled = false; goBtn.textContent = 'Scan Now';
 }
 
-function renderScanResults(d) {
-  const el = document.getElementById('scan-results');
-  el.style.display = 'block';
-
-  if (!d.props?.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--fog);padding:20px">No props extracted from screenshots.</div>';
-    return;
-  }
+function buildScanTableHTML(d, showClear) {
+  if (!d?.props?.length) return '';
 
   const hasOdds = d.hasOddsData;
-  let html = `<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);margin-bottom:10px">
-    ${d.totalProps} props found · Cost: $${d.estimatedCost}
+  const ts = d.scannedAt ? new Date(d.scannedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '';
+
+  let html = `<div style="background:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:4px">`;
+  html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime)">
+      📸 ${d.totalProps} props scanned${ts ? ' · '+ts : ''}${d.estimatedCost ? ' · $'+d.estimatedCost : ''}
+    </span>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="export-btn" onclick="copyScanResults()" style="font-size:10px">📋 Copy</button>
+      ${showClear ? '<button class="export-btn" onclick="clearScanResults()" style="font-size:10px;color:var(--coral)">× Clear</button>' : ''}
+    </div>
   </div>`;
 
   html += `<div style="overflow-x:auto"><table class="scan-compare-table">
@@ -3559,56 +3565,88 @@ function renderScanResults(d) {
     const edge = p.odds?.edge;
     const edgeCls = edge > 0 ? 'pos' : edge < 0 ? 'neg' : 'zero';
     const edgeStr = edge != null ? (edge > 0 ? '+' : '') + edge : '—';
-
     html += `<tr>
       <td style="font-weight:600">${p.player || '—'}</td>
       <td style="color:var(--smoke);font-size:10px">${p.stat || '—'}</td>
       <td style="font-family:'JetBrains Mono',monospace">${p.line ?? '—'}</td>
       <td><span style="color:${p.direction==='OVER'?'var(--lime)':'var(--sky)'};font-size:10px;font-weight:600">${p.direction || '—'}</span></td>`;
-
     if (hasOdds) {
       html += `<td style="font-family:'JetBrains Mono',monospace">${p.odds?.consensus ?? '—'}</td>`;
       html += `<td style="font-size:10px;color:var(--smoke)">${p.odds?.bestOver ? bookLabel(p.odds.bestOver.book)+'@'+p.odds.bestOver.line : '—'}</td>`;
       html += `<td style="font-size:10px;color:var(--smoke)">${p.odds?.bestUnder ? bookLabel(p.odds.bestUnder.book)+'@'+p.odds.bestUnder.line : '—'}</td>`;
       html += `<td><span class="scan-edge ${edgeCls}">${edgeStr}</span></td>`;
     }
-
     html += `<td style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog)">Img ${p.sourceImage}</td></tr>`;
   });
 
-  html += '</tbody></table></div>';
+  html += '</tbody></table></div></div>';
+  return html;
+}
 
-  // Copy button
-  html += `<div style="margin-top:12px;display:flex;gap:8px">
-    <button class="export-btn" onclick="copyScanResults()">📋 Copy Results</button>
-  </div>`;
+function renderScanResults(d) {
+  // Add timestamp
+  d.scannedAt = new Date().toISOString();
 
-  el.innerHTML = html;
+  // Render in modal
+  const modalEl = document.getElementById('scan-results');
+  modalEl.style.display = 'block';
+  if (!d.props?.length) {
+    modalEl.innerHTML = '<div style="text-align:center;color:var(--fog);padding:20px">No props extracted from screenshots.</div>';
+  } else {
+    modalEl.innerHTML = buildScanTableHTML(d, false);
+  }
 
-  // Save to scan history
-  saveScanHistory(d);
+  // Render in LINES tab (persistent)
+  const linesEl = document.getElementById('lines-scan-results');
+  if (linesEl && d.props?.length) {
+    linesEl.style.display = 'block';
+    linesEl.innerHTML = buildScanTableHTML(d, true);
+  }
+
+  // Save to localStorage
+  saveScanResults(d);
 }
 
 function copyScanResults() {
-  const el = document.getElementById('scan-results');
-  const table = el?.querySelector('table');
+  const table = document.querySelector('#lines-scan-results table') || document.querySelector('#scan-results table');
   if (!table) return;
   const rows = [...table.querySelectorAll('tr')];
   const text = rows.map(r => [...r.querySelectorAll('th,td')].map(c => c.textContent.trim()).join('\t')).join('\n');
   navigator.clipboard.writeText(text).then(() => alert('Copied!')).catch(() => {});
 }
 
-function saveScanHistory(d) {
+function clearScanResults() {
+  localStorage.removeItem('pp_scan_results');
+  const el = document.getElementById('lines-scan-results');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
+function saveScanResults(d) {
   try {
+    localStorage.setItem('pp_scan_results', JSON.stringify(d));
+    // Also save to history
     let hist = JSON.parse(localStorage.getItem('pp_scan_history') || '[]');
     hist.unshift({
-      ts: new Date().toISOString(),
+      ts: d.scannedAt,
       count: d.totalProps,
       bestEdge: d.props?.[0]?.odds?.edge || null,
       cost: d.estimatedCost,
     });
     hist = hist.slice(0, 10);
     localStorage.setItem('pp_scan_history', JSON.stringify(hist));
+  } catch(_) {}
+}
+
+function restoreScanResults() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('pp_scan_results') || 'null');
+    if (saved?.props?.length) {
+      const linesEl = document.getElementById('lines-scan-results');
+      if (linesEl) {
+        linesEl.style.display = 'block';
+        linesEl.innerHTML = buildScanTableHTML(saved, true);
+      }
+    }
   } catch(_) {}
 }
 
@@ -3639,6 +3677,7 @@ if (savedFreeRefresh) { _lastFreeRefresh = new Date(savedFreeRefresh); updateDat
 
 // Instant: load news from localStorage cache (shows in <50ms)
 loadNewsFromCache();
+restoreScanResults();
 
 // Parallel pre-fetch ALL data sources from KV caches
 Promise.all([
