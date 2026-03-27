@@ -1870,6 +1870,8 @@ function switchTab(tabId) {
   if (tabId === 'parlay') renderParlayTab();
   if (tabId === 'stats') renderStatsTab();
   if (tabId === 'journal') renderJournalTab();
+  // Remember active tab
+  try { sessionStorage.setItem('pp_active_tab', tabId); } catch(_) {}
 }
 
 // ── Date display ──────────────────────────────────────
@@ -3668,6 +3670,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // Journal date default
 const jrnDate = document.getElementById('jrn-date');
 if (jrnDate) jrnDate.value = new Date().toLocaleDateString('en-CA');
+
+// Restore last active tab
+const savedTab = sessionStorage.getItem('pp_active_tab');
+if (savedTab && savedTab !== 'picks') switchTab(savedTab);
 
 loadPicks();
 
