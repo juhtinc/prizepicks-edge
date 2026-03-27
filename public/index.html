@@ -2811,20 +2811,24 @@ function renderNewsCards() {
         ${linkHTML}
       </div>`;
     } else {
-      detailHTML = `<div class="news-expand" id="news-exp-${idx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
-        ${desc ? `<div style="font-size:12px;color:var(--smoke);line-height:1.6;margin-bottom:8px">${desc}</div>` : '<div style="font-size:11px;color:var(--fog)">No additional details available.</div>'}
-        ${linkHTML}
-      </div>`;
+      const hasExtra = desc || item.link;
+      if (hasExtra) {
+        detailHTML = `<div class="news-expand" id="news-exp-${idx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+          ${desc ? `<div style="font-size:12px;color:var(--smoke);line-height:1.6;margin-bottom:8px">${desc}</div>` : ''}
+          ${linkHTML}
+        </div>`;
+      }
     }
 
-    return `<div class="news-card" onclick="toggleNewsExpand(${idx})" style="cursor:pointer">
+    const expandable = isInjury || detailHTML;
+    return `<div class="news-card"${expandable ? ` onclick="toggleNewsExpand(${idx})" style="cursor:pointer"` : ''}>
       <div class="news-card-top">
         <span class="news-sport-tag">${item.sport||'News'}</span>
         ${item.type ? `<span class="news-type-tag ${typeClass(item.type)}">${item.type}</span>` : ''}
         <span class="news-time">${item.time||item.timestamp||''}</span>
       </div>
       <div class="news-text">${item.text||item.headline||''}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--fog);margin-top:6px;opacity:0.5" id="news-hint-${idx}">TAP FOR DETAILS ▾</div>
+      ${expandable ? `<div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--fog);margin-top:6px;opacity:0.5" id="news-hint-${idx}">TAP FOR DETAILS ▾</div>` : ''}
       ${detailHTML}
     </div>`;
   }).join('');
