@@ -2075,23 +2075,24 @@ async function loadPicks() {
     const clvAvg = dr.clv_record?.avg;
     set('h-clv', clvAvg != null ? (clvAvg >= 0 ? '+' : '') + clvAvg.toFixed(2) : '—');
 
-    // AI Status bar
+    // AI Status bar (safe — elements may be hidden)
     const sdot = document.getElementById('sdot');
     const stext = document.getElementById('stext');
-    if (m.empty) {
-      sdot.className = 'status-dot amber';
-      stext.textContent = "🤖 AI Picks: none — run AI Analysis";
-    } else if (m.analyzedAt) {
-      sdot.className = 'status-dot green';
-      const t = new Date(m.analyzedAt);
-      stext.textContent = '🤖 AI Picks: ' + t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-      document.getElementById('sb-refresh-time').textContent = t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-      window._lastAITime = t;
-    } else {
-      sdot.className = 'status-dot amber';
-      stext.textContent = '🤖 AI: running...';
+    if (sdot && stext) {
+      if (m.empty) {
+        sdot.className = 'status-dot amber';
+        stext.textContent = "No picks cached";
+      } else if (m.analyzedAt) {
+        sdot.className = 'status-dot green';
+        const t = new Date(m.analyzedAt);
+        stext.textContent = 'AI: ' + t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        const sbr = document.getElementById('sb-refresh-time');
+        if (sbr) sbr.textContent = t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        window._lastAITime = t;
+      }
     }
-    if (m.leaguesSeen?.length) document.getElementById('sleagues').textContent = m.leaguesSeen.length + ' leagues active';
+    const sleagues = document.getElementById('sleagues');
+    if (sleagues && m.leaguesSeen?.length) sleagues.textContent = m.leaguesSeen.length + ' leagues active';
 
     buildSportPills(m.leaguesSeen || []);
     render();
@@ -4562,30 +4563,20 @@ if (jrnDate) jrnDate.value = new Date().toLocaleDateString('en-CA');
 const savedTab = localStorage.getItem('pp_active_tab');
 if (savedTab) switchTab(savedTab);
 
-loadPicks();
+// Instant: load cached data first (shows in <50ms)
+loadNewsFromCache();
+restoreScanResults();
+setTimeout(() => { renderPropAlerts(); renderStreakBanner(); renderDashboard(); }, 100);
 
 // Restore last free refresh time
 const savedFreeRefresh = getSetting('lastFreeRefresh', null);
 if (savedFreeRefresh) { _lastFreeRefresh = new Date(savedFreeRefresh); updateDataStatus(); }
 
-// Instant: load news from localStorage cache (shows in <50ms)
-loadNewsFromCache();
-restoreScanResults();
-setTimeout(() => { renderPropAlerts(); renderStreakBanner(); renderDashboard(); }, 100);
-
-// Pre-fetch free data on boot (ESPN only — no Odds API quota usage)
-// Lines load from KV cache only (no fresh Odds API call)
-Promise.all([
-  loadLines(false),   // KV cache only, no API call if empty
-  loadScores(),       // ESPN (free)
-]).then(() => {
-  _lastFreeRefresh = new Date();
-  saveSetting('lastFreeRefresh', _lastFreeRefresh.toISOString());
-  updateDataStatus();
-});
-
-// Background news refresh (ESPN — free)
-refreshNews();
+// Load everything in parallel — each independent, none blocks the others
+loadPicks().catch(e => console.warn('[boot] picks failed:', e.message));
+loadScores().catch(e => console.warn('[boot] scores failed:', e.message));
+loadLines(false).catch(e => console.warn('[boot] lines failed:', e.message));
+refreshNews().catch(e => console.warn('[boot] news failed:', e.message));
 
 // Auto-refresh scores every 2 min silently (free ESPN, hits KV cache)
 setInterval(() => loadScores(), 2 * 60 * 1000);
