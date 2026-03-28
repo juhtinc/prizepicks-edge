@@ -1776,6 +1776,13 @@ let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
 let activeLinesSportFilter = 'ALL';
 let activeLinesStatFilter = 'ALL';
 const _gamelogCache = {};
+let _lastFreeRefresh = null;
+let _trackDir = 'over';
+let _trackData = null;
+let _scanImages = [];
+let _bsTimer = null;
+let _bsGameId = null;
+let _bsSport = null;
 
 // ── Notifications ──────────────────────────────────────
 function pushNotif(title, body, type='info') {
@@ -1857,7 +1864,8 @@ document.getElementById('date-pill').textContent =
   new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}).toUpperCase();
 
 // ── Sport filter ──────────────────────────────────────
-document.getElementById('sport-pills').addEventListener('click', e => {
+const sportPillsEl = document.getElementById('sport-pills');
+if (sportPillsEl) sportPillsEl.addEventListener('click', e => {
   const b = e.target.closest('[data-sport]'); if (!b) return;
   setPills('[data-sport]','on'); b.classList.add('on'); activeSport = b.dataset.sport; render();
 });
@@ -2919,8 +2927,6 @@ document.getElementById('main').innerHTML = `
   </div>`;
 
 // ── Free Refresh All ─────────────────────────────────
-let _lastFreeRefresh = null;
-
 async function freeRefreshAll() {
   const btn = document.getElementById('btn-free-refresh');
   if (btn) { btn.disabled = true; btn.textContent = '🔄 Refreshing...'; }
@@ -3004,8 +3010,6 @@ async function loadLines(manual = false) {
 }
 
 // ── Lines Play Tracker ──────────────────────────────────────────────
-let _trackDir = 'over';
-let _trackData = null;
 
 function loadLinesPlays() {
   try { return JSON.parse(localStorage.getItem('lines_plays') || '[]'); } catch(_) { return []; }
@@ -3449,7 +3453,6 @@ function updatePickCardScores() {
 }
 
 // ── Board Scanner ────────────────────────────────────
-let _scanImages = []; // array of {dataUrl, file}
 
 function openScanModal() {
   _scanImages = [];
@@ -4622,9 +4625,6 @@ setInterval(()=>{
 
 <script>
 // ── Box Score Panel ─────────────────────────────────────────────────────────
-let _bsTimer = null;
-let _bsGameId = null;
-let _bsSport = null;
 
 function openBoxScore(gameId, sport) {
   _bsGameId = gameId;
