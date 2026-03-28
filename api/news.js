@@ -54,63 +54,34 @@ module.exports = async function handler(req, res) {
   const items = [];
 
   // Fetch news headlines from all sports in parallel
-  const [newsResults, injuryResults] = await Promise.all([
-    Promise.allSettled(ESPN_FEEDS.map(async ({ sport, url }) => {
-      const d = await fetchWithTimeout(url);
-      const skip = /highlights|game recap|box score|final score|how to watch|where to watch|preview and prediction/i;
-      return (d.articles || [])
-        .filter(a => !skip.test(a.headline || "") && !skip.test(a.title || ""))
-        .slice(0, 5)
-        .map(a => {
-          const headline = a.headline || a.title || "";
-          const desc = a.description || "";
-          // Only include description if it adds info beyond the headline
-          const usefulDesc = desc && desc.toLowerCase() !== headline.toLowerCase() && !headline.includes(desc) ? desc : "";
-          return {
-            sport,
-            type: "news",
-            text: headline,
-            description: usefulDesc,
-            time: timeAgo(a.published),
-            link: a.links?.web?.href || "",
-          };
-        });
-    })),
-    Promise.allSettled(ESPN_INJURIES.map(async ({ sport, url }) => {
-      try {
-        const d = await fetchWithTimeout(url);
-        const injuries = [];
-        for (const team of (d.items || [])) {
-          for (const entry of (team.injuries || []).slice(0, 3)) {
-            const athlete = entry.athlete || {};
-            const status = entry.status || entry.type || "";
-            if (!athlete.displayName) continue;
-            injuries.push({
-              sport,
-              type: "injury",
-              text: `${athlete.displayName} (${team.team?.abbreviation || "?"}) — ${status}${entry.details?.detail ? ": " + entry.details.detail : ""}`,
-              description: entry.longComment || entry.shortComment || "",
-              time: timeAgo(entry.date),
-              link: "",
-            });
-          }
-        }
-        return injuries;
-      } catch (_) {
-        return [];
-      }
-    })),
-  ]);
+  const newsResults = await Promise.allSettled(ESPN_FEEDS.map(async ({ sport, url }) => {
+    const d = await fetchWithTimeout(url);
+    const skip = /highlights|game recap|box score|final score|how to watch|where to watch|preview and prediction/i;
+    return (d.articles || [])
+      .filter(a => !skip.test(a.headline || "") && !skip.test(a.title || ""))
+      .slice(0, 5)
+      .map(a => {
+        const headline = a.headline || a.title || "";
+        const desc = a.description || "";
+        const usefulDesc = desc && desc.toLowerCase() !== headline.toLowerCase() && !headline.includes(desc) ? desc : "";
+        // Detect injury-related headlines
+        const isInjury = /injur|out |ruled out|questionable|doubtful|day-to-day|concussion|sprain|strain|fracture|surgery|IL /i.test(headline);
+        return {
+          sport,
+          type: isInjury ? "injury" : "news",
+          text: headline,
+          description: usefulDesc,
+          time: timeAgo(a.published),
+          link: a.links?.web?.href || "",
+        };
+      });
+  }));
 
-  // Collect results
   for (const r of newsResults) {
     if (r.status === "fulfilled") items.push(...r.value);
   }
-  for (const r of injuryResults) {
-    if (r.status === "fulfilled") items.push(...r.value);
-  }
 
-  // Sort: injuries first, then by recency
+  // Sort: injuries first
   items.sort((a, b) => {
     if (a.type === "injury" && b.type !== "injury") return -1;
     if (a.type !== "injury" && b.type === "injury") return 1;
