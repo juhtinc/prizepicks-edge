@@ -3789,8 +3789,8 @@ function buildScanTableHTML(d, showClear) {
 
     let verdict = '';
     if (edge != null) {
-      if (edge > 0.5) verdict = `<span style="color:var(--lime);font-weight:600">✓ OVER</span>`;
-      else if (edge < -0.5) verdict = `<span style="color:var(--sky);font-weight:600">✓ UNDER</span>`;
+      if (edge < -0.5) verdict = `<span style="color:var(--lime);font-weight:600">✓ OVER</span>`;
+      else if (edge > 0.5) verdict = `<span style="color:var(--sky);font-weight:600">✓ UNDER</span>`;
       else verdict = `<span style="color:var(--fog)">Fair</span>`;
     }
 
