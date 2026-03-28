@@ -717,18 +717,259 @@ All original columns plus new additions from features above:
 
 ---
 
+## 15. Automated Background Music Selection & Mixing
+
+**Problem:** Background music dramatically impacts Shorts retention (20-30% boost), but selecting and mixing the right track manually per video is time-consuming and inconsistent.
+
+### Music Strategy for Sports History Shorts
+
+**What works for this genre (based on top-performing sports history channels):**
+
+| Story Phase | Music Style | Why It Works |
+|-------------|-------------|-------------|
+| **Hook (0-3s)** | SILENCE or very low ambient | Voice-only hook cuts through the feed. Scroll-stoppers don't compete with music. |
+| **Build (3-15s)** | Cinematic tension, low piano, or subtle trap beat | Creates emotional foundation while story sets up |
+| **Climax (15-40s)** | Epic orchestral hit, bass drop, or dramatic swell | Peaks at the most impressive moment of the story |
+| **Outro (40-55s)** | Fade to reflective/nostalgic, or abrupt stop for impact | Leaves viewer with emotion; prompts replay or share |
+
+### Mood-to-Story-Type Mapping
+
+```javascript
+const MUSIC_MOOD_MAP = {
+  // Story type → primary mood → backup mood
+  'forgotten_legend':   { mood: 'nostalgic',  energy: 'medium', tempo: 'slow',   genre: 'cinematic' },
+  'trending_callback':  { mood: 'hype',       energy: 'high',   tempo: 'fast',   genre: 'trap' },
+  'what_if':            { mood: 'mysterious',  energy: 'medium', tempo: 'medium', genre: 'ambient' },
+  'rivalry':            { mood: 'intense',     energy: 'high',   tempo: 'fast',   genre: 'orchestral' },
+  'record_breaker':     { mood: 'epic',        energy: 'high',   tempo: 'medium', genre: 'cinematic' },
+  'comeback':           { mood: 'inspiring',   energy: 'rising', tempo: 'builds', genre: 'orchestral' },
+  'scandal':            { mood: 'dark',        energy: 'medium', tempo: 'slow',   genre: 'dark_ambient' },
+  'draft_bust':         { mood: 'melancholy',  energy: 'low',    tempo: 'slow',   genre: 'piano' },
+  'underdog':           { mood: 'inspiring',   energy: 'rising', tempo: 'builds', genre: 'cinematic' },
+  'goat_debate':        { mood: 'intense',     energy: 'high',   tempo: 'fast',   genre: 'trap' },
+  'default':            { mood: 'dramatic',    energy: 'medium', tempo: 'medium', genre: 'cinematic' },
+};
+```
+
+### Music Source Options (Ranked)
+
+**Option A — Mubert API (Recommended)**
+- **Cost:** $14/mo Creator plan (unlimited tracks)
+- **API:** REST API, generates unique tracks per request
+- **Key feature:** Specify mood, genre, duration, intensity → get a unique royalty-free track
+- **n8n integration:** HTTP Request node
+- **Why best:** Every video gets a unique track (no copyright strikes, no "I've heard this before" from viewers)
+
+```
+POST https://api.mubert.com/v2/RecordTrackTTM
+{
+  "method": "RecordTrackTTM",
+  "params": {
+    "pat": "YOUR_MUBERT_PAT",
+    "duration": 55,
+    "tags": ["cinematic", "epic", "sports"],
+    "mode": "track",
+    "intensity": "medium"
+  }
+}
+```
+
+**Option B — YouTube Audio Library (Free)**
+- **Cost:** Free
+- **API:** Unofficial (GitHub: ThibaultJanBeyer/YouTube-Free-Audio-Library-API)
+- **Key feature:** Pre-cleared for YouTube, filter by mood/genre
+- **Limitation:** Same tracks used by millions of creators, viewers recognize them
+
+**Option C — Soundraw ($16/mo)**
+- **Cost:** $16/mo
+- **API:** Generate → customize → download
+- **Key feature:** Adjust energy curve to match your video's pacing
+
+**Option D — AIVA ($15/mo)**
+- **Cost:** $15/mo Standard plan
+- **API:** Compose full tracks in specific styles
+- **Key feature:** Best for cinematic/orchestral — perfect for "forgotten legend" stories
+
+### Implementation in `video-production` Workflow
+
+#### New Node — `Select Music Mood`
+**Type:** Code
+**Position:** After reading Script Queue row, before Creatomate render
+```javascript
+const storyType = $json['Story Type'] || 'default';
+const MOOD_MAP = { /* ... map above ... */ };
+const mood = MOOD_MAP[storyType] || MOOD_MAP['default'];
+
+// Override for specific story beats detected in script
+const script = $json['Script'].toLowerCase();
+if (script.includes('tragic') || script.includes('died') || script.includes('career-ending')) {
+  mood.mood = 'melancholy';
+  mood.energy = 'low';
+  mood.genre = 'piano';
+}
+if (script.includes('championship') || script.includes('record') || script.includes('greatest')) {
+  mood.mood = 'epic';
+  mood.energy = 'high';
+  mood.genre = 'orchestral';
+}
+
+return [{ json: { ...mood, duration: 55, storyType } }];
+```
+
+#### New Node — `Generate Background Track` (Mubert API)
+**Type:** HTTP Request
+**Method:** POST
+**URL:** `https://api.mubert.com/v2/RecordTrackTTM`
+**Body:**
+```json
+{
+  "method": "RecordTrackTTM",
+  "params": {
+    "pat": "{{ $env.MUBERT_PAT }}",
+    "duration": {{ $json.duration }},
+    "tags": ["{{ $json.genre }}", "{{ $json.mood }}", "sports"],
+    "mode": "track",
+    "intensity": "{{ $json.energy }}"
+  }
+}
+```
+**Response:** Returns a URL to the generated track MP3.
+
+#### New Node — `Download Track to Temp Storage`
+**Type:** HTTP Request
+**Method:** GET
+**URL:** `{{ $json.trackUrl }}`
+**Output:** Binary file → pass to Creatomate or FFmpeg
+
+### Audio Mixing Rules (Critical)
+
+The music should NEVER compete with the voiceover. Here are the mixing specs for Creatomate:
+
+```javascript
+const AUDIO_MIX = {
+  // Phase → music volume (0-100, where voiceover is always 100)
+  hook:    { start: 0,  end: 3,  musicVolume: 0 },   // Silence for hook
+  build:   { start: 3,  end: 15, musicVolume: 20 },   // Music fades in quietly
+  body:    { start: 15, end: 40, musicVolume: 25 },   // Steady background level
+  climax:  { start: 40, end: 48, musicVolume: 40 },   // Music swells at peak moment
+  outro:   { start: 48, end: 55, musicVolume: 50 },   // Music comes up as voice ends
+};
+
+// When voice is speaking: music at specified level
+// During any pauses in voiceover: music bumps up +15
+// This is called "audio ducking" — Creatomate supports it natively
+```
+
+### Creatomate Template Changes
+
+Add a background audio layer to your existing video template:
+
+```json
+{
+  "elements": [
+    {
+      "type": "audio",
+      "name": "background_music",
+      "source": "{{ musicTrackUrl }}",
+      "volume": "25%",
+      "audio_fade_in": "3s",
+      "audio_fade_out": "3s",
+      "trim_start": "0s"
+    },
+    {
+      "type": "audio",
+      "name": "voiceover",
+      "source": "{{ voiceoverUrl }}",
+      "volume": "100%"
+    }
+  ]
+}
+```
+
+**For audio ducking** (music goes quiet when voice plays):
+- Creatomate supports this natively with the `ducking` property
+- Set `"ducking": { "target": "background_music", "threshold": -20, "reduction": 15 }` on the voiceover element
+
+### Pre-Built Music Library (Alternative to API)
+
+If you prefer not to pay for Mubert, pre-download 20-30 royalty-free tracks organized by mood:
+
+```
+Google Drive/Sports Lore/Music Library/
+├── cinematic/
+│   ├── epic_01.mp3
+│   ├── epic_02.mp3
+│   └── epic_03.mp3
+├── nostalgic/
+│   ├── piano_01.mp3
+│   ├── reflective_01.mp3
+│   └── melancholy_01.mp3
+├── hype/
+│   ├── trap_01.mp3
+│   ├── energy_01.mp3
+│   └── upbeat_01.mp3
+├── dark/
+│   ├── tension_01.mp3
+│   └── suspense_01.mp3
+└── inspiring/
+    ├── buildup_01.mp3
+    └── triumph_01.mp3
+```
+
+**Selection logic (no API needed):**
+```javascript
+const mood = MOOD_MAP[storyType].mood;
+const tracks = await listFilesInFolder(`Music Library/${mood}/`);
+// Random selection to avoid repetition
+const used = await getRecentlyUsedTracks(7); // last 7 videos
+const available = tracks.filter(t => !used.includes(t.name));
+const selected = available[Math.floor(Math.random() * available.length)] || tracks[0];
+```
+
+**Free sources to build this library:**
+- YouTube Audio Library (studio.youtube.com/channel/audio)
+- Pixabay Music (pixabay.com/music)
+- Mixkit (mixkit.co/free-stock-music)
+- Chosic (chosic.com/free-music/sports)
+
+### Script Queue Schema Additions:
+| Column | Type | Description |
+|--------|------|-------------|
+| Music Mood | string | `epic`, `nostalgic`, `hype`, etc. |
+| Music Track | string | Filename or generated track URL |
+| Music Source | string | `mubert`, `library`, `youtube_audio` |
+
+### Recommended Top 10 Tracks to Start With
+
+Based on what performs best for sports history Shorts:
+
+| # | Mood | Track Style | When to Use | Source |
+|---|------|-------------|-------------|--------|
+| 1 | Epic | Orchestral swell, builds to crescendo | Record breakers, GOAT moments | Pixabay "Cinematic Documentary" |
+| 2 | Nostalgic | Soft piano + subtle strings | Forgotten legends, retirements | Mixkit "Reflections" |
+| 3 | Hype | Trap beat, 808 bass, sharp hi-hats | Trending callbacks, highlight plays | YouTube Audio Library "Aggressive" |
+| 4 | Dark | Low synth drone, tension | Scandals, career-ending injuries | Pixabay "Dark Ambient" |
+| 5 | Inspiring | Builds from quiet piano to full orchestra | Comeback stories, underdogs | Mixkit "Inspiring Cinematic" |
+| 6 | Mysterious | Ambient pads, subtle percussion | What-if scenarios, draft busts | Pixabay "Mystery Documentary" |
+| 7 | Intense | Fast strings, percussion hits | Rivalries, playoff moments | YouTube Audio Library "Action" |
+| 8 | Melancholy | Solo piano, sparse arrangement | Tragic endings, what could've been | Pixabay "Sad Piano" |
+| 9 | Triumphant | Brass + drums, victorious feel | Championship wins, records | Mixkit "Victory" |
+| 10 | Chill | Lo-fi beat, mellow | Casual stats, fun facts | YouTube Audio Library "Lo-fi" |
+
+---
+
 ## Implementation Order
 
 | Phase | Features | Est. Time | Impact |
 |-------|----------|-----------|--------|
-| **1** | #1 Title/Hook Gen, #7 Hook Optimization, #5 Parallel Sourcing | 3-4 hours | Highest — directly improves views |
+| **1** | #1 Title/Hook Gen, #7 Hook Optimization, #15 Background Music, #5 Parallel Sourcing | 4-5 hours | Highest — directly improves views + retention |
 | **2** | #4 Opt-Out Confirmation, #9 Post Time Optimization | 1-2 hours | Saves weekly time + better timing |
 | **3** | #6 Analytics Feedback, #8 A/B Testing | 2-3 hours | Compounds over time |
 | **4** | #2 Thumbnails, #12 Re-Upload Strategy | 2-3 hours | Recovers underperformers |
 | **5** | #10 Cross-Posting, #11 Comment Monitoring | 3-4 hours | Distribution + engagement |
 | **6** | #3 Clip Quality Feedback, #13 FFmpeg Fallback, #14 Schema | 2-3 hours | Polish + reliability |
 
-**Total estimated build time:** 14-19 hours across 6 phases.
+**Total estimated build time:** 16-21 hours across 6 phases.
 
 ---
 
@@ -742,5 +983,6 @@ All original columns plus new additions from features above:
 | Instagram Graph API | ❌ Apply | Cross-posting to Reels |
 | Creatomate | ✅ | Thumbnails (new template) |
 | Claude API | ✅ | Hooks, titles, comment replies |
+| Mubert API | ❌ Optional ($14/mo) | AI-generated unique background music |
 | Gmail | ✅ | Notifications |
 | Google Sheets | ✅ | All data storage |
