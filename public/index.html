@@ -1218,7 +1218,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 
     <nav class="sb-nav">
       <button class="sb-tab active" data-tab="picks" onclick="switchTab('picks')">
-        <span class="sb-icon">📊</span><span class="sb-label">PICKS</span>
+        <span class="sb-icon">📊</span><span class="sb-label">HOME</span>
       </button>
       <button class="sb-tab" data-tab="parlay" onclick="switchTab('parlay')">
         <span class="sb-icon">🎯</span><span class="sb-label">PARLAY</span>
@@ -1268,71 +1268,33 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
     <div class="tab-panel active" id="tab-picks">
       <div class="tab-hd">
         <div>
-          <div class="tab-title">Today's <em>Picks</em></div>
-          <div class="tab-sub">AI-powered prop analysis · Auto-refreshes 9am · 1pm · 6pm PT</div>
+          <div class="tab-title">📊 <em>Dashboard</em></div>
+          <div class="tab-sub">Your daily command center · Scan · Compare · Build · Track</div>
         </div>
         <div class="tab-hd-right">
           <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--smoke)" id="date-pill"></div>
         </div>
       </div>
 
-      <!-- Stats Hero -->
+      <!-- Quick Actions -->
+      <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <button class="btn-refresh" onclick="switchTab('lines');setTimeout(()=>openScanModal(),200)" style="flex:1;min-width:180px;justify-content:center">📸 Scan PrizePicks Board</button>
+        <button class="btn-free-refresh" id="btn-free-refresh" onclick="freeRefreshAll()" style="flex:1;min-width:150px;justify-content:center">🔄 Refresh Free Data</button>
+        <button class="btn-refresh" onclick="switchTab('lines')" style="flex:1;min-width:120px;justify-content:center;border-color:var(--sky);color:var(--sky)">📐 View Lines</button>
+      </div>
+
+      <!-- Hero Stats (from journal) -->
       <div class="hero">
-        <div class="hero-card"><div class="hc-label">Total Picks</div><div class="hc-val sky" id="h-total">—</div></div>
-        <div class="hero-card"><div class="hc-label">Overs</div><div class="hc-val lime" id="h-overs">—</div></div>
-        <div class="hero-card"><div class="hc-label">Unders</div><div class="hc-val coral" id="h-unders">—</div></div>
-        <div class="hero-card"><div class="hc-label">Avg Edge</div><div class="hc-val gold" id="h-conf">—</div></div>
-        <div class="hero-card"><div class="hc-label">Props Scanned</div><div class="hc-val violet" id="h-scanned">—</div></div>
         <div class="hero-card"><div class="hc-label">W-L Record</div><div class="hc-val lime" id="h-record">—</div></div>
         <div class="hero-card"><div class="hc-label">Win %</div><div class="hc-val gold" id="h-roi">—</div></div>
         <div class="hero-card"><div class="hc-label">Avg CLV</div><div class="hc-val sky" id="h-clv">—</div></div>
+        <div class="hero-card"><div class="hc-label">Props Scanned</div><div class="hc-val violet" id="h-scanned">—</div></div>
       </div>
 
-      <!-- Toolbar row 1: search + filters -->
-      <div class="toolbar" style="margin-bottom:10px">
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="player-search" placeholder="Search player..." oninput="render()"/>
-        </div>
-        <div class="sep"></div>
-        <div class="pill-group" id="sport-pills">
-          <button class="pill on" data-sport="ALL">All</button>
-        </div>
-        <div class="sep"></div>
-        <div class="pill-group">
-          <button class="pill on" data-dir="ALL">Both</button>
-          <button class="pill" data-dir="OVER">Overs</button>
-          <button class="pill" data-dir="UNDER">Unders</button>
-        </div>
-        <div class="sep"></div>
-        <div class="pill-group">
-          <button class="pill on" data-conf="0">All</button>
-          <button class="pill" data-conf="75">75+</button>
-          <button class="pill" data-conf="85">Elite 85+</button>
-        </div>
-        <div class="sep"></div>
-        <button class="pill" id="starred-filter-btn" onclick="toggleStarredFilter()">⭐ Starred</button>
-      </div>
-
-      <!-- Toolbar row 2: export + dual refresh -->
-      <div class="toolbar">
-        <button class="export-btn" onclick="copyPicksText()" title="Copy picks as text">📋 Copy</button>
-        <button class="export-btn" onclick="window.print()" title="Print / Save as PDF">🖨 Print</button>
-        <div class="spacer"></div>
-        <button class="btn-free-refresh" id="btn-free-refresh" onclick="freeRefreshAll()">
-          🔄 Refresh Data
-        </button>
-        <button class="btn-ai-refresh" id="btn-refresh" onclick="openModal()">
-          🤖 Run AI Analysis
-        </button>
-      </div>
-
-      <!-- Dual Status Bar -->
+      <!-- Status Bar -->
       <div class="status-bar">
         <span class="status-dot green" id="data-dot"></span>
         <span id="data-status" style="margin-right:14px">📊 Data: not loaded</span>
-        <span class="status-dot amber" id="sdot"></span>
-        <span id="stext">🤖 AI Picks: loading...</span>
         <span class="status-rhs" id="sleagues"></span>
       </div>
 
@@ -1342,36 +1304,42 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
       <!-- Daily Slate Summary -->
       <div id="slate-summary" style="display:none;margin-bottom:10px;padding:10px 14px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r)"></div>
 
-      <!-- Stale picks warning banner -->
-      <div id="stale-picks-banner" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:var(--r);font-size:12px;color:#f5a623">
-        ⚠️ New data loaded since last AI analysis — consider re-running AI
-      </div>
+      <!-- Today's Workflow -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-bottom:18px">
 
-      <!-- Steam Alerts -->
-      <div id="steam-section" style="display:none" class="steam-banner"></div>
-
-      <!-- Optimal Parlay -->
-      <div id="optimal-banner" style="display:none" class="optimal-banner">
-        <span class="optimal-icon">⚡</span>
-        <div class="optimal-text">
-          <div class="optimal-label">Optimal Parlay</div>
-          <div class="optimal-picks" id="optimal-picks-text">—</div>
-          <div class="optimal-payout" id="optimal-payout-text">—</div>
+        <!-- Last Scan Smart Picks -->
+        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px" id="dash-smart-picks">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);margin-bottom:10px">⚡ SMART PICKS FROM LAST SCAN</div>
+          <div id="dash-smart-content" style="font-size:12px;color:var(--fog)">No scan yet — go to LINES tab and scan your PrizePicks board</div>
         </div>
-        <button class="parlay-btn" onclick="addOptimalToParlay()">Add to Parlay</button>
-      </div>
 
-      <!-- Sharp Picks -->
-      <div id="sharp-section" style="display:none">
-        <div class="section-header">
-          <span class="section-title">⚡ Sharp Picks</span>
-          <span class="section-sub">Line movement + public fade alignment</span>
+        <!-- Active Parlay -->
+        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px" id="dash-parlay">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--violet);margin-bottom:10px">🎯 ACTIVE PARLAY</div>
+          <div id="dash-parlay-content" style="font-size:12px;color:var(--fog)">No parlay built yet</div>
         </div>
-        <div id="sharp-grid" class="grid"></div>
+
+        <!-- Today's Injuries -->
+        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px" id="dash-injuries">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--coral);margin-bottom:10px">🚨 KEY INJURIES</div>
+          <div id="dash-injuries-content" style="font-size:12px;color:var(--fog)">Loading injuries...</div>
+        </div>
+
+        <!-- My Plays (from Lines tracker) -->
+        <div style="background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px" id="dash-plays">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--sky);margin-bottom:10px">📋 MY PLAYS TODAY</div>
+          <div id="dash-plays-content" style="font-size:12px;color:var(--fog)">No plays tracked yet</div>
+        </div>
       </div>
 
-      <!-- Main picks grid -->
-      <div id="main"></div>
+      <!-- Hidden elements needed by existing JS -->
+      <div id="stale-picks-banner" style="display:none"></div>
+      <div id="steam-section" style="display:none"></div>
+      <div id="optimal-banner" style="display:none"></div>
+      <div id="sharp-section" style="display:none"><div id="sharp-grid"></div></div>
+      <div id="main" style="display:none"></div>
+      <div id="sdot" style="display:none"></div>
+      <div id="stext" style="display:none"></div>
 
       <footer>
         <div class="footer-note">⚠️ For entertainment &amp; research only. Always verify lines on the official sportsbook before placing entries. Gambling involves risk.</div>
@@ -1780,7 +1748,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
 
 <!-- Mobile bottom nav -->
 <nav class="bottom-nav" id="bottom-nav">
-  <button class="bottom-nav-btn active" data-tab="picks" onclick="switchTab('picks')"><span class="bn-icon">📊</span>PICKS</button>
+  <button class="bottom-nav-btn active" data-tab="picks" onclick="switchTab('picks')"><span class="bn-icon">📊</span>HOME</button>
   <button class="bottom-nav-btn" data-tab="parlay" onclick="switchTab('parlay')"><span class="bn-icon">🎯</span>PARLAY</button>
   <button class="bottom-nav-btn" data-tab="stats" onclick="switchTab('stats')"><span class="bn-icon">📉</span>STATS</button>
   <button class="bottom-nav-btn" data-tab="bankroll" onclick="switchTab('bankroll')"><span class="bn-icon">💰</span>BANKROLL</button>
@@ -2774,6 +2742,7 @@ async function refreshNews() {
     if (dot) dot.className = 'status-dot green';
     if (status) status.textContent = `${newsItems.length} items · Updated ${fetched}`;
     renderNewsCards();
+    renderDashboard(); // Update injuries widget
   } catch(e) {
     // Only show error if no cached data to display
     if (!newsItems.length) {
@@ -4455,6 +4424,94 @@ function renderPropAlerts() {
   ).join('');
 }
 
+// ── Dashboard Renderer ──────────────────────────────
+function renderDashboard() {
+  // Smart Picks from last scan
+  const smartEl = document.getElementById('dash-smart-content');
+  if (smartEl) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('pp_scan_results') || 'null');
+      if (saved?.props?.length) {
+        const smart = saved.props.filter(p => {
+          const e = Math.abs(p.odds?.edge || 0);
+          return e >= 1 && e <= 6 && p.boost !== 'goblin' && p.odds?.edge != null;
+        }).slice(0, 5);
+        if (smart.length) {
+          const ts = saved.scannedAt ? new Date(saved.scannedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '';
+          smartEl.innerHTML = smart.map(p => {
+            const dir = (p.odds?.edge||0) > 0 ? 'UNDER' : 'OVER';
+            const dirColor = dir === 'OVER' ? 'var(--lime)' : 'var(--sky)';
+            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+              <span style="font-weight:600;font-size:12px">${p.player}</span>
+              <span style="font-size:10px;color:var(--smoke)">${p.stat}</span>
+              <span style="color:${dirColor};font-weight:700;font-size:10px">${dir} ${p.line}</span>
+              <span class="scan-edge ${(p.odds?.edge||0)>0?'pos':'neg'}" style="margin-left:auto">${(p.odds?.edge||0)>0?'+':''}${p.odds?.edge}</span>
+            </div>`;
+          }).join('') + `<div style="margin-top:8px;font-size:9px;color:var(--fog)">Last scan: ${ts}</div>`;
+        } else {
+          smartEl.textContent = 'No edges found in last scan — try scanning again when games are closer';
+        }
+      }
+    } catch(_) {}
+  }
+
+  // Active Parlay
+  const parlayEl = document.getElementById('dash-parlay-content');
+  if (parlayEl) {
+    try {
+      const parlay = JSON.parse(localStorage.getItem('pp_parlay') || '[]');
+      if (parlay.length) {
+        const n = parlay.length;
+        const payout = {2:3,3:5,4:10,5:20,6:40}[n] || n*2;
+        parlayEl.innerHTML = parlay.map(p =>
+          `<div style="padding:4px 0;font-size:12px;border-bottom:1px solid var(--line)">
+            <span style="font-weight:600">${p.player}</span>
+            <span style="color:var(--smoke);font-size:10px">${p.stat}</span>
+            <span style="color:${p.direction==='OVER'?'var(--lime)':'var(--sky)'};font-weight:600;font-size:10px">${p.direction} ${p.line}</span>
+          </div>`
+        ).join('') + `<div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--lime)">${n}-pick Power Play → ${payout}x payout</div>`;
+      }
+    } catch(_) {}
+  }
+
+  // Today's Injuries
+  const injEl = document.getElementById('dash-injuries-content');
+  if (injEl) {
+    const injuries = newsItems.filter(n => (n.type||'').toLowerCase() === 'injury').slice(0, 5);
+    if (injuries.length) {
+      injEl.innerHTML = injuries.map(inj => {
+        const text = inj.text || '';
+        const isOut = text.toLowerCase().includes('out') || text.toLowerCase().includes('ruled out');
+        const color = isOut ? 'var(--coral)' : 'var(--smoke)';
+        return `<div style="padding:4px 0;font-size:11px;border-bottom:1px solid var(--line);color:${color}">${text}</div>`;
+      }).join('');
+    } else {
+      injEl.textContent = 'No injuries reported';
+    }
+  }
+
+  // My Plays
+  const playsEl = document.getElementById('dash-plays-content');
+  if (playsEl) {
+    try {
+      const plays = JSON.parse(localStorage.getItem('lines_plays') || '[]');
+      if (plays.length) {
+        const wins = plays.filter(p => p.status === 'won').length;
+        const losses = plays.filter(p => p.status === 'lost').length;
+        const pending = plays.filter(p => p.status === 'pending').length;
+        playsEl.innerHTML = plays.slice(0, 5).map(p =>
+          `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;border-bottom:1px solid var(--line)">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:3px;${p.dir==='over'?'color:var(--lime);background:rgba(184,245,66,0.1)':'color:var(--sky);background:rgba(90,180,255,0.08)'}">${p.dir?.toUpperCase()}</span>
+            <span style="font-weight:600">${p.player}</span>
+            <span style="color:var(--smoke);font-size:10px">${p.stat}</span>
+            <span class="play-status ${p.status}" style="margin-left:auto;font-size:9px;padding:1px 5px;cursor:pointer" onclick="cyclePlayStatus(${p.id})">${p.status?.toUpperCase()}</span>
+          </div>`
+        ).join('') + `<div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--smoke)">${wins}W-${losses}L-${pending}P</div>`;
+      }
+    } catch(_) {}
+  }
+}
+
 // ── Boot ──────────────────────────────────────────────
 // Restore theme
 const savedThemeVal = getSetting('theme','dark');
@@ -4487,7 +4544,7 @@ if (savedFreeRefresh) { _lastFreeRefresh = new Date(savedFreeRefresh); updateDat
 // Instant: load news from localStorage cache (shows in <50ms)
 loadNewsFromCache();
 restoreScanResults();
-setTimeout(() => { renderPropAlerts(); renderStreakBanner(); }, 100);
+setTimeout(() => { renderPropAlerts(); renderStreakBanner(); renderDashboard(); }, 100);
 
 // Pre-fetch free data on boot (ESPN only — no Odds API quota usage)
 // Lines load from KV cache only (no fresh Odds API call)
