@@ -3661,16 +3661,32 @@ function recompareScanResults() {
   } catch(_) {}
 }
 
+// Normalize PrizePicks stat names to Odds API stat names
+const STAT_ALIASES = {
+  'pra': 'pts+reb+ast', 'pts+rebs+asts': 'pts+reb+ast', 'points+rebounds+assists': 'pts+reb+ast',
+  'pts+rebs': 'pts+reb', 'points+rebounds': 'pts+reb',
+  'pts+asts': 'pts+ast', 'points+assists': 'pts+ast',
+  'rebs+asts': 'reb+ast', 'rebounds+assists': 'reb+ast',
+  '3-pt made': '3-pointers made', 'threes': '3-pointers made', '3pm': '3-pointers made',
+  'fg attempted': 'field goals attempted', 'fga': 'field goals attempted',
+  'fantasy score': 'fantasy', 'fpts': 'fantasy',
+};
+
+function normalizeStat(s) {
+  const lower = (s||'').toLowerCase().trim();
+  return STAT_ALIASES[lower] || lower;
+}
+
 function clientMatchOdds(prop) {
   if (!LINES.props?.length) return null;
   const playerLower = (prop.player || '').toLowerCase().trim();
-  const statLower = (prop.stat || '').toLowerCase().trim();
+  const statNorm = normalizeStat(prop.stat);
   const match = LINES.props.find(p => {
     const nl = (p.player||'').toLowerCase();
     const nameMatch = nl === playerLower || nl.includes(playerLower) || playerLower.includes(nl.split(' ').pop());
     if (!nameMatch) return false;
-    const sl = (p.stat||'').toLowerCase();
-    return sl.includes(statLower) || statLower.includes(sl);
+    const sl = normalizeStat(p.stat);
+    return sl === statNorm || sl.includes(statNorm) || statNorm.includes(sl);
   });
   if (!match) return null;
   const bookLines = Object.values(match.books || {});

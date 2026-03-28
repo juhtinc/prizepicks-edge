@@ -162,21 +162,32 @@ JSON array only. No other text.`,
   return { props, tokens };
 }
 
+const STAT_ALIASES = {
+  'pra': 'pts+reb+ast', 'pts+rebs+asts': 'pts+reb+ast', 'points+rebounds+assists': 'pts+reb+ast',
+  'pts+rebs': 'pts+reb', 'rebs+asts': 'reb+ast', 'rebounds+assists': 'reb+ast',
+  '3-pt made': '3-pointers made', 'threes': '3-pointers made', '3pm': '3-pointers made',
+  'fg attempted': 'field goals attempted', 'fga': 'field goals attempted',
+};
+
+function normStat(s) {
+  const l = (s || "").toLowerCase().trim();
+  return STAT_ALIASES[l] || l;
+}
+
 function findOddsMatch(prop, oddsLines) {
   if (!oddsLines?.props?.length) return null;
 
   const playerLower = (prop.player || "").toLowerCase().trim();
-  const statLower = (prop.stat || "").toLowerCase().trim();
+  const statNorm = normStat(prop.stat);
 
-  // Try exact, then partial match
   const match = oddsLines.props.find(p => {
     const nameLower = p.player?.toLowerCase() || "";
     const nameMatch = nameLower === playerLower
       || nameLower.includes(playerLower)
       || playerLower.includes(nameLower.split(" ").pop());
     if (!nameMatch) return false;
-    const sl = p.stat?.toLowerCase() || "";
-    return sl.includes(statLower) || statLower.includes(sl);
+    const sl = normStat(p.stat);
+    return sl === statNorm || sl.includes(statNorm) || statNorm.includes(sl);
   });
 
   if (!match) return null;

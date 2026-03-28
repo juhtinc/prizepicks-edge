@@ -26,11 +26,11 @@ const kv = require("./_kv");
 const ODDS_SPORT_MAP = {
   NBA: {
     key: "basketball_nba",
-    markets: "player_points,player_rebounds,player_assists,player_threes",
+    markets: "player_points,player_rebounds,player_assists,player_threes,player_points_rebounds_assists,player_blocks,player_steals,player_turnovers",
   },
   MLB: {
     key: "baseball_mlb",
-    markets: "batter_hits,batter_home_runs,pitcher_strikeouts,batter_total_bases",
+    markets: "batter_hits,batter_home_runs,pitcher_strikeouts,batter_total_bases,batter_rbis",
   },
   NHL: {
     key: "icehockey_nhl",
@@ -38,7 +38,7 @@ const ODDS_SPORT_MAP = {
   },
   NFL: {
     key: "americanfootball_nfl",
-    markets: "player_pass_yds,player_rush_yds,player_reception_yds,player_receptions",
+    markets: "player_pass_yds,player_rush_yds,player_reception_yds,player_receptions,player_pass_tds",
   },
 };
 
