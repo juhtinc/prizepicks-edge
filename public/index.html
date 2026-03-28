@@ -1177,13 +1177,12 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
     <div class="modal-title">📸 Scan Board</div>
     <div class="modal-sub">Upload or paste PrizePicks screenshots. AI extracts props and compares against sportsbook lines.</div>
 
-    <div class="scan-drop" id="scan-drop" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleScanDrop(event)">
-      <div class="scan-drop-icon">📋</div>
-      <div class="scan-drop-text">Drop screenshots here or press <kbd>Ctrl+V</kbd> to paste</div>
-      <div class="scan-drop-sub">PNG, JPG, WEBP · Max 10 images</div>
-      <input type="file" id="scan-file-input" accept="image/*" multiple style="display:none" onchange="handleScanFiles(this.files)">
-      <button class="btn-cancel" style="margin-top:10px;font-size:11px" onclick="document.getElementById('scan-file-input').click()">Or browse files</button>
+    <div class="scan-drop" id="scan-drop" onclick="document.getElementById('scan-file-input').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleScanDrop(event)">
+      <div class="scan-drop-icon">📸</div>
+      <div class="scan-drop-text">Click here to upload or press <kbd>Ctrl+V</kbd> to paste</div>
+      <div class="scan-drop-sub">PNG, JPG, WEBP · Max 10 images · or drag and drop</div>
     </div>
+    <input type="file" id="scan-file-input" accept="image/*" multiple style="display:none" onchange="handleScanFiles(this.files)">
 
     <div id="scan-thumbs" class="scan-thumbs"></div>
     <div id="scan-count" style="display:none;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--smoke);margin:8px 0"></div>
