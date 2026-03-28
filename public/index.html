@@ -1772,6 +1772,9 @@ let NOTIFS = [];
 let STEAM = [];
 let OPTIMAL_PICKS = [];
 let chartInstances = {};
+let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
+let activeLinesSportFilter = 'ALL';
+let activeLinesStatFilter = 'ALL';
 
 // ── Notifications ──────────────────────────────────────
 function pushNotif(title, body, type='info') {
@@ -2905,11 +2908,6 @@ function resetSettings() {
   localStorage.clear();
   location.reload();
 }
-
-// ── Lines (declare early to avoid TDZ) ───────────────
-let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
-let activeLinesSportFilter = 'ALL';
-let activeLinesStatFilter = 'ALL';
 
 document.getElementById('main').innerHTML = `
   <div class="skel-grid" style="padding:20px">
