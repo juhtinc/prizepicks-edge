@@ -2906,7 +2906,11 @@ function resetSettings() {
   location.reload();
 }
 
-// ── Lines ─────────────────────────────────────────────
+// ── Lines (declare early to avoid TDZ) ───────────────
+let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
+let activeLinesSportFilter = 'ALL';
+let activeLinesStatFilter = 'ALL';
+
 document.getElementById('main').innerHTML = `
   <div class="skel-grid" style="padding:20px">
     <div class="skel-card"><div class="skel-line thick w60"></div><div class="skel-line w100"></div><div class="skel-line w80"></div><div class="skel-line w40"></div></div>
@@ -2967,10 +2971,7 @@ function checkStalePicks() {
   }
 }
 
-// ── Lines ─────────────────────────────────────────────
-let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
-let activeLinesSportFilter = 'ALL';
-let activeLinesStatFilter = 'ALL';
+// ── Lines (continued) ─────────────────────────────────
 
 async function loadLines(manual = false) {
   const dot = document.getElementById('lines-dot');
