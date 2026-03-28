@@ -62,9 +62,124 @@ function parseEvent(event, sport) {
   };
 }
 
+// ── ESPN sport key map for player search ──
+const ESPN_SPORT_SLUG = {
+  NBA: "basketball/nba", MLB: "baseball/mlb", NHL: "hockey/nhl", NFL: "football/nfl",
+};
+
+// ── Player Game Logs: GET /api/scores?mode=gamelogs&player=NAME&sport=NBA ──
+async function handleGameLogs(req, res) {
+  const { player, sport } = req.query;
+  if (!player) return res.status(400).json({ error: "player param required" });
+
+  const sportSlug = ESPN_SPORT_SLUG[(sport || "NBA").toUpperCase()] || "basketball/nba";
+  const cacheKey = `gamelogs:${player.toLowerCase().replace(/\s+/g,'-')}:${sport||'NBA'}`;
+
+  // Cache 1 hour
+  try {
+    const cached = await kv.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+  } catch (_) {}
+
+  try {
+    // Step 1: Search for the player on ESPN
+    const searchUrl = `https://site.web.api.espn.com/apis/common/v3/search?query=${encodeURIComponent(player)}&limit=5&type=player`;
+    const searchR = await fetch(searchUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; PropsEdge/1.0)" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!searchR.ok) throw new Error("ESPN search failed: " + searchR.status);
+    const searchData = await searchR.json();
+
+    // Find best player match
+    const results = searchData.results || searchData.items || [];
+    const athletes = (results.find(r => r.type === "athlete") || results[0])?.contents || results;
+    if (!athletes.length) return res.status(200).json({ found: false, player, games: [] });
+
+    const match = athletes[0];
+    const athleteId = match.uid?.split(":").pop() || match.id;
+    const athleteName = match.title || match.displayName || match.name || player;
+
+    if (!athleteId) return res.status(200).json({ found: false, player, games: [] });
+
+    // Step 2: Fetch game log from ESPN
+    const logUrl = `https://site.web.api.espn.com/apis/common/v3/sports/${sportSlug}/athletes/${athleteId}/gamelog`;
+    const logR = await fetch(logUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; PropsEdge/1.0)" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!logR.ok) throw new Error("ESPN gamelog failed: " + logR.status);
+    const logData = await logR.json();
+
+    // Parse game log — ESPN returns categories with labels + events with stats
+    const categories = logData.categories || [];
+    const seasonType = logData.seasonTypes || logData.events || [];
+    const games = [];
+
+    // Try parsing the standard format
+    const labels = logData.labels || [];
+    const events = logData.events || {};
+    const entries = logData.entries || [];
+
+    // Format: entries[] has stats array matching labels[]
+    if (entries.length && labels.length) {
+      for (const entry of entries.slice(-15)) { // last 15 games
+        const stats = {};
+        labels.forEach((label, i) => { stats[label] = entry.stats?.[i] ?? null; });
+        games.push({
+          date: entry.date || null,
+          opponent: entry.opponent?.abbreviation || entry.opponent?.displayName || null,
+          home: entry.home ?? null,
+          result: entry.result || null,
+          stats,
+        });
+      }
+    }
+
+    // Alternative format: seasonTypes[].categories[].events[]
+    if (!games.length && Array.isArray(seasonType)) {
+      for (const st of seasonType) {
+        for (const cat of (st.categories || [])) {
+          const catLabels = cat.labels || [];
+          for (const ev of (cat.events || []).slice(-15)) {
+            const stats = {};
+            catLabels.forEach((label, i) => { stats[label] = ev.stats?.[i] ?? null; });
+            games.push({
+              date: ev.eventDate || null,
+              opponent: ev.opponent?.abbreviation || null,
+              home: ev.home ?? null,
+              result: ev.gameResult || null,
+              stats,
+            });
+          }
+        }
+      }
+    }
+
+    const payload = {
+      found: true,
+      player: athleteName,
+      athleteId,
+      sport: sport || "NBA",
+      gamesPlayed: games.length,
+      games: games.reverse(), // most recent first
+      fetchedAt: new Date().toISOString(),
+    };
+
+    try { await kv.set(cacheKey, payload, 3600); } catch (_) {} // 1hr cache
+    return res.status(200).json(payload);
+  } catch (err) {
+    console.error("[gamelogs] Error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  // Route: game logs mode
+  if (req.query?.mode === "gamelogs") return handleGameLogs(req, res);
 
   // Serve from cache if fresh (2-minute TTL)
   try {

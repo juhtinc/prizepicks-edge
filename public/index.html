@@ -3723,6 +3723,41 @@ function buildScanTableHTML(d, showClear) {
     return be - ae;
   });
 
+  // Smart Picks: top plays with real edges (no goblins, edge > 1, reasonable range)
+  const smartPicks = sorted.filter(p => {
+    const e = Math.abs(p.odds?.edge || 0);
+    return e >= 1 && e <= 6 && p.boost !== 'goblin';
+  }).slice(0, 5);
+
+  if (smartPicks.length) {
+    html += `<div style="padding:12px 14px;margin-bottom:14px;background:rgba(184,245,66,0.06);border:1px solid rgba(184,245,66,0.2);border-radius:8px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);margin-bottom:8px">⚡ SMART PICKS — Best Real Edges</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${smartPicks.map(p => {
+          const dir = (p.odds?.edge||0) > 0 ? 'UNDER' : 'OVER';
+          const dirColor = dir === 'OVER' ? 'var(--lime)' : 'var(--sky)';
+          return `<div style="background:var(--ink3);border-radius:6px;padding:8px 12px;font-size:12px">
+            <span style="font-weight:600">${p.player}</span>
+            <span style="color:var(--smoke);font-size:10px">${p.stat}</span>
+            <span style="color:${dirColor};font-weight:700;font-size:10px">${dir} ${p.line}</span>
+            <span class="scan-edge ${(p.odds?.edge||0)>0?'pos':'neg'}" style="margin-left:4px">${(p.odds?.edge||0)>0?'+':''}${p.odds?.edge}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="export-btn" onclick="addSmartPicksToParlay()" style="font-size:10px;margin-top:8px">🎯 Add to Parlay Builder</button>
+    </div>`;
+  }
+
+  // PrizePicks Payout Reference
+  html += `<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="background:var(--ink3);border-radius:6px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog)">
+      <span style="color:var(--smoke)">POWER PLAY:</span> 2-pick 3x · 3-pick 5x · 4-pick 10x · 5-pick 20x · 6-pick 40x
+    </div>
+    <div style="background:var(--ink3);border-radius:6px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog)">
+      <span style="color:var(--smoke)">FLEX PLAY:</span> 3-pick (2/3) 1.5x · 4-pick (3/4) 2x · 5-pick (4/5) 3x · 6-pick (5/6) 7.5x
+    </div>
+  </div>`;
+
   html += `<div style="overflow-x:auto"><table class="scan-compare-table">
     <thead><tr>
       <th>Player</th>
@@ -3733,10 +3768,11 @@ function buildScanTableHTML(d, showClear) {
       <th style="text-align:center">MGM</th>
       <th style="text-align:center">Avg</th>
       <th style="text-align:center">Edge</th>
-      <th>Verdict</th>
+      <th>Play</th>
+      <th>Lookup</th>
     </tr></thead><tbody>`;
 
-  sorted.forEach(p => {
+  sorted.forEach((p, idx) => {
     const books = p.odds?.books || {};
     const dk = books.draftkings ?? books.draftkings_promo ?? '—';
     const fd = books.fanduel ?? '—';
@@ -3746,8 +3782,6 @@ function buildScanTableHTML(d, showClear) {
     const edgeCls = edge > 0 ? 'pos' : edge < 0 ? 'neg' : 'zero';
     const edgeStr = edge != null ? (edge > 0 ? '+' : '') + edge : '—';
 
-    // Verdict: if PP line < consensus and you take OVER, that's good (lower bar)
-    // Boost badge
     const boost = p.boost;
     const boostBadge = boost === 'goblin' ? ' <span style="font-size:10px;color:#4caf50" title="Goblin — boosted line, lower payout">🟢</span>'
       : boost === 'demon' ? ' <span style="font-size:10px;color:#f44336" title="Demon — harder line, higher payout">🔴</span>'
@@ -3760,8 +3794,9 @@ function buildScanTableHTML(d, showClear) {
       else verdict = `<span style="color:var(--fog)">Fair</span>`;
     }
 
-    // Highlight row if there's an edge
     const rowStyle = Math.abs(edge||0) > 0.5 ? 'background:rgba(184,245,66,0.03)' : '';
+    const playerEnc = encodeURIComponent(p.player || '');
+    const statEnc = encodeURIComponent(p.stat || '');
 
     html += `<tr style="${rowStyle}">
       <td style="font-weight:600">${p.player || '—'}${boostBadge}</td>
@@ -3773,7 +3808,9 @@ function buildScanTableHTML(d, showClear) {
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-weight:600">${avg}</td>
       <td style="text-align:center"><span class="scan-edge ${edgeCls}">${edgeStr}</span></td>
       <td style="font-size:10px">${verdict}</td>
-    </tr>`;
+      <td><button class="track-btn" onclick="lookupGameLog('${playerEnc}','${statEnc}',${p.line??0},${idx})" style="font-size:9px;padding:2px 6px">📊</button></td>
+    </tr>
+    <tr id="gamelog-row-${idx}" style="display:none"><td colspan="10" style="padding:0"></td></tr>`;
   });
 
   html += '</tbody></table></div></div>';
@@ -3844,6 +3881,143 @@ function restoreScanResults() {
         linesEl.innerHTML = buildScanTableHTML(saved, true);
       }
     }
+  } catch(_) {}
+}
+
+// ── Game Log Lookup (ESPN, free) ─────────────────────
+const _gamelogCache = {};
+
+async function lookupGameLog(playerEnc, statEnc, line, rowIdx) {
+  const row = document.getElementById('gamelog-row-' + rowIdx);
+  if (!row) return;
+  const cell = row.querySelector('td');
+
+  // Toggle if already open
+  if (row.style.display !== 'none') { row.style.display = 'none'; return; }
+  row.style.display = '';
+
+  const player = decodeURIComponent(playerEnc);
+  const stat = decodeURIComponent(statEnc);
+  const cacheKey = `${player}|${stat}`;
+
+  cell.innerHTML = '<div style="padding:12px;color:var(--fog);font-size:11px">Loading game log...</div>';
+
+  try {
+    let data = _gamelogCache[cacheKey];
+    if (!data) {
+      const r = await fetch(`/api/scores?mode=gamelogs&player=${playerEnc}&sport=NBA`);
+      data = await r.json();
+      _gamelogCache[cacheKey] = data;
+    }
+
+    if (!data.found || !data.games?.length) {
+      cell.innerHTML = `<div style="padding:12px;color:var(--fog);font-size:11px">No game log found for ${player}</div>`;
+      return;
+    }
+
+    // Map stat name to ESPN label
+    const statMap = {
+      'points':'PTS','rebounds':'REB','assists':'AST','3-pt made':'3PM','threes':'3PM',
+      'pts+rebs+asts':'PTS+REB+AST','pts+reb+ast':'PTS+REB+AST',
+      'steals':'STL','blocks':'BLK','turnovers':'TO','fantasy score':'FPTS',
+      'hits':'H','home runs':'HR','rbis':'RBI','total bases':'TB','strikeouts':'K',
+      'goals':'G','shots on goal':'SOG','saves':'SV',
+    };
+    const espnKey = statMap[stat.toLowerCase()] || stat.toUpperCase();
+    const isCombo = espnKey.includes('+');
+    const comboKeys = isCombo ? espnKey.split('+').map(k => k.trim()) : null;
+
+    // Extract stat values from game log
+    const games = data.games.slice(0, 10);
+    const vals = games.map(g => {
+      if (comboKeys) {
+        return comboKeys.reduce((sum, k) => sum + (parseFloat(g.stats?.[k]) || 0), 0);
+      }
+      // Try exact key, then try common alternatives
+      let v = g.stats?.[espnKey];
+      if (v == null) {
+        for (const [k, val] of Object.entries(g.stats || {})) {
+          if (k.toUpperCase() === espnKey) { v = val; break; }
+        }
+      }
+      return parseFloat(v) || 0;
+    });
+
+    if (!vals.length) {
+      cell.innerHTML = `<div style="padding:12px;color:var(--fog);font-size:11px">No ${stat} data in game log for ${player}</div>`;
+      return;
+    }
+
+    // Calculate hit rate
+    const overHits = vals.filter(v => v > line).length;
+    const underHits = vals.filter(v => v < line).length;
+    const pushes = vals.filter(v => v === line).length;
+    const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+    const median = [...vals].sort((a,b) => a-b)[Math.floor(vals.length/2)];
+    const overPct = Math.round(overHits / vals.length * 100);
+    const underPct = Math.round(underHits / vals.length * 100);
+
+    // Trend: last 3 vs first 3
+    const recent3 = vals.slice(0, 3);
+    const older3 = vals.slice(-3);
+    const recentAvg = recent3.reduce((a,b) => a+b, 0) / recent3.length;
+    const olderAvg = older3.reduce((a,b) => a+b, 0) / older3.length;
+    const trend = recentAvg > olderAvg + 1 ? '📈 Trending UP' : recentAvg < olderAvg - 1 ? '📉 Trending DOWN' : '➡️ Steady';
+
+    // Build mini game log table
+    let logHTML = `<div style="padding:12px;background:var(--ink3);border-radius:6px;margin:6px 0">
+      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:10px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px">
+          <span style="color:var(--fog)">AVG:</span> <span style="color:var(--text);font-weight:600">${avg.toFixed(1)}</span>
+          <span style="color:var(--fog);margin-left:8px">MED:</span> <span style="color:var(--text);font-weight:600">${median}</span>
+          <span style="color:var(--fog);margin-left:8px">LINE:</span> <span style="color:#f5a623;font-weight:600">${line}</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px">
+          <span style="color:var(--lime);font-weight:600">OVER: ${overHits}/${vals.length} (${overPct}%)</span>
+          <span style="color:var(--sky);font-weight:600;margin-left:10px">UNDER: ${underHits}/${vals.length} (${underPct}%)</span>
+        </div>
+        <div style="font-size:11px">${trend}</div>
+      </div>
+      <div style="display:flex;gap:4px;align-items:end;height:40px">
+        ${vals.map(v => {
+          const hit = v > line;
+          const h = Math.min(40, Math.max(8, v / (line * 1.5) * 40));
+          const color = hit ? 'var(--lime)' : 'var(--coral)';
+          return `<div style="flex:1;height:${h}px;background:${color};border-radius:2px;opacity:0.7" title="${v}"></div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:4px;margin-top:2px">
+        ${vals.map(v => `<div style="flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--fog)">${v}</div>`).join('')}
+      </div>
+      <div style="border-top:1px dashed var(--line);margin-top:4px;position:relative;height:1px">
+        <span style="position:absolute;right:0;top:-8px;font-family:'JetBrains Mono',monospace;font-size:8px;color:#f5a623">LINE ${line}</span>
+      </div>
+    </div>`;
+
+    cell.innerHTML = logHTML;
+  } catch(e) {
+    cell.innerHTML = `<div style="padding:12px;color:var(--coral);font-size:11px">Error: ${e.message}</div>`;
+  }
+}
+
+function addSmartPicksToParlay() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('pp_scan_results') || 'null');
+    if (!saved?.props?.length) return;
+    const smart = saved.props.filter(p => {
+      const e = Math.abs(p.odds?.edge || 0);
+      return e >= 1 && e <= 6 && p.boost !== 'goblin';
+    }).slice(0, 5);
+    // Add to parlay localStorage
+    let parlay = JSON.parse(localStorage.getItem('pp_parlay') || '[]');
+    smart.forEach(p => {
+      const dir = (p.odds?.edge||0) > 0 ? 'UNDER' : 'OVER';
+      if (!parlay.find(x => x.player === p.player && x.stat === p.stat)) {
+        parlay.push({ player: p.player, stat: p.stat, line: p.line, direction: dir, source: 'scan' });
+      }
+    });
+    localStorage.setItem('pp_parlay', JSON.stringify(parlay));
+    alert(`Added ${smart.length} smart picks to Parlay Builder`);
   } catch(_) {}
 }
 
