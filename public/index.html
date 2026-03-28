@@ -1595,6 +1595,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
           <div style="font-weight:600;font-size:13px;color:var(--text)">Board Scanner</div>
           <div style="font-size:11px;color:var(--smoke)">Upload PrizePicks screenshots to compare lines against sportsbooks</div>
         </div>
+        <button class="btn-free-refresh" onclick="refreshLinesAndRecompare()" id="btn-lines-recompare" style="white-space:nowrap">🔄 Refresh Lines</button>
         <button class="btn-refresh" onclick="openScanModal()" style="white-space:nowrap">📸 Scan Board</button>
       </div>
 
@@ -4509,6 +4510,18 @@ function renderDashboard() {
       }
     } catch(_) {}
   }
+}
+
+// ── Refresh Lines & Re-compare ──────────────────────
+async function refreshLinesAndRecompare() {
+  const btn = document.getElementById('btn-lines-recompare');
+  if (btn) { btn.disabled = true; btn.textContent = '🔄 Refreshing...'; }
+  try {
+    await loadLines(true); // bust cache, fresh Odds API call
+    recompareScanResults(); // re-match scan against new lines
+    renderDashboard();
+  } catch(_) {}
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Lines'; }
 }
 
 // ── Boot ──────────────────────────────────────────────
