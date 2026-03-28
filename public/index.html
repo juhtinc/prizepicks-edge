@@ -1776,6 +1776,7 @@ let chartInstances = {};
 let LINES = { props: [], byPlayer: {}, hasOddsApi: false };
 let activeLinesSportFilter = 'ALL';
 let activeLinesStatFilter = 'ALL';
+const _gamelogCache = {};
 
 // ── Notifications ──────────────────────────────────────
 function pushNotif(title, body, type='info') {
@@ -3897,7 +3898,6 @@ function restoreScanResults() {
 }
 
 // ── Game Log Lookup (ESPN, free) ─────────────────────
-const _gamelogCache = {};
 
 async function lookupGameLog(playerEnc, statEnc, line, rowIdx) {
   const row = document.getElementById('gamelog-row-' + rowIdx);
