@@ -1336,6 +1336,12 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);display
         <span class="status-rhs" id="sleagues"></span>
       </div>
 
+      <!-- Streak Tracker -->
+      <div id="streak-banner" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(184,245,66,0.04);border:1px solid rgba(184,245,66,0.15);border-radius:var(--r);font-size:12px"></div>
+
+      <!-- Daily Slate Summary -->
+      <div id="slate-summary" style="display:none;margin-bottom:10px;padding:10px 14px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r)"></div>
+
       <!-- Stale picks warning banner -->
       <div id="stale-picks-banner" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:var(--r);font-size:12px;color:#f5a623">
         ⚠️ New data loaded since last AI analysis — consider re-running AI
@@ -2118,6 +2124,7 @@ async function loadPicks() {
     buildSportPills(m.leaguesSeen || []);
     render();
     renderResultsTab(dr);
+    renderStreakBanner();
     return m;
   } catch(err) {
     console.error(err);
@@ -2550,17 +2557,29 @@ function renderParlayTab() {
   const powerPayout = POWER_PAYOUTS[n] || n*2;
   const powerOut = (entry*powerPayout).toFixed(2);
 
-  // Correlation check
-  const teams = PARLAY.map(p=>p.team).filter(Boolean);
-  const corrPairs = [];
-  PARLAY.forEach((p,i)=>PARLAY.forEach((q,j)=>{if(j<=i)return; if(p.team&&q.team&&p.team===q.team) corrPairs.push(`${p.player} + ${q.player}`); }));
+  // Enhanced correlation detection
+  const corr = detectCorrelations(PARLAY);
+  let corrHTML = '';
+  if (corr.warnings.length || corr.boosts.length) {
+    corrHTML = `<div style="margin-bottom:12px">`;
+    corr.warnings.forEach(w => {
+      corrHTML += `<div style="padding:6px 10px;margin-bottom:4px;background:rgba(255,89,99,0.06);border:1px solid rgba(255,89,99,0.15);border-radius:6px;font-size:11px;color:var(--coral)">⚠️ ${w}</div>`;
+    });
+    corr.boosts.forEach(b => {
+      corrHTML += `<div style="padding:6px 10px;margin-bottom:4px;background:rgba(184,245,66,0.06);border:1px solid rgba(184,245,66,0.15);border-radius:6px;font-size:11px;color:var(--lime)">🔗 ${b}</div>`;
+    });
+    corrHTML += `</div>`;
+  }
 
   const pickRows = PARLAY.map((p,i) => {
-    const sameTeam = PARLAY.some((q,j)=>j!==i&&q.team&&p.team&&q.team===p.team);
+    const sameTeam = PARLAY.some((q,j)=>j!==i&&q.team&&p.team&&q.team?.toUpperCase()===p.team?.toUpperCase());
+    const sameGame = PARLAY.some((q,j)=>j!==i&&((q.team&&p.opponent&&q.team.toUpperCase()===p.opponent?.toUpperCase())||(q.opponent&&p.team&&q.opponent?.toUpperCase()===p.team?.toUpperCase())));
+    const corrBadge = sameTeam ? `<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(184,245,66,0.1);color:var(--lime);border:1px solid rgba(184,245,66,0.2)">Same Team</span>`
+      : sameGame ? `<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(90,180,255,0.1);color:var(--sky);border:1px solid rgba(90,180,255,0.2)">Same Game</span>` : '';
     return `<div class="parlay-pick-row">
       <span>${emoji(p.sport)}</span>
-      <div style="flex:1"><div style="font-weight:600;font-size:13px">${p.player}</div><div style="font-size:11px;color:var(--smoke)">${p.stat} ${p.direction} ${p.line} · ${p.confidence}% edge</div></div>
-      ${sameTeam?`<span class="parlay-corr good">Correlated</span>`:''}
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${p.player}</div><div style="font-size:11px;color:var(--smoke)">${p.stat} ${p.direction} ${p.line}${p.confidence?' · '+p.confidence+'% edge':''}</div></div>
+      ${corrBadge}
       <button class="parlay-pick-remove" onclick="PARLAY.splice(${i},1);saveParlay();renderParlayTab();render()">✕</button>
     </div>`;
   }).join('');
@@ -2579,6 +2598,7 @@ function renderParlayTab() {
 
   el.innerHTML = `
     ${corrPairs.length?`<div style="padding:10px 14px;background:rgba(184,245,66,0.07);border:1px solid rgba(184,245,66,0.2);border-radius:var(--rs);margin-bottom:14px;font-size:12px;color:var(--lime)">✅ Correlated picks detected: ${corrPairs.join(', ')}</div>`:''}
+    ${corrHTML}
     <div class="parlay-picks-list">${pickRows}</div>
     ${entryInput}
     <div class="parlay-payout-grid">
@@ -3333,6 +3353,7 @@ async function loadScores(manual = false) {
 
     // Always pre-render so tab switch is instant
     renderScoresGrid();
+    renderDailySlateSummary();
     updatePickCardScores();
   } catch(e) {
     if (dot) dot.className = 'status-dot red';
@@ -4019,6 +4040,189 @@ function addSmartPicksToParlay() {
     localStorage.setItem('pp_parlay', JSON.stringify(parlay));
     alert(`Added ${smart.length} smart picks to Parlay Builder`);
   } catch(_) {}
+}
+
+// ── Correlation Detector ─────────────────────────────
+function detectCorrelations(picks) {
+  const warnings = [];
+  const boosts = [];
+  picks.forEach((p, i) => {
+    picks.forEach((q, j) => {
+      if (j <= i) return;
+      const sameTeam = p.team && q.team && p.team.toUpperCase() === q.team.toUpperCase();
+      const sameGame = sameTeam || (p.opponent && q.team && p.opponent.toUpperCase() === q.team.toUpperCase());
+
+      if (sameTeam) {
+        // Same team: points are somewhat correlated (if team scores a lot, both benefit)
+        if (p.direction === 'OVER' && q.direction === 'OVER') {
+          boosts.push(`${p.player} + ${q.player}: Both OVER on same team — positively correlated (if ${p.team} has a big game, both hit)`);
+        } else if (p.direction !== q.direction) {
+          warnings.push(`${p.player} ${p.direction} + ${q.player} ${q.direction}: Opposite directions on same team — these fight each other`);
+        }
+      } else if (sameGame) {
+        // Opposing teams in same game
+        if (p.stat === q.stat && p.stat === 'Points' && p.direction === 'OVER' && q.direction === 'OVER') {
+          boosts.push(`${p.player} + ${q.player}: Both scoring OVER in same game — high-scoring game benefits both`);
+        }
+      }
+    });
+  });
+  return { warnings, boosts };
+}
+
+// ── Streak Tracker ──────────────────────────────────
+function getStreakData() {
+  const journal = JSON.parse(localStorage.getItem('pp_journal') || '[]');
+  if (!journal.length) return null;
+
+  const recent = journal.slice(-50); // last 50 entries
+  const bySport = {};
+  const byStat = {};
+  const byWeek = {};
+  let currentStreak = 0;
+  let streakType = null;
+
+  // Calculate streaks
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const e = recent[i];
+    if (!e.result || e.result === 'pending') continue;
+    const won = e.result === 'win';
+    if (streakType === null) { streakType = won ? 'W' : 'L'; currentStreak = 1; }
+    else if ((won && streakType === 'W') || (!won && streakType === 'L')) { currentStreak++; }
+    else break;
+  }
+
+  // By sport
+  recent.forEach(e => {
+    const sport = (e.pick || '').match(/NBA|MLB|NHL|NFL/)?.[0] || 'Other';
+    if (!bySport[sport]) bySport[sport] = { w: 0, l: 0 };
+    if (e.result === 'win') bySport[sport].w++;
+    else if (e.result === 'loss') bySport[sport].l++;
+  });
+
+  // By stat type (if captured in pick text)
+  recent.forEach(e => {
+    const pick = e.pick || '';
+    const stats = ['Points', 'Rebounds', 'Assists', 'Strikeouts', 'Hits'];
+    const found = stats.find(s => pick.toLowerCase().includes(s.toLowerCase()));
+    const stat = found || 'Other';
+    if (!byStat[stat]) byStat[stat] = { w: 0, l: 0 };
+    if (e.result === 'win') byStat[stat].w++;
+    else if (e.result === 'loss') byStat[stat].l++;
+  });
+
+  // Last 7 days
+  const now = Date.now();
+  const w7 = { w: 0, l: 0 };
+  const w30 = { w: 0, l: 0 };
+  recent.forEach(e => {
+    const d = new Date(e.date).getTime();
+    if (e.result === 'win') { if (now - d < 7*86400000) w7.w++; if (now - d < 30*86400000) w30.w++; }
+    if (e.result === 'loss') { if (now - d < 7*86400000) w7.l++; if (now - d < 30*86400000) w30.l++; }
+  });
+
+  return { currentStreak, streakType, bySport, byStat, w7, w30 };
+}
+
+function renderStreakBanner() {
+  const el = document.getElementById('streak-banner');
+  if (!el) return;
+  const data = getStreakData();
+  if (!data || (!data.currentStreak && !data.w7.w && !data.w7.l)) { el.style.display = 'none'; return; }
+
+  const streakIcon = data.streakType === 'W' ? '🔥' : '❄️';
+  const streakColor = data.streakType === 'W' ? 'var(--lime)' : 'var(--coral)';
+  const w7total = data.w7.w + data.w7.l;
+  const w7pct = w7total ? Math.round(data.w7.w / w7total * 100) : 0;
+  const w30total = data.w30.w + data.w30.l;
+  const w30pct = w30total ? Math.round(data.w30.w / w30total * 100) : 0;
+
+  // Best sport
+  let bestSport = null, bestPct = 0;
+  Object.entries(data.bySport).forEach(([sport, r]) => {
+    const total = r.w + r.l;
+    const pct = total >= 3 ? r.w / total : 0;
+    if (pct > bestPct) { bestPct = pct; bestSport = sport; }
+  });
+
+  el.style.display = 'block';
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+    ${data.currentStreak >= 2 ? `<div style="font-weight:700;color:${streakColor}">${streakIcon} ${data.currentStreak}${data.streakType} Streak</div>` : ''}
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--smoke)">
+      7d: <span style="color:${w7pct>=55?'var(--lime)':'var(--coral)'}">${data.w7.w}-${data.w7.l} (${w7pct}%)</span>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--smoke)">
+      30d: <span style="color:${w30pct>=55?'var(--lime)':'var(--coral)'}">${data.w30.w}-${data.w30.l} (${w30pct}%)</span>
+    </div>
+    ${bestSport && bestPct >= 0.6 ? `<div style="font-size:11px;color:var(--lime)">Best: ${bestSport} (${Math.round(bestPct*100)}%)</div>` : ''}
+    ${Object.entries(data.byStat).filter(([s,r]) => r.w+r.l >= 3 && r.w/(r.w+r.l) >= 0.65).map(([s,r]) =>
+      `<div style="font-size:10px;color:var(--lime)">Hot: ${s} ${r.w}-${r.l}</div>`
+    ).join('')}
+  </div>`;
+}
+
+// ── Injury Impact Detection ─────────────────────────
+function detectInjuryImpacts() {
+  // Cross-reference news injuries with scan results
+  const impacts = [];
+  const injuries = newsItems.filter(n => (n.type || '').toLowerCase() === 'injury');
+
+  injuries.forEach(inj => {
+    const text = (inj.text || '').toLowerCase();
+    // Check if this is a star player out
+    const isOut = text.includes('out') || text.includes('ruled out') || text.includes('rest of season');
+    if (!isOut) return;
+
+    // Extract team from injury text
+    const teamMatch = text.match(/\((\w{2,4})\)/);
+    const team = teamMatch?.[1]?.toUpperCase();
+    if (!team) return;
+
+    // Find scan results with same team or opponent
+    const saved = JSON.parse(localStorage.getItem('pp_scan_results') || 'null');
+    if (!saved?.props?.length) return;
+
+    saved.props.forEach(p => {
+      // Check if this player is on the injured player's team (teammate boost)
+      // We don't have team data in scan results, but we can flag it
+      impacts.push({
+        injuredPlayer: inj.text.split('(')[0]?.trim() || 'Unknown',
+        team,
+        affectedProp: p.player,
+        note: `${inj.text.split('—')[0]?.trim()} is OUT — monitor impact on ${p.player}'s usage`,
+      });
+    });
+  });
+
+  return impacts.slice(0, 5); // top 5 impacts
+}
+
+// ── Daily Slate Summary ─────────────────────────────
+function renderDailySlateSummary() {
+  const el = document.getElementById('slate-summary');
+  if (!el) return;
+  if (!SCORES.length) { el.style.display = 'none'; return; }
+
+  const bySport = {};
+  SCORES.forEach(g => {
+    if (!bySport[g.sport]) bySport[g.sport] = { total: 0, live: 0, final: 0, pregame: 0 };
+    bySport[g.sport].total++;
+    bySport[g.sport][g.status]++;
+  });
+
+  const liveTotal = SCORES.filter(g => g.status === 'live').length;
+  const pills = Object.entries(bySport).map(([sport, c]) =>
+    `<span style="background:var(--ink3);padding:4px 10px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px">
+      ${emoji(sport)} ${sport}: ${c.total} game${c.total!==1?'s':''}${c.live ? ` (${c.live} live)` : ''}
+    </span>`
+  ).join('');
+
+  el.style.display = 'block';
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--smoke)">TODAY'S SLATE</span>
+    ${pills}
+    ${liveTotal ? `<span style="color:var(--lime);font-size:11px;font-weight:600">🔴 ${liveTotal} LIVE</span>` : ''}
+  </div>`;
 }
 
 // ── Boot ──────────────────────────────────────────────
