@@ -3026,6 +3026,7 @@ async function loadLines(manual = false) {
     if (document.getElementById('tab-lines')?.classList.contains('active')) renderLinesTab();
     updatePickCardLines();
     recompareScanResults(); // Re-match scan results against fresh lines
+    checkPropAlerts(); // Check if any prop alerts triggered
   } catch(e) {
     if (dot) dot.className = 'status-dot red';
     if (status) status.textContent = 'Failed: ' + e.message;
@@ -3731,6 +3732,7 @@ function buildScanTableHTML(d, showClear) {
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="export-btn" onclick="recompareScanResults()" style="font-size:10px">🔄 Re-compare</button>
       <button class="export-btn" onclick="copyScanResults()" style="font-size:10px">📋 Copy</button>
+      <button class="export-btn" onclick="shareResults()" style="font-size:10px">📤 Share</button>
       ${showClear ? '<button class="export-btn" onclick="clearScanResults()" style="font-size:10px;color:var(--coral)">× Clear</button>' : ''}
     </div>
   </div>`;
@@ -3829,18 +3831,38 @@ function buildScanTableHTML(d, showClear) {
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-weight:600">${avg}</td>
       <td style="text-align:center"><span class="scan-edge ${edgeCls}">${edgeStr}</span></td>
       <td style="font-size:10px">${verdict}</td>
-      <td><button class="track-btn" onclick="lookupGameLog('${playerEnc}','${statEnc}',${p.line??0},${idx})" style="font-size:9px;padding:2px 6px">📊</button></td>
+      <td style="white-space:nowrap">
+        <button class="track-btn" onclick="lookupGameLog('${playerEnc}','${statEnc}',${p.line??0},${idx})" style="font-size:9px;padding:2px 6px" title="Game log">📊</button>
+        <button class="track-btn" onclick="addPropAlert('${(p.player||'').replace(/'/g,"\\'")}','${(p.stat||'').replace(/'/g,"\\'")}',${p.line??0},'under')" style="font-size:9px;padding:2px 6px" title="Alert when line moves">🔔</button>
+      </td>
     </tr>
     <tr id="gamelog-row-${idx}" style="display:none"><td colspan="10" style="padding:0"></td></tr>`;
   });
 
-  html += '</tbody></table></div></div>';
+  html += '</tbody></table></div>';
+
+  // Best scan time hint
+  const bestTime = getBestScanTimes();
+  if (bestTime) {
+    html += `<div style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--fog)">
+      ⏰ Best scan time: <span style="color:var(--lime)">${bestTime.label}</span> (avg ${bestTime.avgEdges} edges per scan, ${bestTime.scans} scans tracked)
+    </div>`;
+  }
+
+  // Prop alerts section
+  html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--smoke);margin-bottom:8px">🔔 PROP ALERTS</div>
+    <div id="prop-alerts-list"></div>
+  </div>`;
+
+  html += '</div>';
   return html;
 }
 
 function renderScanResults(d) {
-  // Add timestamp
+  // Add timestamp + record scan time
   d.scannedAt = new Date().toISOString();
+  recordScanTimestamp();
 
   // Render in modal
   const modalEl = document.getElementById('scan-results');
@@ -4225,6 +4247,214 @@ function renderDailySlateSummary() {
   </div>`;
 }
 
+// ── Time-of-Day Line Tracker ────────────────────────
+function recordScanTimestamp() {
+  try {
+    const hist = JSON.parse(localStorage.getItem('pp_scan_times') || '[]');
+    const now = new Date();
+    const hour = now.getHours();
+    const saved = JSON.parse(localStorage.getItem('pp_scan_results') || 'null');
+    const edgeCount = saved?.props?.filter(p => Math.abs(p.odds?.edge||0) > 1).length || 0;
+    hist.push({ hour, ts: now.toISOString(), edges: edgeCount, total: saved?.totalProps || 0 });
+    // Keep last 50
+    localStorage.setItem('pp_scan_times', JSON.stringify(hist.slice(-50)));
+  } catch(_) {}
+}
+
+function getBestScanTimes() {
+  try {
+    const hist = JSON.parse(localStorage.getItem('pp_scan_times') || '[]');
+    if (hist.length < 3) return null;
+    // Group by hour, find which hour has the most edges on average
+    const byHour = {};
+    hist.forEach(h => {
+      if (!byHour[h.hour]) byHour[h.hour] = { edges: 0, count: 0 };
+      byHour[h.hour].edges += h.edges;
+      byHour[h.hour].count++;
+    });
+    let bestHour = null, bestAvg = 0;
+    Object.entries(byHour).forEach(([hr, d]) => {
+      const avg = d.edges / d.count;
+      if (avg > bestAvg) { bestAvg = avg; bestHour = parseInt(hr); }
+    });
+    if (!bestHour) return null;
+    const ampm = bestHour >= 12 ? 'PM' : 'AM';
+    const h12 = bestHour % 12 || 12;
+    return { hour: bestHour, label: `${h12}${ampm}`, avgEdges: bestAvg.toFixed(1), scans: hist.length };
+  } catch(_) { return null; }
+}
+
+// ── Social Share Card Generator ─────────────────────
+function generateShareCard(picks) {
+  const canvas = document.createElement('canvas');
+  const W = 800, rowH = 50, headerH = 100, footerH = 50;
+  const rows = picks || [];
+  canvas.width = W;
+  canvas.height = headerH + rows.length * rowH + footerH;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0F1219';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Header
+  ctx.fillStyle = '#B8F542';
+  ctx.font = 'bold 24px "DM Sans", sans-serif';
+  ctx.fillText('Props Edge', 30, 40);
+  ctx.fillStyle = '#8A95A3';
+  ctx.font = '12px "DM Sans", sans-serif';
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  ctx.fillText(dateStr + ' · Board Scan Results', 30, 65);
+
+  // Divider
+  ctx.strokeStyle = '#252B3B';
+  ctx.beginPath(); ctx.moveTo(30, 80); ctx.lineTo(W-30, 80); ctx.stroke();
+
+  // Column headers
+  ctx.fillStyle = '#5F6B7A';
+  ctx.font = '10px monospace';
+  ctx.fillText('PLAYER', 30, headerH - 5);
+  ctx.fillText('STAT', 250, headerH - 5);
+  ctx.fillText('PP LINE', 380, headerH - 5);
+  ctx.fillText('BOOKS', 480, headerH - 5);
+  ctx.fillText('EDGE', 570, headerH - 5);
+  ctx.fillText('PLAY', 660, headerH - 5);
+
+  // Rows
+  rows.forEach((p, i) => {
+    const y = headerH + i * rowH + 30;
+    const edge = p.odds?.edge;
+    const dir = edge != null ? (edge < -0.5 ? 'OVER' : edge > 0.5 ? 'UNDER' : 'Fair') : '—';
+
+    // Alternate row bg
+    if (i % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.02)'; ctx.fillRect(0, y - 25, W, rowH); }
+
+    // Edge highlight
+    if (Math.abs(edge||0) > 0.5) { ctx.fillStyle = 'rgba(184,245,66,0.04)'; ctx.fillRect(0, y - 25, W, rowH); }
+
+    ctx.font = '13px "DM Sans", sans-serif';
+    ctx.fillStyle = '#E0E4EA';
+    ctx.fillText(p.player || '—', 30, y);
+
+    ctx.fillStyle = '#8A95A3';
+    ctx.font = '11px "DM Sans", sans-serif';
+    ctx.fillText(p.stat || '—', 250, y);
+
+    ctx.fillStyle = '#f5a623';
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText(String(p.line ?? '—'), 380, y);
+
+    ctx.fillStyle = '#8A95A3';
+    ctx.font = '12px monospace';
+    ctx.fillText(String(p.odds?.consensus ?? '—'), 480, y);
+
+    ctx.fillStyle = edge > 0 ? '#4caf50' : edge < 0 ? '#f44336' : '#5F6B7A';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(edge != null ? (edge > 0 ? '+' : '') + edge : '—', 570, y);
+
+    ctx.fillStyle = dir === 'OVER' ? '#B8F542' : dir === 'UNDER' ? '#5AB4FF' : '#5F6B7A';
+    ctx.font = 'bold 11px "DM Sans", sans-serif';
+    ctx.fillText(dir, 660, y);
+  });
+
+  // Footer
+  const fy = headerH + rows.length * rowH + 30;
+  ctx.fillStyle = '#5F6B7A';
+  ctx.font = '10px "DM Sans", sans-serif';
+  ctx.fillText('Generated by Props Edge · propsedge.app', 30, fy);
+
+  return canvas;
+}
+
+function shareResults() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('pp_scan_results') || 'null');
+    if (!saved?.props?.length) { alert('No scan results to share'); return; }
+    // Top 10 with edges
+    const top = saved.props.filter(p => p.odds?.edge != null).sort((a,b) => Math.abs(b.odds?.edge||0) - Math.abs(a.odds?.edge||0)).slice(0, 10);
+    if (!top.length) { alert('No matched props to share'); return; }
+
+    const canvas = generateShareCard(top);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      // Try native share if available
+      if (navigator.canShare?.({ files: [new File([blob], 'props-edge.png', { type: 'image/png' })] })) {
+        navigator.share({ files: [new File([blob], 'props-edge.png', { type: 'image/png' })], title: 'Props Edge Picks' });
+      } else {
+        // Fallback: download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'props-edge-picks.png';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    }, 'image/png');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ── Prop Alerts (client-side, checks cached lines) ──
+function getAlerts() {
+  try { return JSON.parse(localStorage.getItem('pp_prop_alerts') || '[]'); } catch(_) { return []; }
+}
+function saveAlerts(a) { localStorage.setItem('pp_prop_alerts', JSON.stringify(a)); }
+
+function addPropAlert(player, stat, targetLine, direction) {
+  const alerts = getAlerts();
+  if (alerts.find(a => a.player === player && a.stat === stat)) return;
+  alerts.push({ player, stat, targetLine, direction, createdAt: new Date().toISOString(), triggered: false });
+  saveAlerts(alerts);
+  renderPropAlerts();
+}
+
+function removePropAlert(idx) {
+  const alerts = getAlerts();
+  alerts.splice(idx, 1);
+  saveAlerts(alerts);
+  renderPropAlerts();
+}
+
+function checkPropAlerts() {
+  if (!LINES.props?.length) return;
+  const alerts = getAlerts();
+  let triggered = false;
+  alerts.forEach(a => {
+    if (a.triggered) return;
+    const match = LINES.props.find(p => {
+      const nm = (p.player||'').toLowerCase();
+      return nm.includes(a.player.toLowerCase()) && (p.stat||'').toLowerCase().includes(a.stat.toLowerCase());
+    });
+    if (!match) return;
+    const consensus = Object.values(match.books||{});
+    const avg = consensus.length ? consensus.reduce((s,v) => s+v, 0) / consensus.length : null;
+    if (avg == null) return;
+    if (a.direction === 'under' && avg <= a.targetLine) {
+      a.triggered = true; triggered = true;
+      pushNotif('🔔 Prop Alert!', `${a.player} ${a.stat} dropped to ${avg.toFixed(1)} (target: ${a.targetLine})`, 'alert');
+    }
+    if (a.direction === 'over' && avg >= a.targetLine) {
+      a.triggered = true; triggered = true;
+      pushNotif('🔔 Prop Alert!', `${a.player} ${a.stat} rose to ${avg.toFixed(1)} (target: ${a.targetLine})`, 'alert');
+    }
+  });
+  if (triggered) saveAlerts(alerts);
+}
+
+function renderPropAlerts() {
+  const el = document.getElementById('prop-alerts-list');
+  if (!el) return;
+  const alerts = getAlerts();
+  if (!alerts.length) { el.innerHTML = '<div style="font-size:11px;color:var(--fog);padding:8px">No active alerts. Use the 🔔 button on scan results to set one.</div>'; return; }
+  el.innerHTML = alerts.map((a, i) =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px">
+      <span style="font-weight:600">${a.player}</span>
+      <span style="color:var(--smoke);font-size:10px">${a.stat}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${a.direction==='under'?'var(--sky)':'var(--lime)'}">${a.direction.toUpperCase()} ${a.targetLine}</span>
+      ${a.triggered ? '<span style="font-size:10px;color:var(--lime)">✅ Triggered</span>' : '<span style="font-size:10px;color:var(--fog)">⏳ Watching</span>'}
+      <button onclick="removePropAlert(${i})" style="margin-left:auto;background:none;border:none;color:var(--fog);cursor:pointer;font-size:14px">×</button>
+    </div>`
+  ).join('');
+}
+
 // ── Boot ──────────────────────────────────────────────
 // Restore theme
 const savedThemeVal = getSetting('theme','dark');
@@ -4257,6 +4487,7 @@ if (savedFreeRefresh) { _lastFreeRefresh = new Date(savedFreeRefresh); updateDat
 // Instant: load news from localStorage cache (shows in <50ms)
 loadNewsFromCache();
 restoreScanResults();
+setTimeout(() => { renderPropAlerts(); renderStreakBanner(); }, 100);
 
 // Pre-fetch free data on boot (ESPN only — no Odds API quota usage)
 // Lines load from KV cache only (no fresh Odds API call)
