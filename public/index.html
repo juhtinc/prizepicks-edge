@@ -3625,25 +3625,57 @@ async function runScan() {
     if (el) el.innerHTML = `<span class="scan-prog-icon">⏳</span>Image ${i+1}: Scanning...`;
   });
 
-  try {
-    const r = await fetch('/api/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-secret': secret },
-      body: JSON.stringify({ images: _scanImages.map(img => img.dataUrl) }),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Scan failed');
+  // Send images ONE AT A TIME to avoid Vercel 60s timeout
+  const allProps = [];
+  let totalTokens = 0;
+  let hasError = false;
 
-    // Update progress
-    (d.imageResults || []).forEach(ir => {
-      const el = document.getElementById(`scan-prog-${ir.image - 1}`);
-      if (el) el.innerHTML = `<span class="scan-prog-icon">✅</span>Image ${ir.image}: Found ${ir.propsFound} props`;
-    });
+  for (let i = 0; i < _scanImages.length; i++) {
+    const progItem = document.getElementById(`scan-prog-${i}`);
+    if (progItem) progItem.innerHTML = `<span class="scan-prog-icon">⏳</span>Image ${i+1}: Scanning...`;
 
-    renderScanResults(d);
-  } catch(e) {
-    progEl.innerHTML += `<div class="scan-prog-item" style="color:var(--coral)"><span class="scan-prog-icon">❌</span>${e.message}</div>`;
+    try {
+      const r = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-secret': secret },
+        body: JSON.stringify({ images: [_scanImages[i].dataUrl] }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Scan failed');
+
+      const found = d.props?.length || 0;
+      totalTokens += d.totalTokens || 0;
+      // Re-tag source image index
+      (d.props || []).forEach(p => { p.sourceImage = i + 1; allProps.push(p); });
+      if (progItem) progItem.innerHTML = `<span class="scan-prog-icon">✅</span>Image ${i+1}: Found ${found} props`;
+    } catch(e) {
+      hasError = true;
+      if (progItem) progItem.innerHTML = `<span class="scan-prog-icon">❌</span>Image ${i+1}: ${e.message}`;
+    }
   }
+
+  // Deduplicate
+  const seen = new Set();
+  const deduped = allProps.filter(p => {
+    const key = `${(p.player||'').toLowerCase()}|${(p.stat||'').toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Build final result
+  const finalResult = {
+    props: deduped,
+    totalProps: deduped.length,
+    totalTokens,
+    estimatedCost: (totalTokens / 1000000 * 3).toFixed(4),
+    hasOddsData: !!(LINES.props?.length),
+  };
+
+  // Re-compare against odds
+  finalResult.props.forEach(p => { p.odds = clientMatchOdds(p); });
+
+  renderScanResults(finalResult);
 
   goBtn.disabled = false; goBtn.textContent = 'Scan Now';
 }
