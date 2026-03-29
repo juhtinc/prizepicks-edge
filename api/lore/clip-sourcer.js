@@ -1,14 +1,19 @@
 /**
  * api/lore/clip-sourcer.js  →  POST /api/lore/clip-sourcer
- * Feature #5: Source clips for a script (or all scripts in a batch in parallel).
+ * Feature #5: Source REAL player footage from YouTube highlights.
  *
- * KEY DESIGN: Clips are synced to script content. Each clip slot corresponds to
- * a specific segment of the voiceover, so the viewer SEES what's being TALKED ABOUT.
+ * Pipeline:
+ *   1. Claude identifies what clips to show at each script timestamp
+ *   2. Scraper searches YouTube for player highlight compilations
+ *   3. yt-dlp downloads 2-4 second segments from those videos
+ *   4. FFmpeg transforms each clip (crop, zoom, speed, color grade, mirror)
+ *   5. Transformed clips are uploaded to cloud storage
+ *   6. Stat overlays are generated for key moments
+ *   7. All data saved to KV for the Creatomate render step
  *
- * Uses story-templates.js for variable pacing per story type, and asks Claude to
- * generate search terms matched to each script segment's content.
+ * Falls back to Pexels stock footage if yt-dlp is not available.
  *
- * Body: { rowId } or { batchId } (batch = parallel all 7)
+ * Body: { rowId } or { batchId }
  * Auth: x-secret header
  */
 
@@ -16,97 +21,191 @@ const axios = require("axios");
 const { askClaudeJSON } = require("./lib/claude");
 const { getScript, saveScript, getBatchScripts, getRejectionPatterns } = require("./lib/kv-lore");
 const { calculateClipSlots, getStoryTemplate } = require("./lib/story-templates");
+const { scrapePlayerClips, searchPlayerPhoto } = require("./lib/clip-scraper");
+const { transformClipBatch, uploadTransformedClips } = require("./lib/clip-transformer");
+const { generateStatOverlays, statOverlaysToCreatomate } = require("./lib/stat-overlays");
+
+/**
+ * Check if yt-dlp is available on the system.
+ */
+function isYtDlpAvailable() {
+  try {
+    require("child_process").execSync(
+      `${process.env.YT_DLP_PATH || "yt-dlp"} --version`,
+      { stdio: "pipe", timeout: 5000 }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fallback: use Pexels for stock footage when yt-dlp isn't available.
+ */
+async function pexelsFallback(searchTerm) {
+  const pexelsKey = process.env.PEXELS_API_KEY;
+  if (!pexelsKey) return null;
+
+  try {
+    const resp = await axios.get("https://api.pexels.com/videos/search", {
+      headers: { Authorization: pexelsKey },
+      params: { query: searchTerm, per_page: 3, size: "medium", orientation: "portrait" },
+    });
+    const video = resp.data?.videos?.[0];
+    if (video) {
+      const file = video.video_files.find(f => f.quality === "hd" && f.width <= 1080)
+        || video.video_files.find(f => f.quality === "hd")
+        || video.video_files[0];
+      return file?.link || null;
+    }
+  } catch (e) {
+    console.error("[clip-sourcer] Pexels fallback error:", e.message);
+  }
+  return null;
+}
 
 async function sourceClipsForScript(script, rejectionPatterns) {
+  const template = getStoryTemplate(script.storyType);
+  const clipSlots = calculateClipSlots(script.storyType);
+  const useRealFootage = isYtDlpAvailable();
+
+  // Step 1: Ask Claude what clips to show at each timestamp
   const patternWarning = Object.entries(rejectionPatterns)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([reason, count]) => `${reason} (${count}x)`)
     .join(", ");
 
-  // Get pacing-based clip slots from the story template
-  const clipSlots = calculateClipSlots(script.storyType);
-  const template = getStoryTemplate(script.storyType);
-
-  // Build a segment map for Claude showing what the script says at each time range
   const segmentGuide = template.segments.map(seg =>
-    `[${seg.start}s-${seg.end}s] "${seg.name}" — ${seg.description} (${seg.pacing} pacing, ${seg.clipCategory} clips)`
+    `[${seg.start}s-${seg.end}s] "${seg.name}" — ${seg.description} (${seg.clipCategory} clips)`
   ).join("\n");
 
-  const prompt = `You are a video clip researcher for a YouTube Shorts channel about sports history.
+  const prompt = `You are sourcing video clips for a YouTube Short about ${script.playerName} (${script.playerSport}).
 
-CRITICAL RULE: Every clip must VISUALLY MATCH what the voiceover is saying at that moment. When the narrator talks about "his rookie season," the clip should show rookie-era footage. When the narrator says "the crowd went silent," the clip should show a stunned crowd.
-
-This 55-second Short is about ${script.playerName} (${script.playerSport}, story type: ${script.storyType}).
-
-THE FULL SCRIPT:
+THE SCRIPT:
 ${script.script}
 
-THE VIDEO IS DIVIDED INTO THESE SEGMENTS:
+VIDEO SEGMENTS:
 ${segmentGuide}
 
-I need ${clipSlots.length} clips total. For each clip slot below, generate a Pexels search term that:
-1. Matches what the voiceover is saying during that time window
-2. Is specific enough to find relevant stock footage (e.g., "basketball player driving to basket close up" not just "basketball")
-3. Prioritizes the sport: ${script.playerSport}
+I need a clip description for each of these ${clipSlots.length} time slots. For each slot, describe:
+1. What the viewer should SEE at this moment (matched to the voiceover content)
+2. A YouTube search query to find this kind of footage
+3. Whether this should be: "gameplay" (actual game footage), "photo" (still image with Ken Burns), or "graphic" (stat overlay moment)
 
 CLIP SLOTS:
-${clipSlots.map((slot, i) => `Clip ${i + 1}: [${slot.start}s-${(slot.start + slot.duration).toFixed(1)}s] segment="${slot.segmentName}" — ${slot.segmentDescription}`).join("\n")}
+${clipSlots.map((slot, i) => `Slot ${i + 1}: [${slot.start}s-${(slot.start + slot.duration).toFixed(1)}s] segment="${slot.segmentName}"`).join("\n")}
 
-${patternWarning ? `AVOID these common clip issues from past weeks: ${patternWarning}.` : ""}
+${patternWarning ? `AVOID: ${patternWarning}.` : ""}
 
 Return JSON:
-{"clips":[{"slot":1,"search_term":"...","visual_description":"what viewer should see","matches_script":"brief quote from script this matches"},...],"player_photo_search":"${script.playerName} ${script.playerSport} portrait"}`;
+{"clips":[{"slot":1,"visual":"what viewer sees","search_query":"youtube search for this","clip_type":"gameplay|photo|graphic","matches_script":"quote from script"},...],"player_photo_search":"${script.playerName} ${script.playerSport} portrait"}`;
 
-  const result = await askClaudeJSON(prompt, { maxTokens: 2000 });
+  const clipPlan = await askClaudeJSON(prompt, { maxTokens: 2000 });
 
-  // Fetch clips from Pexels
-  const pexelsKey = process.env.PEXELS_API_KEY;
+  // Step 2: Source clips based on availability
   const clipBriefs = [];
 
-  for (let i = 0; i < clipSlots.length; i++) {
-    const slot = clipSlots[i];
-    const clipData = result.clips.find(c => c.slot === i + 1) || result.clips[i];
-    const searchTerm = clipData?.search_term || `${script.playerSport} ${slot.clipCategory}`;
+  if (useRealFootage) {
+    // ── REAL FOOTAGE PATH ──
+    // Scrape actual highlight clips from YouTube
+    const gameplaySlots = (clipPlan.clips || []).filter(c => c.clip_type === "gameplay");
+    const numClips = Math.min(gameplaySlots.length, 12); // Cap at 12 real clips
 
-    let pexelsUrl = null;
-    if (pexelsKey) {
-      try {
-        const resp = await axios.get("https://api.pexels.com/videos/search", {
-          headers: { Authorization: pexelsKey },
-          params: {
-            query: searchTerm,
-            per_page: 3,
-            size: "medium",
-            orientation: "portrait",
-          },
-        });
-        const video = resp.data?.videos?.[0];
-        if (video) {
-          const file = video.video_files.find(f => f.quality === "hd" && f.width <= 1080)
-            || video.video_files.find(f => f.quality === "hd")
-            || video.video_files[0];
-          pexelsUrl = file?.link;
-        }
-      } catch (e) {
-        console.error(`[clip-sourcer] Pexels error for slot ${i + 1}:`, e.message);
+    const { clips: scrapedClips, outputDir } = await scrapePlayerClips(
+      script.playerName,
+      script.playerSport,
+      numClips,
+      { team: script.team, clipDuration: 3 }
+    );
+
+    // Transform all scraped clips
+    const mood = template.musicMoods?.primary || "dramatic";
+    const transformed = transformClipBatch(scrapedClips, mood, outputDir);
+    const uploaded = await uploadTransformedClips(transformed);
+
+    // Map transformed clips to their slots
+    let realClipIndex = 0;
+    for (const planned of clipPlan.clips || []) {
+      const slot = clipSlots[planned.slot - 1];
+      if (!slot) continue;
+
+      let clipUrl = null;
+      let source = "none";
+
+      if (planned.clip_type === "gameplay" && realClipIndex < uploaded.length) {
+        clipUrl = uploaded[realClipIndex]?.url;
+        source = clipUrl ? "youtube_transformed" : "none";
+        realClipIndex++;
+      } else if (planned.clip_type === "photo") {
+        // Photos are handled by Creatomate with Ken Burns — pass the search query
+        source = "photo";
+      } else if (planned.clip_type === "graphic") {
+        // Graphics are stat overlays — handled separately
+        source = "graphic";
       }
-    }
 
-    clipBriefs.push({
-      slot: i + 1,
-      start: slot.start,
-      duration: slot.duration,
-      segmentName: slot.segmentName,
-      searchTerm,
-      visualDescription: clipData?.visual_description || "",
-      matchesScript: clipData?.matches_script || "",
-      category: slot.clipCategory,
-      pexelsUrl,
-    });
+      clipBriefs.push({
+        slot: planned.slot,
+        start: slot.start,
+        duration: slot.duration,
+        segmentName: slot.segmentName,
+        visual: planned.visual,
+        searchQuery: planned.search_query,
+        clipType: planned.clip_type,
+        matchesScript: planned.matches_script,
+        clipUrl,
+        source,
+        transforms: uploaded[realClipIndex - 1]?.transforms || null,
+      });
+    }
+  } else {
+    // ── PEXELS FALLBACK PATH ──
+    for (const planned of clipPlan.clips || []) {
+      const slot = clipSlots[planned.slot - 1];
+      if (!slot) continue;
+
+      const clipUrl = await pexelsFallback(planned.search_query);
+
+      clipBriefs.push({
+        slot: planned.slot,
+        start: slot.start,
+        duration: slot.duration,
+        segmentName: slot.segmentName,
+        visual: planned.visual,
+        searchQuery: planned.search_query,
+        clipType: planned.clip_type,
+        matchesScript: planned.matches_script,
+        clipUrl,
+        source: clipUrl ? "pexels" : "none",
+        transforms: null,
+      });
+    }
   }
 
-  return { clipBriefs, playerPhotoSearch: result.player_photo_search || "" };
+  // Step 3: Generate stat overlays
+  let statOverlays = [];
+  try {
+    statOverlays = await generateStatOverlays(
+      script.script,
+      script.playerName,
+      script.playerSport,
+      template.segments
+    );
+  } catch (e) {
+    console.error("[clip-sourcer] Stat overlay generation failed:", e.message);
+  }
+
+  // Step 4: Get player photo for thumbnail + photo slots
+  let playerPhotoUrl = "";
+  try {
+    playerPhotoUrl = await searchPlayerPhoto(script.playerName, script.playerSport) || "";
+  } catch (e) {
+    console.error("[clip-sourcer] Player photo search failed:", e.message);
+  }
+
+  return { clipBriefs, statOverlays, playerPhotoSearch: playerPhotoUrl };
 }
 
 module.exports = async function handler(req, res) {
@@ -124,14 +223,21 @@ module.exports = async function handler(req, res) {
 
     const results = await Promise.all(
       scripts.map(async (script) => {
-        const { clipBriefs, playerPhotoSearch } = await sourceClipsForScript(script, rejectionPatterns);
+        const { clipBriefs, statOverlays, playerPhotoSearch } = await sourceClipsForScript(script, rejectionPatterns);
         script.clipBriefs = clipBriefs;
-        script.clipsSourced = clipBriefs.filter(c => c.pexelsUrl).length;
+        script.statOverlays = statOverlays;
+        script.clipsSourced = clipBriefs.filter(c => c.clipUrl).length;
         script.clipSourceStatus = script.clipsSourced > 0 ? "Auto-sourced" : "Manual";
         script.dateSourced = new Date().toISOString();
         script.playerPhotoUrl = playerPhotoSearch;
         await saveScript(script.rowId, script);
-        return { rowId: script.rowId, clipsSourced: script.clipsSourced, totalSlots: clipBriefs.length };
+        return {
+          rowId: script.rowId,
+          clipsSourced: script.clipsSourced,
+          totalSlots: clipBriefs.length,
+          statOverlays: statOverlays.length,
+          source: clipBriefs[0]?.source || "none",
+        };
       })
     );
 
@@ -143,13 +249,14 @@ module.exports = async function handler(req, res) {
   const script = await getScript(rowId);
   if (!script) return res.status(404).json({ error: "Script not found" });
 
-  const { clipBriefs, playerPhotoSearch } = await sourceClipsForScript(script, rejectionPatterns);
+  const { clipBriefs, statOverlays, playerPhotoSearch } = await sourceClipsForScript(script, rejectionPatterns);
   script.clipBriefs = clipBriefs;
-  script.clipsSourced = clipBriefs.filter(c => c.pexelsUrl).length;
+  script.statOverlays = statOverlays;
+  script.clipsSourced = clipBriefs.filter(c => c.clipUrl).length;
   script.clipSourceStatus = script.clipsSourced > 0 ? "Auto-sourced" : "Manual";
   script.dateSourced = new Date().toISOString();
   script.playerPhotoUrl = playerPhotoSearch;
   await saveScript(rowId, script);
 
-  return res.status(200).json({ ok: true, rowId, clipBriefs });
+  return res.status(200).json({ ok: true, rowId, clipBriefs, statOverlays });
 };

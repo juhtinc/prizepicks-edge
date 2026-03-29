@@ -10,6 +10,7 @@ const { postToTikTok, postToInstagram } = require("./lib/cross-post");
 const { getOptimalPostTime } = require("./lib/post-times");
 const { generateMusicTimeline } = require("./lib/music");
 const { generateCaptions, captionsToCreatomate } = require("./lib/captions");
+const { statOverlaysToCreatomate } = require("./lib/stat-overlays");
 const { generateSFXPlacements } = require("./lib/sfx");
 const { getStoryTemplate, calculateClipSlots } = require("./lib/story-templates");
 const { getScript, saveScript, savePublished } = require("./lib/kv-lore");
@@ -77,13 +78,24 @@ module.exports = async function handler(req, res) {
     log.steps.sfx = "failed: " + e.message;
   }
 
+  // Generate stat overlay modifications for Creatomate
+  let statOverlayMods = {};
+  try {
+    if (script.statOverlays && script.statOverlays.length > 0) {
+      statOverlayMods = statOverlaysToCreatomate(script.statOverlays);
+      log.steps.statOverlays = `${script.statOverlays.length} stat overlays`;
+    }
+  } catch (e) {
+    log.steps.statOverlays = "failed: " + e.message;
+  }
+
   // Render video with all layers
   let videoUrl = null;
   try {
     // Clip URLs sorted by slot order (timeline-synced to script)
     const sortedClips = (script.clipBriefs || [])
       .sort((a, b) => (a.slot || 0) - (b.slot || 0))
-      .map(c => c.pexelsUrl)
+      .map(c => c.clipUrl || c.pexelsUrl)
       .filter(Boolean);
 
     const render = await renderVideo({
@@ -93,9 +105,10 @@ module.exports = async function handler(req, res) {
       textOverlays: {
         hook_text: script.hookLine,
         player_name: script.playerName,
-        // Pass caption and SFX data for Creatomate to render
+        // Pass caption, SFX, and stat overlay data for Creatomate to render
         ...(captionData.length > 0 && { _captions: JSON.stringify(captionData) }),
         ...(sfxPlacements.length > 0 && { _sfx: JSON.stringify(sfxPlacements) }),
+        ...statOverlayMods,
         ...(musicTimeline && { _music_timeline: JSON.stringify(musicTimeline) }),
       },
     });
