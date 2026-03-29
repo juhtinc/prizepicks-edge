@@ -1,11 +1,19 @@
 {
   "version": 2,
-  "functions": { "api/*.js": { "maxDuration": 60 } },
+  "functions": {
+    "api/*.js": { "maxDuration": 60 },
+    "api/lore/*.js": { "maxDuration": 60 }
+  },
   "crons": [
     { "path": "/api/cron",  "schedule": "0 17 * * *" },
     { "path": "/api/cron",  "schedule": "0 21 * * *" },
     { "path": "/api/cron",  "schedule": "0 2 * * *"  },
-    { "path": "/api/grade", "schedule": "0 15 * * *" }
+    { "path": "/api/grade", "schedule": "0 15 * * *" },
+    { "path": "/api/lore/cron-lore?workflow=analytics",         "schedule": "0 1 * * 1"  },
+    { "path": "/api/lore/cron-lore?workflow=weekly-batch",      "schedule": "0 2 * * 1"  },
+    { "path": "/api/lore/cron-lore?workflow=auto-start",        "schedule": "0 11 * * 1" },
+    { "path": "/api/lore/cron-lore?workflow=performance-check", "schedule": "0 15 * * *" },
+    { "path": "/api/lore/cron-lore?workflow=comments",          "schedule": "0 * * * *"  }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
