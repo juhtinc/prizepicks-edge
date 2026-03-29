@@ -74,7 +74,51 @@ function selectFromLibrary(mood, recentlyUsed = []) {
   };
 }
 
+/**
+ * Get dual-track moods for a story type using story template data.
+ * Returns { primary, secondary, shiftTime } for two-mood emotional arc.
+ */
+function getDualTrackMoods(storyType) {
+  // Import inline to avoid circular dependency
+  const { getStoryTemplate } = require("./story-templates");
+  const template = getStoryTemplate(storyType);
+
+  return {
+    primary: template.musicMoods?.primary || getMoodForStory(storyType).mood,
+    secondary: template.musicMoods?.secondary || getMoodForStory(storyType).mood,
+    shiftTime: template.musicShift?.time || 25,
+  };
+}
+
+/**
+ * Generate a music timeline with two tracks for emotional arc.
+ * Track 1 plays from 0 to shiftTime, Track 2 from shiftTime to end.
+ * Both have a 2-second crossfade at the transition.
+ */
+function generateMusicTimeline(storyType, duration = 55) {
+  const { primary, secondary, shiftTime } = getDualTrackMoods(storyType);
+
+  return {
+    track1: {
+      mood: primary,
+      start: 3,  // Music starts after 3s hook (silent hook)
+      end: shiftTime + 1,  // 1s overlap for crossfade
+      fadeIn: 2,
+      fadeOut: 1,
+    },
+    track2: {
+      mood: secondary,
+      start: shiftTime - 1,  // 1s overlap for crossfade
+      end: duration,
+      fadeIn: 1,
+      fadeOut: 3,
+    },
+    shiftTime,
+  };
+}
+
 module.exports = {
   MUSIC_MOOD_MAP, AUDIO_MIX,
   getMoodForStory, generateMubertTrack, selectFromLibrary,
+  getDualTrackMoods, generateMusicTimeline,
 };

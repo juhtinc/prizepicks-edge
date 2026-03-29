@@ -29,11 +29,18 @@ async function renderThumbnail({ playerName, hookText, playerImageUrl, accentCol
 }
 
 async function renderVideo({ voiceoverUrl, musicTrackUrl, clipUrls, textOverlays }) {
+  // Map clip URLs to clip_1 through clip_18 slots in the template
+  const clipModifications = {};
+  (clipUrls || []).forEach((url, i) => {
+    if (url) clipModifications[`clip_${i + 1}`] = url;
+  });
+
   const resp = await axios.post(`${BASE_URL}/renders`, {
     template_id: process.env.CREATOMATE_VIDEO_TEMPLATE_ID,
     modifications: {
       voiceover: voiceoverUrl,
       background_music: musicTrackUrl,
+      ...clipModifications,
       ...textOverlays,
     },
   }, { headers: headers() });

@@ -8,6 +8,10 @@ const { renderVideo } = require("./lib/creatomate");
 const { uploadVideo, setThumbnail } = require("./lib/youtube-api");
 const { postToTikTok, postToInstagram } = require("./lib/cross-post");
 const { getOptimalPostTime } = require("./lib/post-times");
+const { generateMusicTimeline } = require("./lib/music");
+const { generateCaptions, captionsToCreatomate } = require("./lib/captions");
+const { generateSFXPlacements } = require("./lib/sfx");
+const { getStoryTemplate, calculateClipSlots } = require("./lib/story-templates");
 const { getScript, saveScript, savePublished } = require("./lib/kv-lore");
 
 module.exports = async function handler(req, res) {
@@ -43,13 +47,57 @@ module.exports = async function handler(req, res) {
   script.scheduledPostTime = getOptimalPostTime(script.playerSport);
   log.steps.postTime = script.scheduledPostTime;
 
+  // Generate captions (word-by-word with emphasis highlighting)
+  let captionData = [];
+  try {
+    const captions = generateCaptions(voiceoverText);
+    captionData = captionsToCreatomate(captions);
+    log.steps.captions = `${captionData.length} caption groups generated`;
+  } catch (e) {
+    log.steps.captions = "failed: " + e.message;
+  }
+
+  // Generate dual-track music timeline
+  let musicTimeline = null;
+  try {
+    musicTimeline = generateMusicTimeline(script.storyType);
+    log.steps.musicTimeline = `Shift at ${musicTimeline.shiftTime}s: ${musicTimeline.track1.mood} → ${musicTimeline.track2.mood}`;
+  } catch (e) {
+    log.steps.musicTimeline = "failed: " + e.message;
+  }
+
+  // Generate SFX placements
+  let sfxPlacements = [];
+  try {
+    const template = getStoryTemplate(script.storyType);
+    const clipSlots = calculateClipSlots(script.storyType);
+    sfxPlacements = generateSFXPlacements(template, clipSlots, script.script);
+    log.steps.sfx = `${sfxPlacements.length} SFX placed`;
+  } catch (e) {
+    log.steps.sfx = "failed: " + e.message;
+  }
+
+  // Render video with all layers
   let videoUrl = null;
   try {
+    // Clip URLs sorted by slot order (timeline-synced to script)
+    const sortedClips = (script.clipBriefs || [])
+      .sort((a, b) => (a.slot || 0) - (b.slot || 0))
+      .map(c => c.pexelsUrl)
+      .filter(Boolean);
+
     const render = await renderVideo({
       voiceoverUrl: script.voiceoverUrl,
       musicTrackUrl: script.musicTrack,
-      clipUrls: (script.clipBriefs || []).map(c => c.pexelsUrl).filter(Boolean),
-      textOverlays: { hook_text: script.hookLine, player_name: script.playerName },
+      clipUrls: sortedClips,
+      textOverlays: {
+        hook_text: script.hookLine,
+        player_name: script.playerName,
+        // Pass caption and SFX data for Creatomate to render
+        ...(captionData.length > 0 && { _captions: JSON.stringify(captionData) }),
+        ...(sfxPlacements.length > 0 && { _sfx: JSON.stringify(sfxPlacements) }),
+        ...(musicTimeline && { _music_timeline: JSON.stringify(musicTimeline) }),
+      },
     });
     videoUrl = render.url;
     log.steps.render = videoUrl ? "ok" : "no URL returned";

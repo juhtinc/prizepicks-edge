@@ -14,6 +14,7 @@ const axios = require("axios");
 const { askClaudeJSON } = require("./lib/claude");
 const { newScriptRow, saveBatch, saveScript, getBatch, getBatchScripts, getRecentAnalytics } = require("./lib/kv-lore");
 const { getBatchIdForDate } = require("./lib/utils");
+const { getStoryTemplate } = require("./lib/story-templates");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
@@ -75,9 +76,32 @@ Return JSON:
       const scheduledDate = new Date(now);
       scheduledDate.setDate(scheduledDate.getDate() + (i + 1));
 
-      const scriptPrompt = `Write a 55-second YouTube Shorts script about ${story.player_name} (${story.story_type}).
+      // Get story template for structure guidance
+      const template = getStoryTemplate(story.story_type);
+      const segmentGuide = template.segments
+        .map(s => `[${s.start}s-${s.end}s] ${s.name}: ${s.description}`)
+        .join("\n");
+      const hookGuide = template.retentionHooks
+        .map(h => `At ~${h.time}s: ${h.prompt}`)
+        .join("\n");
+
+      const scriptPrompt = `Write a 55-second YouTube Shorts voiceover script about ${story.player_name} (${story.story_type}).
 Pitch: ${story.one_line_pitch}
-Rules: ~140 words, scroll-stopping hook first 2 seconds, build tension, satisfying payoff, conversational tone, 1-2 surprising facts, end with CTA.
+
+STRUCTURE (follow this timeline):
+${segmentGuide}
+
+RETENTION HOOKS (you MUST include these to prevent viewers from swiping away):
+${hookGuide}
+
+RULES:
+- ~140 words total (55 seconds at natural speaking pace)
+- First sentence must be a scroll-stopping hook (shocking stat, bold claim, or provocative question)
+- Conversational tone — talk like you're telling a friend, not reading Wikipedia
+- Include 1-2 surprising facts most people don't know
+- End with a question or CTA to drive comments ("Who do you think was better?")
+- Every sentence should make the viewer NEED to hear the next one
+
 Return JSON: {"script":"...","word_count":140}`;
 
       const result = await askClaudeJSON(scriptPrompt, { maxTokens: 800 });

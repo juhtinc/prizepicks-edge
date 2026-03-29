@@ -1,7 +1,12 @@
 /**
  * api/lore/clip-sourcer.js  →  POST /api/lore/clip-sourcer
  * Feature #5: Source clips for a script (or all scripts in a batch in parallel).
- * Uses Pexels API for stock footage, with rejection pattern awareness (Feature #3).
+ *
+ * KEY DESIGN: Clips are synced to script content. Each clip slot corresponds to
+ * a specific segment of the voiceover, so the viewer SEES what's being TALKED ABOUT.
+ *
+ * Uses story-templates.js for variable pacing per story type, and asks Claude to
+ * generate search terms matched to each script segment's content.
  *
  * Body: { rowId } or { batchId } (batch = parallel all 7)
  * Auth: x-secret header
@@ -10,6 +15,7 @@
 const axios = require("axios");
 const { askClaudeJSON } = require("./lib/claude");
 const { getScript, saveScript, getBatchScripts, getRejectionPatterns } = require("./lib/kv-lore");
+const { calculateClipSlots, getStoryTemplate } = require("./lib/story-templates");
 
 async function sourceClipsForScript(script, rejectionPatterns) {
   const patternWarning = Object.entries(rejectionPatterns)
@@ -18,57 +24,89 @@ async function sourceClipsForScript(script, rejectionPatterns) {
     .map(([reason, count]) => `${reason} (${count}x)`)
     .join(", ");
 
+  // Get pacing-based clip slots from the story template
+  const clipSlots = calculateClipSlots(script.storyType);
+  const template = getStoryTemplate(script.storyType);
+
+  // Build a segment map for Claude showing what the script says at each time range
+  const segmentGuide = template.segments.map(seg =>
+    `[${seg.start}s-${seg.end}s] "${seg.name}" — ${seg.description} (${seg.pacing} pacing, ${seg.clipCategory} clips)`
+  ).join("\n");
+
   const prompt = `You are a video clip researcher for a YouTube Shorts channel about sports history.
 
-Find 4 clip search terms for a 55-second Short about ${script.playerName} (${script.storyType}).
+CRITICAL RULE: Every clip must VISUALLY MATCH what the voiceover is saying at that moment. When the narrator talks about "his rookie season," the clip should show rookie-era footage. When the narrator says "the crowd went silent," the clip should show a stunned crowd.
 
-The script:
+This 55-second Short is about ${script.playerName} (${script.playerSport}, story type: ${script.storyType}).
+
+THE FULL SCRIPT:
 ${script.script}
 
-Each clip should be 5-15 seconds and clearly relate to the story. Generate search terms that would find:
-1. A highlight/action clip of the player
-2. A contextual clip (the era, team, stadium)
-3. A dramatic moment clip (reaction, celebration, crowd)
-4. A stats/graphic-style B-roll
+THE VIDEO IS DIVIDED INTO THESE SEGMENTS:
+${segmentGuide}
 
-${patternWarning ? `AVOID these common clip issues from past weeks: ${patternWarning}. Prioritize clips that clearly show the player's face and jersey number.` : ""}
+I need ${clipSlots.length} clips total. For each clip slot below, generate a Pexels search term that:
+1. Matches what the voiceover is saying during that time window
+2. Is specific enough to find relevant stock footage (e.g., "basketball player driving to basket close up" not just "basketball")
+3. Prioritizes the sport: ${script.playerSport}
+
+CLIP SLOTS:
+${clipSlots.map((slot, i) => `Clip ${i + 1}: [${slot.start}s-${(slot.start + slot.duration).toFixed(1)}s] segment="${slot.segmentName}" — ${slot.segmentDescription}`).join("\n")}
+
+${patternWarning ? `AVOID these common clip issues from past weeks: ${patternWarning}.` : ""}
 
 Return JSON:
-{"clips":[{"search_term":"...","description":"...","duration_target":10,"priority":"high|medium"},...],"player_photo_search":"..."}`;
+{"clips":[{"slot":1,"search_term":"...","visual_description":"what viewer should see","matches_script":"brief quote from script this matches"},...],"player_photo_search":"${script.playerName} ${script.playerSport} portrait"}`;
 
-  const result = await askClaudeJSON(prompt, { maxTokens: 500 });
+  const result = await askClaudeJSON(prompt, { maxTokens: 2000 });
 
+  // Fetch clips from Pexels
   const pexelsKey = process.env.PEXELS_API_KEY;
   const clipBriefs = [];
 
-  for (const clip of result.clips) {
+  for (let i = 0; i < clipSlots.length; i++) {
+    const slot = clipSlots[i];
+    const clipData = result.clips.find(c => c.slot === i + 1) || result.clips[i];
+    const searchTerm = clipData?.search_term || `${script.playerSport} ${slot.clipCategory}`;
+
     let pexelsUrl = null;
     if (pexelsKey) {
       try {
         const resp = await axios.get("https://api.pexels.com/videos/search", {
           headers: { Authorization: pexelsKey },
-          params: { query: clip.search_term, per_page: 3, size: "medium" },
+          params: {
+            query: searchTerm,
+            per_page: 3,
+            size: "medium",
+            orientation: "portrait",
+          },
         });
         const video = resp.data?.videos?.[0];
         if (video) {
-          const file = video.video_files.find(f => f.quality === "hd") || video.video_files[0];
+          const file = video.video_files.find(f => f.quality === "hd" && f.width <= 1080)
+            || video.video_files.find(f => f.quality === "hd")
+            || video.video_files[0];
           pexelsUrl = file?.link;
         }
       } catch (e) {
-        console.error("[clip-sourcer] Pexels error:", e.message);
+        console.error(`[clip-sourcer] Pexels error for slot ${i + 1}:`, e.message);
       }
     }
 
     clipBriefs.push({
-      searchTerm: clip.search_term,
-      description: clip.description,
-      durationTarget: clip.duration_target,
-      priority: clip.priority,
+      slot: i + 1,
+      start: slot.start,
+      duration: slot.duration,
+      segmentName: slot.segmentName,
+      searchTerm,
+      visualDescription: clipData?.visual_description || "",
+      matchesScript: clipData?.matches_script || "",
+      category: slot.clipCategory,
       pexelsUrl,
     });
   }
 
-  return { clipBriefs, playerPhotoSearch: result.player_photo_search };
+  return { clipBriefs, playerPhotoSearch: result.player_photo_search || "" };
 }
 
 module.exports = async function handler(req, res) {
@@ -93,7 +131,7 @@ module.exports = async function handler(req, res) {
         script.dateSourced = new Date().toISOString();
         script.playerPhotoUrl = playerPhotoSearch;
         await saveScript(script.rowId, script);
-        return { rowId: script.rowId, clipsSourced: script.clipsSourced };
+        return { rowId: script.rowId, clipsSourced: script.clipsSourced, totalSlots: clipBriefs.length };
       })
     );
 

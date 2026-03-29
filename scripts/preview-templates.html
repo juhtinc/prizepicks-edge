@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sports Lore — Template Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #111;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 40px;
+    padding: 40px;
+  }
+  h1 {
+    width: 100%;
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 10px;
+    color: #ccc;
+  }
+  .subtitle {
+    width: 100%;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 20px;
+  }
+  .preview-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #aaa;
+    letter-spacing: 1px;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 270px;
+    height: 480px;
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 40px rgba(255,68,68,0.15), 0 8px 32px rgba(0,0,0,0.5);
+    border: 2px solid #333;
+  }
+
+  /* ═══ VIDEO TEMPLATE ═══ */
+  .video-template {
+    background: linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 100%);
+  }
+  .video-template .clip-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    filter: brightness(0.7);
+    /* Rapid clip switching — 6 images cycling every 3 seconds */
+    animation: clipSwitch 18s steps(1) infinite, kenBurns 3s ease-in-out infinite;
+  }
+  @keyframes clipSwitch {
+    0%      { background: url('https://images.unsplash.com/photo-1546519638-68e109498ffc?w=540&h=960&fit=crop') center/cover; }
+    16.67%  { background: url('https://images.unsplash.com/photo-1504450758481-7338bbe75005?w=540&h=960&fit=crop') center/cover; }
+    33.33%  { background: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=540&h=960&fit=crop') center/cover; }
+    50%     { background: url('https://images.unsplash.com/photo-1508098682722-e99c643e7f74?w=540&h=960&fit=crop') center/cover; }
+    66.67%  { background: url('https://images.unsplash.com/photo-1461896836934-bd45ba6cfbc7?w=540&h=960&fit=crop') center/cover; }
+    83.33%  { background: url('https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?w=540&h=960&fit=crop') center/cover; }
+  }
+  @keyframes kenBurns {
+    0%   { transform: scale(1); }
+    100% { transform: scale(1.08); }
+  }
+  .video-template .clip-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.25);
+  }
+
+  /* Hook text — animated */
+  .video-template .hook {
+    position: absolute;
+    top: 38%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    text-align: center;
+    font-weight: 800;
+    font-size: 18px;
+    line-height: 1.3;
+    color: #fff;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.5);
+    animation: hookPulse 3s ease-in-out infinite;
+  }
+  @keyframes hookPulse {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.95; transform: translate(-50%, -50%) scale(1.02); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  /* Player name lower third */
+  .video-template .player-name {
+    position: absolute;
+    bottom: 52px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,68,68,0.9);
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 6px 16px;
+    border-radius: 5px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  /* Watermark */
+  .video-template .watermark {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 600;
+    font-size: 7px;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 2px;
+  }
+
+  /* Progress bar */
+  .video-template .progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: #FF4444;
+    animation: progress 55s linear infinite;
+  }
+  @keyframes progress {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+
+  /* Fake YT Shorts UI */
+  .video-template .yt-ui {
+    position: absolute;
+    right: 8px;
+    bottom: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .video-template .yt-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .video-template .yt-btn .icon {
+    width: 24px;
+    height: 24px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+  }
+  .video-template .yt-btn .count {
+    font-size: 7px;
+    color: rgba(255,255,255,0.7);
+  }
+
+  /* Timer overlay */
+  .video-template .timer {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 8px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 600;
+    background: rgba(0,0,0,0.4);
+    padding: 3px 6px;
+    border-radius: 3px;
+  }
+
+  /* Phase indicators */
+  .video-template .phases {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .video-template .phase {
+    font-size: 6px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .video-template .phase.active {
+    background: #FF4444;
+    color: #fff;
+  }
+  .video-template .phase.inactive {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* Music indicator */
+  .video-template .music-indicator {
+    position: absolute;
+    bottom: 100px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 7px;
+    color: rgba(255,255,255,0.5);
+  }
+  .video-template .music-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 10px;
+  }
+  .video-template .bar {
+    width: 2px;
+    background: rgba(255,255,255,0.4);
+    animation: barBounce 0.8s ease-in-out infinite;
+  }
+  .video-template .bar:nth-child(1) { height: 4px; animation-delay: 0s; }
+  .video-template .bar:nth-child(2) { height: 8px; animation-delay: 0.15s; }
+  .video-template .bar:nth-child(3) { height: 5px; animation-delay: 0.3s; }
+  .video-template .bar:nth-child(4) { height: 9px; animation-delay: 0.1s; }
+  @keyframes barBounce {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(0.4); }
+  }
+
+  /* ═══ THUMBNAIL TEMPLATE ═══ */
+  .thumb-template {
+    background: linear-gradient(160deg, #FF4444 0%, #1a1a3e 60%);
+  }
+  .thumb-template .accent-shape {
+    position: absolute;
+    bottom: -5%;
+    left: -5%;
+    width: 110%;
+    height: 45%;
+    background: #FF4444;
+    transform: rotate(-5deg);
+  }
+  .thumb-template .player-photo {
+    position: absolute;
+    top: 12%;
+    left: 5%;
+    width: 90%;
+    height: 50%;
+    background: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=486&h=336&fit=crop') center/cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .thumb-template .thumb-player-name {
+    position: absolute;
+    bottom: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 900;
+    font-size: 22px;
+    color: #fff;
+    text-transform: uppercase;
+    text-align: center;
+    width: 85%;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+    letter-spacing: 1px;
+    line-height: 1.2;
+  }
+  .thumb-template .thumb-hook {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 700;
+    font-size: 13px;
+    color: #FFD700;
+    text-align: center;
+    width: 80%;
+    line-height: 1.3;
+  }
+  .thumb-template .thumb-brand {
+    position: absolute;
+    top: 4%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 800;
+    font-size: 9px;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: 3px;
+  }
+
+  /* ═══ SECOND VIDEO EXAMPLE ═══ */
+  .video-template-2 .clip-area {
+    animation: clipSwitch2 18s steps(1) infinite, kenBurns 3s ease-in-out infinite !important;
+    animation-delay: -9s !important;
+  }
+  @keyframes clipSwitch2 {
+    0%      { background: url('https://images.unsplash.com/photo-1508098682722-e99c643e7f74?w=540&h=960&fit=crop') center/cover; }
+    16.67%  { background: url('https://images.unsplash.com/photo-1461896836934-bd45ba6cfbc7?w=540&h=960&fit=crop') center/cover; }
+    33.33%  { background: url('https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?w=540&h=960&fit=crop') center/cover; }
+    50%     { background: url('https://images.unsplash.com/photo-1546519638-68e109498ffc?w=540&h=960&fit=crop') center/cover; }
+    66.67%  { background: url('https://images.unsplash.com/photo-1504450758481-7338bbe75005?w=540&h=960&fit=crop') center/cover; }
+    83.33%  { background: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=540&h=960&fit=crop') center/cover; }
+  }
+
+  /* Annotations */
+  .annotations {
+    width: 100%;
+    max-width: 900px;
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .annotation {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .annotation h3 {
+    font-size: 12px;
+    color: #FF4444;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+  .annotation p {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.5;
+  }
+  .annotation code {
+    background: #222;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    color: #FFD700;
+  }
+</style>
+</head>
+<body>
+
+<h1>Sports Lore — Video & Thumbnail Templates</h1>
+<p class="subtitle">Preview of what the automated pipeline produces. All text/images are dynamic per video.</p>
+
+<!-- VIDEO PREVIEW 1 -->
+<div class="preview-group">
+  <div class="label">VIDEO — Hook Phase (0-3s)</div>
+  <div class="phone video-template">
+    <div class="clip-area"></div>
+    <div class="clip-overlay"></div>
+
+    <div class="phases">
+      <div class="phase active">HOOK 0-3s</div>
+      <div class="phase inactive">BUILD 3-15s</div>
+      <div class="phase inactive">BODY 15-40s</div>
+      <div class="phase inactive">CLIMAX 40-48s</div>
+      <div class="phase inactive">OUTRO 48-55s</div>
+    </div>
+
+    <div class="timer">0:03 / 0:55</div>
+
+    <div class="hook">The NBA Banned Him For Being Too Good</div>
+
+    <div class="music-indicator">
+      <div class="music-bars">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+      silent (hook phase)
+    </div>
+
+    <div class="player-name">Connie Hawkins</div>
+    <div class="watermark">SPORTS LORE</div>
+
+    <div class="yt-ui">
+      <div class="yt-btn"><div class="icon">&#9825;</div><div class="count">12K</div></div>
+      <div class="yt-btn"><div class="icon">&#9997;</div><div class="count">483</div></div>
+      <div class="yt-btn"><div class="icon">&#8634;</div><div class="count">Share</div></div>
+    </div>
+
+    <div class="progress-bar"></div>
+  </div>
+</div>
+
+<!-- VIDEO PREVIEW 2 -->
+<div class="preview-group">
+  <div class="label">VIDEO — Body Phase (15-40s)</div>
+  <div class="phone video-template video-template-2">
+    <div class="clip-area"></div>
+    <div class="clip-overlay"></div>
+
+    <div class="phases">
+      <div class="phase inactive">HOOK 0-3s</div>
+      <div class="phase inactive">BUILD 3-15s</div>
+      <div class="phase active">BODY 15-40s</div>
+      <div class="phase inactive">CLIMAX 40-48s</div>
+      <div class="phase inactive">OUTRO 48-55s</div>
+    </div>
+
+    <div class="timer">0:28 / 0:55</div>
+
+    <div class="music-indicator">
+      <div class="music-bars">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+      cinematic — 25% vol
+    </div>
+
+    <div class="player-name">Bo Jackson</div>
+    <div class="watermark">SPORTS LORE</div>
+
+    <div class="yt-ui">
+      <div class="yt-btn"><div class="icon">&#9825;</div><div class="count">45K</div></div>
+      <div class="yt-btn"><div class="icon">&#9997;</div><div class="count">1.2K</div></div>
+      <div class="yt-btn"><div class="icon">&#8634;</div><div class="count">Share</div></div>
+    </div>
+
+    <div class="progress-bar" style="animation-delay: -28s;"></div>
+  </div>
+</div>
+
+<!-- THUMBNAIL PREVIEW -->
+<div class="preview-group">
+  <div class="label">THUMBNAIL</div>
+  <div class="phone thumb-template">
+    <div class="accent-shape"></div>
+    <div class="thumb-brand">SPORTS LORE</div>
+    <div class="player-photo"></div>
+    <div class="thumb-player-name">Connie Hawkins</div>
+    <div class="thumb-hook">Banned Before He Could Play</div>
+  </div>
+</div>
+
+<!-- ANNOTATIONS -->
+<div class="annotations">
+  <div class="annotation">
+    <h3>CLIP SWITCHING (KEY FOR RETENTION)</h3>
+    <p>
+      <strong>18 clips per video</strong> — each plays ~3 seconds<br>
+      Clips crossfade with 0.3s overlap<br>
+      Ken Burns zoom effect on each clip (100% → 110%)<br>
+      Mix of: action (5), stadium (3), era B-roll (3),<br>
+      reactions (3), stats (2), atmospheric (2)<br>
+      All sourced automatically from Pexels
+    </p>
+  </div>
+  <div class="annotation">
+    <h3>AUDIO MIXING</h3>
+    <p>
+      <strong>Hook (0-3s):</strong> Music silent — voice only<br>
+      <strong>Build (3-15s):</strong> Music fades in at 20%<br>
+      <strong>Body (15-40s):</strong> Music at 25%<br>
+      <strong>Climax (40-48s):</strong> Music swells to 40%<br>
+      <strong>Outro (48-55s):</strong> Music rises to 50% as voice ends
+    </p>
+  </div>
+  <div class="annotation">
+    <h3>DYNAMIC ELEMENTS</h3>
+    <p>
+      <code>hook_text</code> — Claude-generated scroll-stopper<br>
+      <code>player_name</code> — from story selection<br>
+      <code>clip_1</code> — Pexels stock footage<br>
+      <code>voiceover</code> — ElevenLabs TTS<br>
+      <code>background_music</code> — Mubert or library track<br>
+      <code>player_image</code> — thumbnail only
+    </p>
+  </div>
+  <div class="annotation">
+    <h3>HOOK PATTERNS</h3>
+    <p>
+      Claude uses one of 4 proven patterns:<br>
+      <strong>Shocking stat:</strong> "This man averaged 40 points..."<br>
+      <strong>Bold claim:</strong> "The NBA changed its rules..."<br>
+      <strong>Direct challenge:</strong> "You've never heard of..."<br>
+      <strong>Time pressure:</strong> "In 1986, one game changed..."
+    </p>
+  </div>
+  <div class="annotation">
+    <h3>MUSIC MOODS</h3>
+    <p>
+      Auto-selected by story type:<br>
+      <strong>Forgotten legend</strong> → nostalgic/cinematic<br>
+      <strong>Rivalry</strong> → intense/orchestral<br>
+      <strong>Comeback</strong> → inspiring/builds<br>
+      <strong>Scandal</strong> → dark/ambient<br>
+      <strong>GOAT debate</strong> → intense/trap
+    </p>
+  </div>
+</div>
+
+</body>
+</html>
