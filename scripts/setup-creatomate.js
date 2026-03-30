@@ -128,16 +128,19 @@ const videoTemplate = {
         { type: "fade", fade: true, duration: 0.3 },
       ],
     },
-    // ── Word-by-word captions (center screen, animated) ──
-    // Pipeline generates caption groups and passes them as modifications.
-    // This is the primary caption layer — words pop in with emphasis highlighting.
+    // ── Word-by-word captions ──
+    // SAFE ZONE: YouTube Shorts overlays UI in these areas:
+    //   Top 12%  — search bar, notifications
+    //   Bottom 20% — channel name, description, sound
+    //   Right 15% — like/comment/share/remix buttons
+    // Captions sit at 42% Y (center-safe) with 70% width (avoids right buttons)
     {
       type: "text",
       name: "captions",
-      text: "",  // Filled dynamically per render
-      width: "85%",
-      x: "50%",
-      y: "55%",
+      text: "",
+      width: "70%",
+      x: "43%",        // Slightly left of center to avoid right-side buttons
+      y: "42%",         // Center of safe zone (between 12% and 80%)
       x_alignment: "50%",
       y_alignment: "50%",
       font_family: "Montserrat",
@@ -210,14 +213,15 @@ const videoTemplate = {
       time: 25,  // Default shift time, overridden per render
       duration: 30,
     },
-    // Player name: appears AFTER hook (3s), not from the start
+    // Player name: appears AFTER hook (3s), positioned in safe zone
+    // Bottom 20% is YouTube UI — player name sits at 72% (just above danger zone)
     {
       type: "text",
       name: "player_name",
       text: "Player Name",
-      width: "80%",
-      x: "50%",
-      y: "88%",
+      width: "70%",
+      x: "43%",         // Left of center to avoid right buttons
+      y: "72%",          // Above the bottom 20% YouTube overlay zone
       x_alignment: "50%",
       y_alignment: "50%",
       font_family: "Montserrat",
@@ -235,22 +239,45 @@ const videoTemplate = {
         { type: "slide", fade: true, direction: "up", duration: 0.4 },
       ],
     },
-    // Channel watermark
+    // Channel watermark — top left (safe zone), subtle
     {
       type: "text",
       name: "watermark",
       text: "SPORTS LORE",
-      x: "50%",
-      y: "96%",
+      x: "14%",
+      y: "5%",
       x_alignment: "50%",
       y_alignment: "50%",
       font_family: "Montserrat",
-      font_weight: "600",
-      font_size: "2.5 vmin",
-      fill_color: "rgba(255,255,255,0.5)",
+      font_weight: "700",
+      font_size: "2 vmin",
+      fill_color: "rgba(255,255,255,0.35)",
       text_alignment: "center",
       time: 0,
       duration: 55,
+    },
+    // ── Player portrait image (Wikipedia/ESPN photo) ──
+    // Appears briefly after player is introduced (3s-6s), then during reveals.
+    // Ken Burns slow zoom. Semi-transparent so it doesn't overpower the clip.
+    {
+      type: "image",
+      name: "player_portrait",
+      source: "",  // Filled at render time with Wikipedia/ESPN image URL
+      width: "35%",
+      height: "25%",
+      x: "22%",
+      y: "60%",
+      fit: "cover",
+      border_radius: "2 vmin",
+      opacity: "85%",
+      shadow_color: "rgba(0,0,0,0.6)",
+      shadow_blur: "2 vmin",
+      time: 3,       // Appears after hook, when player name shows
+      duration: 4,   // Shows for 4 seconds (3s-7s) during introduction
+      animations: [
+        { type: "scale", fade: false, scope: "element", start_scale: "100%", end_scale: "108%", duration: 4 },
+        { type: "fade", fade: true, duration: 0.4 },
+      ],
     },
     // Voiceover audio (dynamic — replaced at render time)
     {

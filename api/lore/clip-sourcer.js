@@ -24,6 +24,7 @@ const { calculateClipSlots, getStoryTemplate } = require("./lib/story-templates"
 const { scrapePlayerClips, searchPlayerPhoto } = require("./lib/clip-scraper");
 const { transformClipBatch, uploadTransformedClips } = require("./lib/clip-transformer");
 const { generateStatOverlays, statOverlaysToCreatomate } = require("./lib/stat-overlays");
+const { getPlayerImage } = require("./lib/player-images");
 
 /**
  * Check if yt-dlp is available on the system.
@@ -204,10 +205,15 @@ Return JSON:
     console.error("[clip-sourcer] Stat overlay generation failed:", e.message);
   }
 
-  // Step 4: Get player photo for thumbnail + photo slots
+  // Step 4: Get player portrait (Wikipedia → ESPN → YouTube thumbnail fallback)
   let playerPhotoUrl = "";
   try {
-    playerPhotoUrl = await searchPlayerPhoto(script.playerName, script.playerSport) || "";
+    const playerImage = await getPlayerImage(script.playerName, script.playerSport);
+    playerPhotoUrl = playerImage.url || "";
+    if (!playerPhotoUrl) {
+      // Final fallback: YouTube thumbnail from highlight search
+      playerPhotoUrl = await searchPlayerPhoto(script.playerName, script.playerSport) || "";
+    }
   } catch (e) {
     console.error("[clip-sourcer] Player photo search failed:", e.message);
   }

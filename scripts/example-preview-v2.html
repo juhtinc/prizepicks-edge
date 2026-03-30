@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Lore — Connie Hawkins (Full Preview)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; padding: 30px 20px 60px; }
+  h1 { text-align: center; font-size: 16px; color: #F5A623; margin-bottom: 4px; letter-spacing: 3px; text-transform: uppercase; }
+  .subtitle { text-align: center; color: #555; margin-bottom: 36px; font-size: 11px; }
+  .stage { display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+
+  /* ── PHONE ── */
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .phone {
+    width: 270px; height: 480px; border-radius: 30px;
+    border: 3px solid #1a1a1a; overflow: hidden; position: relative; background: #000;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.03);
+  }
+
+  /* ── FOOTAGE LAYER ── */
+  .footage-layer {
+    position: absolute; inset: 0;
+    transition: filter 0.45s ease, opacity 0.45s ease;
+  }
+  .footage-layer.dimmed {
+    filter: blur(8px) brightness(0.15) saturate(0.4);
+  }
+  .clip-bg {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 20px;
+    transition: opacity 0.3s;
+  }
+  .clip-bg .clip-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.6); line-height: 1.5; }
+  .clip-bg .clip-label small { display: block; font-size: 8px; color: rgba(245,166,35,0.6); font-weight: 400; margin-top: 4px; }
+  .clip-bg .clip-label .type-tag { display: inline-block; font-size: 7px; padding: 1px 5px; border-radius: 3px; font-weight: 700; margin-bottom: 4px; }
+  .type-tag.gameplay { background: rgba(21,101,192,0.4); color: #64B5F6; border: 1px solid rgba(21,101,192,0.5); }
+  .type-tag.photo { background: rgba(106,27,154,0.4); color: #CE93D8; border: 1px solid rgba(106,27,154,0.5); }
+
+  /* Scene backgrounds */
+  .scene-aba    { background: linear-gradient(148deg,#1e1400 0%,#0d0a00 45%,#1a1200 100%); }
+  .scene-pipers { background: linear-gradient(148deg,#00111e 0%,#000a14 45%,#001525 100%); }
+  .scene-young  { background: linear-gradient(148deg,#10001e 0%,#08000f 45%,#140020 100%); }
+  .scene-ban    { background: linear-gradient(148deg,#1e0000 0%,#0f0000 45%,#1a0505 100%); }
+  .scene-globe  { background: linear-gradient(148deg,#001a0a 0%,#000f06 45%,#001a0e 100%); }
+  .scene-suns   { background: linear-gradient(148deg,#1e0a00 0%,#140700 45%,#1e0e00 100%); }
+  .scene-hof    { background: linear-gradient(148deg,#1a1400 0%,#0f0a00 45%,#1a1200 100%); }
+  .scene-end    { background: linear-gradient(148deg,#0a0a1e 0%,#050510 45%,#0a0a1a 100%); }
+
+  .grain { position: absolute; inset: 0; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.06'/%3E%3C/svg%3E"); opacity:.35; mix-blend-mode:overlay; }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.7) 100%); }
+  .bottom-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 40%; background: linear-gradient(0deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.4) 50%,transparent 100%); }
+
+  /* ── CAPTION (word-by-word, always on during footage) ── */
+  .caption-area {
+    position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+    width: 88%; text-align: center; z-index: 10;
+    transition: opacity 0.3s;
+  }
+  .caption-area.hidden { opacity: 0; }
+  .caption-text {
+    font-size: 15px; font-weight: 800; color: #fff; line-height: 1.35;
+    text-shadow: 0 2px 8px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.6);
+  }
+  .caption-text .em { color: #F5A623; }
+
+  /* ── LOWER THIRD (player name — after hook) ── */
+  .lower-third {
+    position: absolute; bottom: 40px; left: 0; right: 0; z-index: 10;
+    padding: 0 14px;
+    opacity: 0; transition: opacity 0.4s ease;
+  }
+  .lower-third.show { opacity: 1; }
+  .lt-eyebrow { font-size: 6px; color: rgba(245,166,35,.7); letter-spacing: 2.5px; text-transform: uppercase; display: flex; align-items: center; gap: 4px; }
+  .lt-eyebrow::before { content:''; display:block; width:10px; height:1px; background:#F5A623; }
+  .lt-name { font-size: 12px; font-weight: 900; color: #fff; text-transform: uppercase; line-height: 1.15; margin-top: 2px; }
+
+  /* ── REVEAL OVERLAY (stats, quotes — blurs footage behind) ── */
+  .reveal-overlay {
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .reveal-overlay.show { opacity: 1; }
+  .reveal-overlay::before, .reveal-overlay::after {
+    content: ''; position: absolute; left: 24px; right: 24px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245,166,35,.5), transparent);
+  }
+  .reveal-overlay::before { top: 30px; }
+  .reveal-overlay::after { bottom: 30px; }
+
+  .reveal-eyebrow {
+    font-size: 7px; color: rgba(245,166,35,.65); letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 12px;
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+  }
+  .reveal-overlay.show .reveal-eyebrow { opacity: 1; transform: translateY(0); }
+
+  .reveal-main {
+    text-align: center;
+    opacity: 0; transform: scale(0.88);
+    transition: opacity 0.35s ease 0.1s, transform 0.4s cubic-bezier(.34,1.56,.64,1) 0.1s;
+  }
+  .reveal-overlay.show .reveal-main { opacity: 1; transform: scale(1); }
+
+  .reveal-num { font-size: 72px; font-weight: 900; color: #F5A623; line-height: 1; text-shadow: 0 0 50px rgba(245,166,35,.4); }
+  .reveal-unit { font-size: 12px; font-weight: 700; color: rgba(245,166,35,.5); text-transform: uppercase; letter-spacing: 3px; margin-top: 2px; }
+  .reveal-sublabel { font-size: 8px; color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: 2px; margin-top: 8px; }
+
+  .reveal-quote { font-size: 15px; font-weight: 900; color: #fff; text-align: center; line-height: 1.35; text-transform: uppercase; letter-spacing: .5px; }
+  .reveal-quote em { color: #F5A623; font-style: normal; }
+  .reveal-quote .soft { font-size: 11px; font-weight: 400; color: rgba(255,255,255,.45); font-style: italic; text-transform: none; display: block; margin-top: 6px; letter-spacing: 0; }
+
+  .reveal-attr {
+    font-size: 7px; color: rgba(245,166,35,.45); letter-spacing: 2.5px;
+    text-transform: uppercase; margin-top: 14px;
+    opacity: 0; transition: opacity 0.3s ease 0.3s;
+  }
+  .reveal-overlay.show .reveal-attr { opacity: 1; }
+
+  /* ── FIXED UI ── */
+  .logo { position: absolute; top: 14px; left: 12px; z-index: 30; font-size: 6.5px; font-weight: 800; color: rgba(245,166,35,.7); letter-spacing: 2px; text-transform: uppercase; border: 1px solid rgba(245,166,35,.2); border-radius: 3px; padding: 2px 5px; }
+  .phase-badge { position: absolute; top: 12px; right: 12px; z-index: 30; font-size: 7px; font-weight: 800; color: #000; background: #F5A623; border-radius: 3px; padding: 2px 6px; letter-spacing: 1px; text-transform: uppercase; transition: opacity .3s; }
+  .progress-track { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,.06); z-index: 40; }
+  .progress-fill { height: 100%; background: #F5A623; width: 0; transition: width .08s linear; }
+  .cut-flash { position: absolute; inset: 0; z-index: 100; background: #fff; opacity: 0; pointer-events: none; }
+
+  /* Music indicator */
+  .music-ind {
+    position: absolute; bottom: 24px; right: 12px; z-index: 30;
+    display: flex; align-items: center; gap: 3px;
+    font-size: 6px; color: rgba(255,255,255,.3); letter-spacing: 0.5px;
+  }
+  .music-bars { display: flex; align-items: flex-end; gap: 1px; height: 8px; }
+  .mbar { width: 2px; background: rgba(245,166,35,.3); border-radius: 1px; }
+  .mbar.on { animation: mBounce 0.5s ease-in-out infinite; background: rgba(245,166,35,.5); }
+  @keyframes mBounce { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(0.25); } }
+  .mbar:nth-child(1) { height: 3px; animation-delay: 0s; }
+  .mbar:nth-child(2) { height: 6px; animation-delay: 0.08s; }
+  .mbar:nth-child(3) { height: 4px; animation-delay: 0.16s; }
+  .mbar:nth-child(4) { height: 7px; animation-delay: 0.04s; }
+
+  /* ── CONTROLS ── */
+  .controls { display: flex; gap: 8px; }
+  .btn { padding: 8px 18px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; letter-spacing: 1px; text-transform: uppercase; font-family: inherit; }
+  .btn-play { background: #F5A623; color: #000; }
+  .btn-play:hover { background: #ffc84a; }
+  .btn-reset { background: rgba(255,255,255,.06); color: #666; border: 1px solid rgba(255,255,255,.08); }
+  .info-row { font-size: 10px; color: #444; }
+  .info-row span { color: #F5A623; font-weight: 700; }
+
+  /* ── SCRIPT PANEL ── */
+  .script-col { flex: 1; min-width: 300px; max-width: 500px; }
+  .script-panel { background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 12px; overflow: hidden; }
+  .sp-header { background: #141414; padding: 12px 14px; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 8px; }
+  .sp-header h2 { font-size: 14px; color: #fff; }
+  .sp-header .tag { font-size: 9px; background: rgba(245,166,35,.15); color: #F5A623; border: 1px solid rgba(245,166,35,.25); padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+
+  .sp-segment { padding: 8px 14px; border-bottom: 1px solid #151515; transition: background 0.2s; font-size: 11px; }
+  .sp-segment.active { background: #1a1410; border-left: 2px solid #F5A623; }
+  .sp-segment .seg-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .sp-segment .seg-time { font-size: 9px; color: #F5A623; font-weight: 700; font-family: monospace; }
+  .sp-segment .seg-phase { font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+  .sp-segment .seg-text { color: #bbb; line-height: 1.5; }
+  .sp-segment .seg-text .w { color: #F5A623; font-weight: 700; }
+  .sp-segment .clip-tag { display: inline-block; font-size: 8px; padding: 1px 5px; border-radius: 3px; margin-top: 4px; font-weight: 600; }
+  .sp-segment .clip-tag.gameplay { background: rgba(21,101,192,0.2); color: #64B5F6; }
+  .sp-segment .clip-tag.photo { background: rgba(106,27,154,0.2); color: #CE93D8; }
+  .sp-segment .clip-tag.reveal { background: rgba(245,166,35,0.15); color: #F5A623; }
+  .sp-segment .clip-search { font-size: 9px; color: #555; margin-top: 2px; }
+
+  .sp-hook { background: #1a1208; border-left: 2px solid #F5A623; padding: 6px 14px; }
+  .sp-hook .hook-label { font-size: 8px; color: #F5A623; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .sp-hook .hook-text { font-size: 10px; color: #ccc; margin-top: 2px; font-style: italic; }
+
+  .sp-music { padding: 4px 14px; }
+  .sp-music span { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+  .sp-music .m-silent { background: rgba(245,166,35,.08); color: rgba(245,166,35,.5); }
+  .sp-music .m-nostalgic { background: rgba(129,199,132,.08); color: rgba(129,199,132,.6); }
+  .sp-music .m-melancholy { background: rgba(144,202,249,.08); color: rgba(144,202,249,.6); }
+  .sp-music .m-drop { background: rgba(255,0,0,.08); color: rgba(255,100,100,.5); }
+</style>
+</head>
+<body>
+
+<h1>Sports Lore — Full Pipeline Preview</h1>
+<p class="subtitle">Connie Hawkins (forgotten_legend) · Real footage + spotlight reveals + word-by-word captions</p>
+
+<div class="stage">
+
+<!-- ═══ PHONE ═══ -->
+<div class="phone-wrap">
+  <div class="phone" id="phone">
+    <div class="cut-flash" id="flash"></div>
+
+    <div class="footage-layer" id="ftLayer">
+      <div class="clip-bg scene-aba" id="clipBg">
+        <div class="clip-label">
+          <div class="type-tag gameplay">gameplay</div><br>
+          Hawkins ABA dunk<br>
+          <small>"Connie Hawkins ABA slam dunk highlight"</small>
+        </div>
+      </div>
+      <div class="grain"></div>
+      <div class="vignette"></div>
+      <div class="bottom-fade"></div>
+    </div>
+
+    <div class="caption-area" id="captionArea">
+      <div class="caption-text" id="captionText"></div>
+    </div>
+
+    <div class="lower-third" id="lt">
+      <div class="lt-eyebrow">Forgotten Legend</div>
+      <div class="lt-name">Connie Hawkins</div>
+    </div>
+
+    <div class="reveal-overlay" id="reveal">
+      <div class="reveal-eyebrow" id="revEye"></div>
+      <div class="reveal-main" id="revMain"></div>
+      <div class="reveal-attr" id="revAttr"></div>
+    </div>
+
+    <div class="logo">Sports Lore</div>
+    <div class="phase-badge" id="phaseBadge">Hook</div>
+    <div class="music-ind" id="musicInd">
+      <div class="music-bars">
+        <div class="mbar" id="mb1"></div><div class="mbar" id="mb2"></div>
+        <div class="mbar" id="mb3"></div><div class="mbar" id="mb4"></div>
+      </div>
+      <span id="musicLabel">silent</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="prog"></div></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-reset" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-play" id="playBtn" onclick="togglePlay()">▶ Play</button>
+  </div>
+  <div class="info-row"><span id="phaseLbl">—</span> · <span id="timeLbl">0.0s</span></div>
+</div>
+
+<!-- ═══ SCRIPT ═══ -->
+<div class="script-col">
+  <div class="script-panel">
+    <div class="sp-header">
+      <h2>Connie Hawkins</h2>
+      <span class="tag">forgotten_legend</span>
+      <span class="tag">NBA</span>
+    </div>
+
+    <!-- HOOK 0-3s -->
+    <div class="sp-segment" data-idx="0" id="seg0">
+      <div class="seg-head"><span class="seg-time">0:00</span><span class="seg-phase">Hook</span></div>
+      <div class="seg-text"><span class="w">The NBA banned this man</span> before he ever played a single game.</div>
+      <span class="clip-tag gameplay">gameplay</span>
+      <div class="clip-search">"Connie Hawkins ABA slam dunk highlight"</div>
+    </div>
+    <div class="sp-music"><span class="m-silent">silent — voice only</span></div>
+
+    <!-- GREATNESS 3-7s -->
+    <div class="sp-segment" data-idx="1" id="seg1">
+      <div class="seg-head"><span class="seg-time">0:03</span><span class="seg-phase">Greatness</span></div>
+      <div class="seg-text">Connie Hawkins was <span class="w">Magic Johnson before Magic Johnson</span>.</div>
+      <span class="clip-tag gameplay">gameplay</span>
+      <div class="clip-search">"Connie Hawkins ball handling 1960s ABA"</div>
+    </div>
+    <div class="sp-music"><span class="m-nostalgic">nostalgic piano — fades in 20%</span></div>
+
+    <!-- GREATNESS 7-10s -->
+    <div class="sp-segment" data-idx="2" id="seg2">
+      <div class="seg-head"><span class="seg-time">0:07</span><span class="seg-phase">Greatness</span></div>
+      <div class="seg-text">Six-foot-eight with guard handles, a <span class="w">44-inch vertical</span>, and moves that made defenders look like they were standing still.</div>
+      <span class="clip-tag gameplay">gameplay</span>
+      <div class="clip-search">"Connie Hawkins dunk ABA highlight reel"</div>
+    </div>
+
+    <!-- REVEAL: ABA STATS -->
+    <div class="sp-segment" data-idx="3" id="seg3">
+      <div class="seg-head"><span class="seg-time">0:10</span><span class="seg-phase">Reveal</span></div>
+      <div class="seg-text"><span class="w">26 PPG</span> · ABA Champion · MVP</div>
+      <span class="clip-tag reveal">spotlight reveal — footage blurs</span>
+    </div>
+
+    <div class="sp-hook">
+      <div class="hook-label">Retention Hook @ 10s</div>
+      <div class="hook-text">"But that's not even the craziest part of his story."</div>
+    </div>
+
+    <!-- CONTEXT 12-15s -->
+    <div class="sp-segment" data-idx="4" id="seg4">
+      <div class="seg-head"><span class="seg-time">0:12</span><span class="seg-phase">Context</span></div>
+      <div class="seg-text">See, back in <span class="w">1961</span>, when Hawkins was just <span class="w">18 years old</span>, the NBA accused him of being involved in a point-shaving scandal.</div>
+      <span class="clip-tag photo">photo</span>
+      <div class="clip-search">Ken Burns on "young Connie Hawkins 1961 Iowa portrait"</div>
+    </div>
+
+    <!-- CONTEXT 15-18s -->
+    <div class="sp-segment" data-idx="5" id="seg5">
+      <div class="seg-head"><span class="seg-time">0:15</span><span class="seg-phase">Context</span></div>
+      <div class="seg-text">No trial. No evidence. Just accusations.</div>
+      <span class="clip-tag photo">photo</span>
+      <div class="clip-search">"1960s basketball newspaper headline scandal"</div>
+    </div>
+    <div class="sp-music"><span class="m-drop">music drops to SILENCE — 1.5s</span></div>
+
+    <!-- REVEAL: BANNED -->
+    <div class="sp-segment" data-idx="6" id="seg6">
+      <div class="seg-head"><span class="seg-time">0:18</span><span class="seg-phase">Reveal</span></div>
+      <div class="seg-text"><span class="w">BLACKLISTED</span></div>
+      <span class="clip-tag reveal">spotlight reveal — "just like that"</span>
+    </div>
+
+    <div class="sp-music"><span class="m-melancholy">melancholy strings — crossfade in at 20s</span></div>
+
+    <!-- TURN 20-28s -->
+    <div class="sp-segment" data-idx="7" id="seg7">
+      <div class="seg-head"><span class="seg-time">0:20</span><span class="seg-phase">Turn</span></div>
+      <div class="seg-text">For <span class="w">eight years</span>, Hawkins couldn't play in the NBA. He played in the ABL, the ABA, even the Harlem Globetrotters. Anywhere that would have him.</div>
+      <span class="clip-tag gameplay">gameplay</span>
+      <div class="clip-search">"Connie Hawkins Harlem Globetrotters highlights"</div>
+    </div>
+
+    <!-- TURN 28-32s -->
+    <div class="sp-segment" data-idx="8" id="seg8">
+      <div class="seg-head"><span class="seg-time">0:28</span><span class="seg-phase">Turn</span></div>
+      <div class="seg-text">He dominated <span class="w">every league</span> he entered. But none of them were the NBA.</div>
+      <span class="clip-tag gameplay">gameplay</span>
+      <div class="clip-search">"Connie Hawkins ABA Pittsburgh Pipers 1968 plays"</div>
+    </div>
+
+    <div class="sp-hook">
+      <div class="hook-label">Retention Hook @ 30s</div>
+      <div class="hook-text">"And when the NBA finally let him in, it was already too late."</div>
+    </div>
+
+    <!-- FORGOTTEN 32-36s -->
+    <div class="sp-segment" data-idx="9" id="seg9">
+      <div class="seg-head"><span class="seg-time">0:32</span><span class="seg-phase">Forgotten</span></div>
+      <div class="seg-text">In <span class="w">1969</span>, Hawkins sued the NBA and won. He finally got his shot — with the Phoenix Suns.</div>
+      <span class="clip-tag gameplay">gameplay</span>
+      <div class="clip-search">"Connie Hawkins Phoenix Suns 1969 debut highlights"</div>
+    </div>
+
+    <!-- REVEAL: 24.6 PPG -->
+    <div class="sp-segment" data-idx="10" id="seg10">
+      <div class="seg-head"><span class="seg-time">0:38</span><span class="seg-phase">Reveal</span></div>
+      <div class="seg-text"><span class="w">24.6 PPG</span> — 4x All-Star — past his prime</div>
+      <span class="clip-tag reveal">hero stat reveal — footage blurs</span>
+    </div>
+
+    <!-- FORGOTTEN 40-45s -->
+    <div class="sp-segment" data-idx="11" id="seg11">
+      <div class="seg-head"><span class="seg-time">0:40</span><span class="seg-phase">Forgotten</span></div>
+      <div class="seg-text">Imagine what he would have done with those <span class="w">eight years</span> back.</div>
+      <span class="clip-tag gameplay">gameplay</span>
+      <div class="clip-search">"Connie Hawkins Suns All-Star game highlights"</div>
+    </div>
+
+    <!-- LEGACY 45-52s -->
+    <div class="sp-segment" data-idx="12" id="seg12">
+      <div class="seg-head"><span class="seg-time">0:45</span><span class="seg-phase">Legacy</span></div>
+      <div class="seg-text">Hawkins made the <span class="w">Hall of Fame</span> in 1992. But most fans today have never heard his name. The NBA stole his best years and <span class="w">never apologized</span>.</div>
+      <span class="clip-tag photo">photo</span>
+      <div class="clip-search">Ken Burns on "Connie Hawkins Hall of Fame induction 1992"</div>
+    </div>
+
+    <!-- KICKER: REVEAL -->
+    <div class="sp-segment" data-idx="13" id="seg13">
+      <div class="seg-head"><span class="seg-time">0:52</span><span class="seg-phase">Kicker</span></div>
+      <div class="seg-text">How many other Connie Hawkins are out there that <span class="w">we'll never know about?</span></div>
+      <span class="clip-tag reveal">final reveal — thought-provoking question</span>
+    </div>
+
+  </div>
+</div>
+
+</div>
+
+<script>
+const ftLayer=document.getElementById('ftLayer');
+const clipBg=document.getElementById('clipBg');
+const captionArea=document.getElementById('captionArea');
+const captionText=document.getElementById('captionText');
+const lt=document.getElementById('lt');
+const reveal=document.getElementById('reveal');
+const revEye=document.getElementById('revEye');
+const revMain=document.getElementById('revMain');
+const revAttr=document.getElementById('revAttr');
+const flash=document.getElementById('flash');
+const phaseBadge=document.getElementById('phaseBadge');
+const prog=document.getElementById('prog');
+const phaseLbl=document.getElementById('phaseLbl');
+const timeLbl=document.getElementById('timeLbl');
+const playBtn=document.getElementById('playBtn');
+const musicLabel=document.getElementById('musicLabel');
+const mbars=[document.getElementById('mb1'),document.getElementById('mb2'),document.getElementById('mb3'),document.getElementById('mb4')];
+
+function setMusic(label, on) {
+  musicLabel.textContent = label;
+  mbars.forEach(b => { if(on) b.classList.add('on'); else b.classList.remove('on'); });
+}
+
+const SCENES = {
+  aba:    { cls:'scene-aba',    label:'Hawkins ABA dunk', search:'"Connie Hawkins ABA slam dunk"', type:'gameplay' },
+  pipers: { cls:'scene-pipers', label:'Pipers championship', search:'"Hawkins Pittsburgh Pipers 1968"', type:'gameplay' },
+  young:  { cls:'scene-young',  label:'Young Hawkins photo', search:'Ken Burns: 1961 portrait', type:'photo' },
+  ban:    { cls:'scene-ban',    label:'Scandal headlines', search:'"1960s basketball scandal"', type:'photo' },
+  globe:  { cls:'scene-globe',  label:'Globetrotters footage', search:'"Hawkins Harlem Globetrotters"', type:'gameplay' },
+  suns:   { cls:'scene-suns',   label:'Suns debut highlights', search:'"Hawkins Phoenix Suns 1969"', type:'gameplay' },
+  hof:    { cls:'scene-hof',    label:'Hall of Fame photo', search:'Ken Burns: HOF induction', type:'photo' },
+  end:    { cls:'scene-end',    label:'Closing', search:'', type:'photo' },
+};
+
+function setClip(key) {
+  const s = SCENES[key];
+  clipBg.className = 'clip-bg ' + s.cls;
+  clipBg.innerHTML = `<div class="clip-label"><div class="type-tag ${s.type}">${s.type}</div><br>${s.label}<br><small>${s.search}</small></div>`;
+}
+
+const EM = (text) => text.replace(/\*(.*?)\*/g, '<span class="em">$1</span>');
+
+// Timeline: each state is either footage or reveal
+const STATES = [
+  // HOOK 0-3s
+  { type:'footage', dur:3000, clip:'aba', phase:'Hook', idx:0,
+    caption:'*The NBA banned this man* before he ever played a single game.',
+    music:'silent', musicOn:false, showLt:false },
+
+  // GREATNESS 3-7s
+  { type:'footage', dur:4000, clip:'aba', phase:'Greatness', idx:1,
+    caption:'Connie Hawkins was *Magic Johnson* before Magic Johnson.',
+    music:'nostalgic 20%', musicOn:true, showLt:true },
+
+  // GREATNESS 7-10s
+  { type:'footage', dur:3000, clip:'pipers', phase:'Greatness', idx:2,
+    caption:'Six-foot-eight with guard handles, a *44-inch vertical*.',
+    music:'nostalgic 20%', musicOn:true, showLt:true },
+
+  // REVEAL: ABA Stats @ 10s
+  { type:'reveal', dur:2200, clip:'pipers', phase:'Reveal', idx:3,
+    revEye:'ABA Career',
+    revMain:'<div class="reveal-num">26</div><div class="reveal-unit">PPG</div><div class="reveal-sublabel">ABA Champion · MVP</div>',
+    revAttr:'Pittsburgh Pipers · 1967-68',
+    music:'nostalgic 20%', musicOn:true },
+
+  // RETENTION HOOK + CONTEXT 12-15s
+  { type:'footage', dur:3000, clip:'young', phase:'Context', idx:4,
+    caption:'Back in *1961*, when Hawkins was just *18*, the NBA accused him of a point-shaving scandal.',
+    music:'nostalgic 25%', musicOn:true, showLt:true },
+
+  // CONTEXT 15-18s
+  { type:'footage', dur:3000, clip:'ban', phase:'Context', idx:5,
+    caption:'No trial. *No evidence.* Just accusations.',
+    music:'—silence—', musicOn:false, showLt:true },
+
+  // REVEAL: BLACKLISTED @ 18s
+  { type:'reveal', dur:2000, clip:'ban', phase:'Reveal', idx:6,
+    revEye:'',
+    revMain:'<div class="reveal-quote"><em>BLACKLISTED</em><span class="soft">The most talented player in America — erased.</span></div>',
+    revAttr:'',
+    music:'—silence—', musicOn:false },
+
+  // TURN 20-28s
+  { type:'footage', dur:4000, clip:'globe', phase:'Turn', idx:7,
+    caption:'For *eight years*, Hawkins couldn\'t play in the NBA. He played in the ABL, the ABA, even the *Harlem Globetrotters*.',
+    music:'melancholy 20%', musicOn:true, showLt:true },
+
+  // TURN 28-32s
+  { type:'footage', dur:4000, clip:'pipers', phase:'Turn', idx:8,
+    caption:'He *dominated every league* he entered. But none of them were the NBA.',
+    music:'melancholy 25%', musicOn:true, showLt:true },
+
+  // FORGOTTEN 32-38s
+  { type:'footage', dur:3500, clip:'suns', phase:'Forgotten', idx:9,
+    caption:'In *1969*, Hawkins sued the NBA and won. He finally got his shot — with the *Phoenix Suns*.',
+    music:'melancholy 25%', musicOn:true, showLt:true },
+
+  // REVEAL: 24.6 PPG @ 38s
+  { type:'reveal', dur:2500, clip:'suns', phase:'Reveal', idx:10,
+    revEye:'Past His Prime',
+    revMain:'<div class="reveal-num">24.6</div><div class="reveal-unit">PPG</div><div class="reveal-sublabel">4× All-Star · After missing 8 years</div>',
+    revAttr:'Phoenix Suns · 1969-73',
+    music:'melancholy 35%', musicOn:true },
+
+  // FORGOTTEN 40-45s
+  { type:'footage', dur:3000, clip:'suns', phase:'Forgotten', idx:11,
+    caption:'Imagine what he would have done with those *eight years* back.',
+    music:'melancholy 35%', musicOn:true, showLt:true },
+
+  // LEGACY 45-52s
+  { type:'footage', dur:4500, clip:'hof', phase:'Legacy', idx:12,
+    caption:'Hawkins made the *Hall of Fame* in 1992. But most fans today have *never heard his name*.',
+    music:'melancholy 45%', musicOn:true, showLt:true },
+
+  // KICKER REVEAL 52-55s
+  { type:'reveal', dur:3000, clip:'end', phase:'Kicker', idx:13,
+    revEye:'',
+    revMain:'<div class="reveal-quote">How many other Connie Hawkins are out there<br>that <em>we\'ll never know about?</em></div>',
+    revAttr:'@SportsLore · Comment below',
+    music:'melancholy 50%', musicOn:true },
+];
+
+const totalMs = STATES.reduce((a,s) => a + s.dur, 0);
+let si = -1, playing = false, iv = null;
+
+function doFlash() {
+  flash.style.transition = 'none';
+  flash.style.opacity = '0.15';
+  requestAnimationFrame(() => {
+    flash.style.transition = 'opacity 0.12s';
+    flash.style.opacity = '0';
+  });
+}
+
+function applyState(i) {
+  if (i > 0) doFlash();
+  const s = STATES[i];
+  const elapsed = STATES.slice(0, i).reduce((a, x) => a + x.dur, 0);
+  prog.style.width = (elapsed / totalMs * 100) + '%';
+  phaseLbl.textContent = s.phase;
+  timeLbl.textContent = (elapsed / 1000).toFixed(1) + 's';
+  phaseBadge.textContent = s.phase;
+
+  setClip(s.clip);
+  setMusic(s.music, s.musicOn);
+
+  // Highlight script segment
+  document.querySelectorAll('.sp-segment').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.idx) === (s.idx ?? -1));
+  });
+
+  if (s.type === 'footage') {
+    // Show footage clean
+    ftLayer.classList.remove('dimmed');
+    reveal.classList.remove('show');
+    captionArea.classList.remove('hidden');
+    captionText.innerHTML = EM(s.caption);
+    if (s.showLt) lt.classList.add('show');
+    else lt.classList.remove('show');
+  } else {
+    // Blur footage, show reveal
+    ftLayer.classList.add('dimmed');
+    captionArea.classList.add('hidden');
+    lt.classList.remove('show');
+    revEye.textContent = s.revEye || '';
+    revMain.innerHTML = s.revMain;
+    revAttr.textContent = s.revAttr || '';
+    reveal.classList.remove('show');
+    void reveal.offsetWidth;
+    reveal.classList.add('show');
+  }
+}
+
+function next() {
+  si++;
+  if (si >= STATES.length) { stop(); return; }
+  applyState(si);
+  iv = setTimeout(next, STATES[si].dur);
+}
+
+function stop() {
+  if (iv) clearTimeout(iv);
+  iv = null; playing = false;
+  playBtn.textContent = '▶ Play';
+}
+
+function resetAll() {
+  stop(); si = -1;
+  prog.style.width = '0'; phaseLbl.textContent = '—'; timeLbl.textContent = '0.0s';
+  ftLayer.classList.remove('dimmed');
+  reveal.classList.remove('show');
+  lt.classList.remove('show');
+  captionArea.classList.remove('hidden');
+  captionText.innerHTML = '';
+  phaseBadge.textContent = 'Hook';
+  setClip('aba');
+  setMusic('silent', false);
+  document.querySelectorAll('.sp-segment').forEach(el => el.classList.remove('active'));
+}
+
+function togglePlay() {
+  if (playing) { stop(); }
+  else {
+    if (si >= STATES.length - 1) resetAll();
+    playing = true;
+    playBtn.textContent = '⏸ Pause';
+    next();
+  }
+}
+</script>
+</body>
+</html>
