@@ -24,6 +24,7 @@ const path = require("path");
 const fs = require("fs");
 
 const FFMPEG = process.env.FFMPEG_PATH || "ffmpeg";
+const CLIP_STORAGE_URL = process.env.CLIP_STORAGE_URL || "";
 
 // Color grade presets per mood (maps to story template moods)
 const COLOR_GRADES = {

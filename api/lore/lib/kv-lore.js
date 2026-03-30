@@ -53,6 +53,9 @@ function newScriptRow(batchId, index, data = {}) {
     instagramUrl: data.instagramUrl || "",
     viewsAt48h: data.viewsAt48h || null,
     retentionAt48h: data.retentionAt48h || null,
+    commentBait: data.commentBait || "",
+    voiceoverUrl: data.voiceoverUrl || "",
+    statOverlays: data.statOverlays || [],
   };
 }
 

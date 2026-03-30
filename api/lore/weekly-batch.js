@@ -19,10 +19,11 @@
  */
 
 const axios = require("axios");
-const { askClaudeJSON } = require("./lib/claude");
+const { askClaudeJSON, askClaude } = require("./lib/claude");
 const { newScriptRow, saveBatch, saveScript, getBatch, getBatchScripts, getRecentAnalytics } = require("./lib/kv-lore");
 const { getBatchIdForDate } = require("./lib/utils");
-const { getStoryTemplate } = require("./lib/story-templates");
+const { getStoryTemplate, getProvocation } = require("./lib/story-templates");
+const { getOptimalPostTime } = require("./lib/post-times");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
@@ -105,7 +106,6 @@ Return JSON:
 
       // Get story template for structure guidance
       const template = getStoryTemplate(story.story_type);
-      const { getProvocation } = require("./lib/story-templates");
       const provocation = getProvocation(story.story_type);
       const segmentGuide = template.segments
         .map(s => `[${s.start}s-${s.end}s] ${s.name}: ${s.description}`)
@@ -117,7 +117,6 @@ Return JSON:
       // Research public opinion before writing the script
       let publicOpinion = "";
       try {
-        const { askClaude } = require("./lib/claude");
         publicOpinion = await askClaude(
           `Search the web for public opinion about ${story.player_name} in ${story.player_sport}. ` +
           `Look at Reddit threads, Twitter/X discussions, and sports forums. ` +
@@ -156,7 +155,6 @@ Return JSON: {"script":"...","word_count":140,"opinion_stance":"what stance you 
 
       const result = await askClaudeJSON(scriptPrompt, { maxTokens: 800 });
 
-      const { getOptimalPostTime } = require("./lib/post-times");
       const row = newScriptRow(batchId, i + 1, {
         scheduledDate: scheduledDate.toISOString().split("T")[0],
         playerName: story.player_name,

@@ -36,7 +36,9 @@ module.exports = async function handler(req, res) {
 
   const weekNum = getISOWeek(twoDaysAgo);
   const batchId = `${twoDaysAgo.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
-  const scripts = await getBatchScripts(batchId);
+  const scriptsA = await getBatchScripts(`${batchId}-A`);
+  const scriptsB = await getBatchScripts(`${batchId}-B`);
+  const scripts = [...scriptsA, ...scriptsB];
 
   const toCheck = scripts.filter(s =>
     s.scheduledDate === checkDate && s.youtubeVideoId

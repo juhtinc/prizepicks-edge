@@ -66,6 +66,18 @@ async function generateMubertTrack(mood, duration = 55) {
 }
 
 function selectFromLibrary(mood, recentlyUsed = []) {
+  // Try tracks _01 through _05, pick the first one not recently used
+  for (let i = 1; i <= 5; i++) {
+    const trackName = `${mood.mood}_${String(i).padStart(2, "0")}.mp3`;
+    if (!recentlyUsed.includes(trackName)) {
+      return {
+        trackUrl: `https://drive.google.com/sports-lore/music/${mood.mood}/${trackName}`,
+        trackName,
+        source: "library",
+      };
+    }
+  }
+  // All used recently — cycle back to _01
   const trackName = `${mood.mood}_01.mp3`;
   return {
     trackUrl: `https://drive.google.com/sports-lore/music/${mood.mood}/${trackName}`,

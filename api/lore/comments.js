@@ -23,7 +23,10 @@ module.exports = async function handler(req, res) {
     const { getCommentThreads } = require("./lib/youtube-api");
     const { postComment } = require("./lib/youtube-api");
 
-    const scripts = await getBatchScripts(batchId || getBatchIdForDate(new Date()));
+    const _pinBatchId = batchId || getBatchIdForDate(new Date());
+    const _pinScriptsA = await getBatchScripts(`${_pinBatchId}-A`);
+    const _pinScriptsB = await getBatchScripts(`${_pinBatchId}-B`);
+    const scripts = [..._pinScriptsA, ..._pinScriptsB];
 
     // Find videos uploaded ~12 hours ago
     const now = new Date();
@@ -80,7 +83,9 @@ module.exports = async function handler(req, res) {
 
   const weekNum = getISOWeek(now);
   const resolvedBatchId = batchId || `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
-  const scripts = await getBatchScripts(resolvedBatchId);
+  const scriptsA = await getBatchScripts(`${resolvedBatchId}-A`);
+  const scriptsB = await getBatchScripts(`${resolvedBatchId}-B`);
+  const scripts = [...scriptsA, ...scriptsB];
 
   const recentVideos = scripts.filter(s => {
     if (!s.youtubeVideoId) return false;

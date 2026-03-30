@@ -7,7 +7,6 @@ const { generateVoiceover } = require("./lib/elevenlabs");
 const { renderVideo } = require("./lib/creatomate");
 const { uploadVideo, setThumbnail, uploadCaptions, postComment, addToPlaylist } = require("./lib/youtube-api");
 const { postToTikTok, postToInstagram } = require("./lib/cross-post");
-const { getOptimalPostTime } = require("./lib/post-times");
 const { generateSRTBuffer } = require("./lib/srt-generator");
 const { getEasternOffset } = require("./lib/utils");
 const { generateMusicTimeline } = require("./lib/music");
@@ -55,8 +54,7 @@ module.exports = async function handler(req, res) {
   script.titleVersion = useB ? "B" : "A";
   log.steps.title = `Using title ${script.titleVersion}: "${script.titleUsed}"`;
 
-  script.scheduledPostTime = getOptimalPostTime(script.playerSport);
-  log.steps.postTime = script.scheduledPostTime;
+  log.steps.postTime = script.scheduledPostTime || "19:00";
 
   // Generate captions (word-by-word with emphasis highlighting)
   let captionData = [];

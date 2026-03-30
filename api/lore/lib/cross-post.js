@@ -62,7 +62,8 @@ async function postToInstagram({ description, videoUrl }) {
   const containerId = createResp.data?.id;
   if (!containerId) return { ok: false, error: "Failed to create IG container" };
 
-  await new Promise(resolve => setTimeout(resolve, 30000));
+  // Wait for Instagram to process (10s instead of 30s to stay within Vercel timeout)
+  await new Promise(resolve => setTimeout(resolve, 10000));
 
   const publishResp = await axios.post(
     `https://graph.facebook.com/v19.0/${userId}/media_publish`,
