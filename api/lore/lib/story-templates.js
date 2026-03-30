@@ -14,6 +14,43 @@
 // "fast" = 1.5s cuts, "medium" = 2-2.5s cuts, "slow" = 3-4s holds
 const PACING = { fast: 1.5, medium: 2.25, slow: 3.5 };
 
+/**
+ * Provocation levels control how aggressively the script takes a stance.
+ *
+ *   "low"  — Strong storytelling with a clear opinion, but respectful.
+ *            "He deserved better" / "The NBA got this one wrong."
+ *            Best for: tragic stories, legends, underdogs
+ *
+ *   "medium" — Bold claims backed by stats. Challenges popular narratives.
+ *              "He was better than [star] and the numbers prove it."
+ *              Best for: records, comebacks, what-ifs
+ *
+ *   "hot"  — Deliberately provocative. Picks a side that will split the audience.
+ *            "I don't care what anyone says — he was the real MVP and [other guy] stole it."
+ *            Designed to make people comment to agree OR argue.
+ *            Best for: GOAT debates, rivalries, scandals, draft busts
+ *
+ * The script prompt adjusts tone, closing question aggressiveness, and whether
+ * to include a "controversial line" that viewers will screenshot and quote-tweet.
+ */
+const PROVOCATION_LEVELS = {
+  low: {
+    toneGuide: "Take a clear, confident stance but stay respectful. Your opinion should feel earned — backed by the story you just told. Don't hedge with 'some people think' — just say what you believe.",
+    closingStyle: "End with a genuine question that invites reflection or personal stories.",
+    controversialLine: false,
+  },
+  medium: {
+    toneGuide: "Make a bold claim and back it up with stats. Challenge what most fans assume. If the data supports a hot take, say it with conviction — 'The numbers don't lie' energy.",
+    closingStyle: "End with a provocative comparison or ranking question that forces people to pick a side.",
+    controversialLine: false,
+  },
+  hot: {
+    toneGuide: "Be deliberately provocative. Pick the stance that will split the audience 50/50 and argue it like your life depends on it. Include ONE line that's designed to make people screenshot and share — a bold, quotable statement that people will either love or hate. Don't be mean or disrespectful to players — be provocative about RANKINGS, DECISIONS, and LEGACY.",
+    closingStyle: "End with a direct challenge: 'Prove me wrong in the comments' or 'I'll wait for someone to give me a better answer.'",
+    controversialLine: true,
+  },
+};
+
 const STORY_TEMPLATES = {
   // ── Tragic stories: career-ending injuries, fall from grace ──
   forgotten_legend: {
@@ -33,6 +70,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 20, fromMood: "nostalgic", toMood: "melancholy" },
     musicMoods: { primary: "nostalgic", secondary: "melancholy" },
+    commentBait: "Do you think [player] belongs in the conversation with [era's best]? Comment below.",
+    provocation: "low",  // Tragic stories — respectful but firm opinion
   },
 
   // ── Trending callback: current news tied to history ──
@@ -52,6 +91,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 12, fromMood: "hype", toMood: "dramatic" },
     musicMoods: { primary: "hype", secondary: "dramatic" },
+    commentBait: "Is history about to repeat itself? Drop your prediction.",
+    provocation: "medium",  // Current events — bold comparisons
   },
 
   // ── What-if scenarios ──
@@ -71,6 +112,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 15, fromMood: "mysterious", toMood: "epic" },
     musicMoods: { primary: "mysterious", secondary: "epic" },
+    commentBait: "How different would the league look today? Comment your take.",
+    provocation: "medium",  // Hypotheticals — bold alternate history claims
   },
 
   // ── Rivalry stories ──
@@ -90,6 +133,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 23, fromMood: "intense", toMood: "epic" },
     musicMoods: { primary: "intense", secondary: "epic" },
+    commentBait: "Who was really better? Pick a side in the comments.",
+    provocation: "hot",  // Rivalries — designed to split the audience
   },
 
   // ── Record breakers ──
@@ -109,6 +154,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 30, fromMood: "epic", toMood: "dramatic" },
     musicMoods: { primary: "epic", secondary: "dramatic" },
+    commentBait: "Will this record EVER be broken? Comment yes or no.",
+    provocation: "medium",  // Records — bold claims about unbreakable achievements
   },
 
   // ── Comeback stories ──
@@ -128,6 +175,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 20, fromMood: "melancholy", toMood: "inspiring" },
     musicMoods: { primary: "melancholy", secondary: "inspiring" },
+    commentBait: "Is this the greatest comeback story in sports? Comment your pick.",
+    provocation: "low",  // Comebacks — inspiring, not divisive
   },
 
   // ── Scandal stories ──
@@ -147,6 +196,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 15, fromMood: "dark", toMood: "intense" },
     musicMoods: { primary: "dark", secondary: "intense" },
+    commentBait: "Was the punishment fair? Comment below.",
+    provocation: "hot",  // Scandals — divisive by nature, lean into it
   },
 
   // ── Draft bust stories ──
@@ -166,6 +217,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 22, fromMood: "hype", toMood: "melancholy" },
     musicMoods: { primary: "hype", secondary: "melancholy" },
+    commentBait: "Was it his fault or the team's? Drop your take.",
+    provocation: "hot",  // Draft busts — blame game splits the audience
   },
 
   // ── Underdog stories ──
@@ -186,6 +239,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 22, fromMood: "melancholy", toMood: "inspiring" },
     musicMoods: { primary: "melancholy", secondary: "inspiring" },
+    commentBait: "What's the most unlikely win you've ever seen? Comment below.",
+    provocation: "low",  // Underdogs — inspiring, audience roots for them
   },
 
   // ── GOAT debate stories ──
@@ -205,6 +260,8 @@ const STORY_TEMPLATES = {
     ],
     musicShift: { time: 18, fromMood: "intense", toMood: "epic" },
     musicMoods: { primary: "intense", secondary: "epic" },
+    commentBait: "Who's your pick? Comment your GOAT.",
+    provocation: "hot",  // GOAT debates — maximum engagement, pick a side hard
   },
 };
 
@@ -249,7 +306,17 @@ function calculateClipSlots(storyType) {
   return slots;
 }
 
+/**
+ * Get provocation config for a story type.
+ * Returns the full provocation object: { toneGuide, closingStyle, controversialLine }
+ */
+function getProvocation(storyType) {
+  const template = getStoryTemplate(storyType);
+  const level = template.provocation || "low";
+  return { level, ...PROVOCATION_LEVELS[level] };
+}
+
 module.exports = {
-  STORY_TEMPLATES, PACING,
-  getStoryTemplate, calculateClipSlots,
+  STORY_TEMPLATES, PACING, PROVOCATION_LEVELS,
+  getStoryTemplate, calculateClipSlots, getProvocation,
 };

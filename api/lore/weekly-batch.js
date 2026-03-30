@@ -78,6 +78,8 @@ Return JSON:
 
       // Get story template for structure guidance
       const template = getStoryTemplate(story.story_type);
+      const { getProvocation } = require("./lib/story-templates");
+      const provocation = getProvocation(story.story_type);
       const segmentGuide = template.segments
         .map(s => `[${s.start}s-${s.end}s] ${s.name}: ${s.description}`)
         .join("\n");
@@ -85,24 +87,45 @@ Return JSON:
         .map(h => `At ~${h.time}s: ${h.prompt}`)
         .join("\n");
 
+      // Research public opinion before writing the script
+      let publicOpinion = "";
+      try {
+        const { askClaude } = require("./lib/claude");
+        publicOpinion = await askClaude(
+          `Search the web for public opinion about ${story.player_name} in ${story.player_sport}. ` +
+          `Look at Reddit threads, Twitter/X discussions, and sports forums. ` +
+          `What is the popular consensus? What are the hot takes? What do most fans believe? ` +
+          `Summarize in 2-3 sentences the dominant public opinion and any popular controversial takes.`,
+          { maxTokens: 300, system: "You are a sports research assistant. Be concise." }
+        );
+      } catch (e) { console.error("[batch] opinion research failed:", e.message); }
+
       const scriptPrompt = `Write a 55-second YouTube Shorts voiceover script about ${story.player_name} (${story.story_type}).
 Pitch: ${story.one_line_pitch}
+
+PUBLIC OPINION (from Reddit, Twitter, forums):
+${publicOpinion || "No research available — use your own sports knowledge."}
 
 STRUCTURE (follow this timeline):
 ${segmentGuide}
 
-RETENTION HOOKS (you MUST include these to prevent viewers from swiping away):
+RETENTION HOOKS (MANDATORY — prevents viewers from swiping):
 ${hookGuide}
 
 RULES:
 - ~140 words total (55 seconds at natural speaking pace)
 - First sentence must be a scroll-stopping hook (shocking stat, bold claim, or provocative question)
-- Conversational tone — talk like you're telling a friend, not reading Wikipedia
+- PROVOCATION LEVEL: ${provocation.level.toUpperCase()}
+  ${provocation.toneGuide}
+  NEVER cite where opinions come from. Never say "people on Reddit think" or "fans on Twitter say." Just state the opinion as YOUR OWN confident take, backed by the facts and stats you present.
+${provocation.controversialLine ? "- Include ONE quotable line designed to make people screenshot and share — a bold statement about rankings, legacy, or decisions that people will either love or hate." : ""}
+- Conversational tone — talk like you're arguing with a friend at a bar, not reading Wikipedia
 - Include 1-2 surprising facts most people don't know
-- End with a question or CTA to drive comments ("Who do you think was better?")
-- Every sentence should make the viewer NEED to hear the next one
+- CLOSING QUESTION: ${provocation.closingStyle}
+  The LAST sentence MUST be a direct question to the audience. Examples: "Was he the real GOAT? Drop your answer." / "Prove me wrong in the comments." / "Who got robbed worse?"
+- Add a subtle foreshadowing line in the first 5 seconds that only makes sense after watching the full video (drives rewatches)
 
-Return JSON: {"script":"...","word_count":140}`;
+Return JSON: {"script":"...","word_count":140,"opinion_stance":"what stance you took and why","comment_bait":"the exact closing question"}`;
 
       const result = await askClaudeJSON(scriptPrompt, { maxTokens: 800 });
 

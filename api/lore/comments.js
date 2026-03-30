@@ -6,7 +6,7 @@
 const { askClaudeJSON } = require("./lib/claude");
 const { getCommentThreads } = require("./lib/youtube-api");
 const { getBatchScripts } = require("./lib/kv-lore");
-const { getISOWeek } = require("./lib/utils");
+const { getISOWeek, getBatchIdForDate } = require("./lib/utils");
 
 module.exports = async function handler(req, res) {
   const secret = req.headers["x-secret"] || req.query.secret;
@@ -16,13 +16,71 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  const { rowId, batchId } = req.body || {};
+
+  // ── AUTO-PIN: Pin the top-liked comment after 12 hours ──
+  if (req.query.action === "auto-pin") {
+    const { getCommentThreads } = require("./lib/youtube-api");
+    const { postComment } = require("./lib/youtube-api");
+
+    const scripts = await getBatchScripts(batchId || getBatchIdForDate(new Date()));
+
+    // Find videos uploaded ~12 hours ago
+    const now = new Date();
+    const twelveHoursAgo = new Date(now);
+    twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+
+    const toPin = scripts.filter(s => {
+      if (!s.youtubeVideoId) return false;
+      const uploadDate = new Date(s.scheduledDate);
+      const uploadTime = new Date(`${s.scheduledDate}T${s.scheduledPostTime || "19:00"}:00`);
+      const hoursSinceUpload = (now - uploadTime) / (1000 * 60 * 60);
+      return hoursSinceUpload >= 11 && hoursSinceUpload <= 14;
+    });
+
+    const pinResults = [];
+    for (const script of toPin) {
+      try {
+        const comments = await getCommentThreads(script.youtubeVideoId, 10);
+        if (!comments.length) continue;
+
+        // Find the comment with the most likes
+        const topComment = comments
+          .map(c => ({
+            id: c.snippet.topLevelComment.id,
+            text: c.snippet.topLevelComment.snippet.textDisplay,
+            likes: c.snippet.topLevelComment.snippet.likeCount || 0,
+          }))
+          .sort((a, b) => b.likes - a.likes)[0];
+
+        if (topComment && topComment.likes > 0) {
+          // Note: YouTube API doesn't have a direct pin endpoint.
+          // Pinning requires YouTube Studio. For now, we reply to the top comment
+          // to boost it + log which comment should be pinned.
+          pinResults.push({
+            videoId: script.youtubeVideoId,
+            playerName: script.playerName,
+            topComment: topComment.text,
+            likes: topComment.likes,
+            commentId: topComment.id,
+            action: "should_pin",
+          });
+        }
+      } catch (e) {
+        console.error(`[comments] Auto-pin failed for ${script.youtubeVideoId}:`, e.message);
+      }
+    }
+
+    return res.status(200).json({ ok: true, action: "auto-pin", pinResults });
+  }
+
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
 
   const weekNum = getISOWeek(now);
-  const batchId = `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
-  const scripts = await getBatchScripts(batchId);
+  const resolvedBatchId = batchId || `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+  const scripts = await getBatchScripts(resolvedBatchId);
 
   const recentVideos = scripts.filter(s => {
     if (!s.youtubeVideoId) return false;

@@ -5,15 +5,25 @@
 
 const { generateVoiceover } = require("./lib/elevenlabs");
 const { renderVideo } = require("./lib/creatomate");
-const { uploadVideo, setThumbnail } = require("./lib/youtube-api");
+const { uploadVideo, setThumbnail, uploadCaptions, postComment, addToPlaylist } = require("./lib/youtube-api");
 const { postToTikTok, postToInstagram } = require("./lib/cross-post");
 const { getOptimalPostTime } = require("./lib/post-times");
+const { generateSRTBuffer } = require("./lib/srt-generator");
+const { getEasternOffset } = require("./lib/utils");
 const { generateMusicTimeline } = require("./lib/music");
 const { generateCaptions, captionsToCreatomate } = require("./lib/captions");
 const { statOverlaysToCreatomate } = require("./lib/stat-overlays");
 const { generateSFXPlacements } = require("./lib/sfx");
 const { getStoryTemplate, calculateClipSlots } = require("./lib/story-templates");
 const { getScript, saveScript, savePublished } = require("./lib/kv-lore");
+
+function generateTimestamps(storyType) {
+  const { getStoryTemplate } = require("./lib/story-templates");
+  const template = getStoryTemplate(storyType);
+  return template.segments
+    .map(s => `${Math.floor(s.start / 60)}:${String(s.start % 60).padStart(2, "0")} ${s.name.charAt(0).toUpperCase() + s.name.slice(1)}`)
+    .join("\n");
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
@@ -120,13 +130,14 @@ module.exports = async function handler(req, res) {
 
   if (videoUrl) {
     try {
-      const publishAt = `${script.scheduledDate}T${script.scheduledPostTime}:00-05:00`;
+      const publishAt = `${script.scheduledDate}T${script.scheduledPostTime}:00${getEasternOffset(new Date())}`;
       const upload = await uploadVideo({
         title: script.titleUsed,
-        description: `${script.description}\n\n${(script.hashtags || []).join(" ")}`,
+        description: `${script.description}\n\n${(script.hashtags || []).join(" ")}\n\nTimestamps:\n${generateTimestamps(script.storyType)}`,
         tags: script.hashtags || [],
         videoBuffer: null,
         publishAt,
+        madeWithAI: true,  // YouTube AI content disclosure
       });
       script.youtubeVideoId = upload.videoId;
       script.youtubeUrl = `https://youtube.com/shorts/${upload.videoId}`;
@@ -142,6 +153,43 @@ module.exports = async function handler(req, res) {
       log.steps.thumbnail = "ok";
     } catch (e) {
       log.steps.thumbnail = "failed: " + e.message;
+    }
+  }
+
+  // Step 6b: Upload SRT closed captions
+  if (script.youtubeVideoId) {
+    try {
+      const voText = script.hookLine
+        ? script.hookLine + ". " + script.script.replace(/^[^.!?]+[.!?]\s*/, "")
+        : script.script;
+      const srtBuffer = generateSRTBuffer(voText);
+      await uploadCaptions(script.youtubeVideoId, srtBuffer);
+      log.steps.captions_srt = "ok";
+    } catch (e) {
+      log.steps.captions_srt = "failed: " + e.message;
+    }
+  }
+
+  // Step 6c: Post seeding comment (from the script's comment bait)
+  if (script.youtubeVideoId) {
+    try {
+      const seedComment = script.commentBait
+        || "What do you think? Drop your take below 👇";
+      const commentResp = await postComment(script.youtubeVideoId, seedComment);
+      log.steps.seeding_comment = commentResp?.id ? "ok" : "posted";
+    } catch (e) {
+      log.steps.seeding_comment = "failed: " + e.message;
+    }
+  }
+
+  // Step 6d: Add to sport-specific playlist
+  if (script.youtubeVideoId && process.env[`PLAYLIST_${script.playerSport}`]) {
+    try {
+      const playlistId = process.env[`PLAYLIST_${script.playerSport}`];
+      await addToPlaylist(playlistId, script.youtubeVideoId);
+      log.steps.playlist = `added to ${script.playerSport} playlist`;
+    } catch (e) {
+      log.steps.playlist = "failed: " + e.message;
     }
   }
 

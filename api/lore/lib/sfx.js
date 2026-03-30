@@ -122,7 +122,7 @@ function generateSFXPlacements(storyTemplate, clipSlots, scriptText) {
   return placements
     .filter(p => p.time >= 0 && p.time < 55)
     .sort((a, b) => a.time - b.time)
-    .slice(0, 15); // Max 15 SFX per video
+    .slice(0, 8); // Max 8 SFX per video — less is more cinematic
 }
 
 module.exports = { SFX_LIBRARY, generateSFXPlacements };
