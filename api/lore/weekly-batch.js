@@ -153,19 +153,28 @@ Return JSON: {"script":"...","word_count":140}`;
     return res.status(200).json({ ok: true, phase: "enhance", batchId, processed: scripts.length });
   }
 
-  // ── PHASE 3: Clip sourcing (parallel) ──
+  // ── PHASE 3: Clip sourcing + review link ──
   if (phase === "clips") {
     try {
       await axios.post(`${baseUrl}/api/lore/clip-sourcer`, { batchId }, { headers, timeout: 50000 });
     } catch (e) { console.error(`[batch] clip sourcing failed:`, e.message); }
 
+    // Set status to "Review" — clips auto-approve if untouched by Monday 6AM
     const batch = await getBatch(batchId);
     if (batch) {
-      batch.status = "Ready";
+      batch.status = "Review";
+      batch.reviewUrl = `${baseUrl}/api/lore/clip-review?batchId=${batchId}&token=${expected}&html=1`;
       await saveBatch(batchId, batch);
     }
 
-    return res.status(200).json({ ok: true, phase: "clips", batchId, status: "Ready" });
+    return res.status(200).json({
+      ok: true,
+      phase: "clips",
+      batchId,
+      status: "Review",
+      reviewUrl: batch?.reviewUrl,
+      message: "Clips sourced. Review if needed — auto-approves Monday 6AM.",
+    });
   }
 
   return res.status(400).json({ error: `Unknown phase: ${phase}` });

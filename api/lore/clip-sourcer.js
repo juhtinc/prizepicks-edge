@@ -89,10 +89,17 @@ ${script.script}
 VIDEO SEGMENTS:
 ${segmentGuide}
 
-I need a clip description for each of these ${clipSlots.length} time slots. For each slot, describe:
-1. What the viewer should SEE at this moment (matched to the voiceover content)
-2. A YouTube search query to find this kind of footage
-3. Whether this should be: "gameplay" (actual game footage), "photo" (still image with Ken Burns), or "graphic" (stat overlay moment)
+I need a clip description for each of these ${clipSlots.length} time slots.
+
+CRITICAL: Generate HYPER-SPECIFIC YouTube search queries for single plays, not compilations.
+BAD:  "Michael Jordan highlights" (returns 10-min compilations, can't find the right moment)
+GOOD: "Michael Jordan free throw line dunk 1988 slam dunk contest" (returns short clip of that exact play)
+GOOD: "Michael Jordan 63 points Celtics 1986 game winner" (returns that specific moment)
+
+For each slot:
+1. What the viewer should SEE (matched to what the voiceover says at this timestamp)
+2. A YouTube search query for a SHORT clip of that SPECIFIC play/moment
+3. Type: "gameplay" (real game footage), "photo" (still image with Ken Burns), or "graphic" (stat overlay)
 
 CLIP SLOTS:
 ${clipSlots.map((slot, i) => `Slot ${i + 1}: [${slot.start}s-${(slot.start + slot.duration).toFixed(1)}s] segment="${slot.segmentName}"`).join("\n")}
@@ -100,7 +107,7 @@ ${clipSlots.map((slot, i) => `Slot ${i + 1}: [${slot.start}s-${(slot.start + slo
 ${patternWarning ? `AVOID: ${patternWarning}.` : ""}
 
 Return JSON:
-{"clips":[{"slot":1,"visual":"what viewer sees","search_query":"youtube search for this","clip_type":"gameplay|photo|graphic","matches_script":"quote from script"},...],"player_photo_search":"${script.playerName} ${script.playerSport} portrait"}`;
+{"clips":[{"slot":1,"visual":"what viewer sees","search_query":"specific play search","clip_type":"gameplay|photo|graphic","matches_script":"quote from script"},...],"player_photo_search":"${script.playerName} ${script.playerSport} portrait"}`;
 
   const clipPlan = await askClaudeJSON(prompt, { maxTokens: 2000 });
 
