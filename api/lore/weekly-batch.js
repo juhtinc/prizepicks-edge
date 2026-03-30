@@ -2,10 +2,18 @@
  * api/lore/weekly-batch.js  →  POST /api/lore/weekly-batch
  * Phased orchestrator to avoid Vercel's 60-second timeout.
  *
+ * Runs TWICE per week (Sunday + Wednesday) to produce 14 videos total.
+ * Each batch generates 7 stories, scheduled as 2 per day:
+ *   Batch A (Sunday):    Mon AM, Mon PM, Tue AM, Tue PM, Wed AM, Wed PM, Thu AM
+ *   Batch B (Wednesday): Thu PM, Fri AM, Fri PM, Sat AM, Sat PM, Sun AM, Sun PM
+ *
  * Phases (each is a separate invocation):
  *   ?phase=stories   — Select 7 stories + generate scripts (default)
  *   ?phase=enhance   — Generate metadata, hooks, music for all scripts
  *   ?phase=clips     — Source clips in parallel
+ *
+ * Query params:
+ *   ?batch=A|B  — which half of the week (auto-detected from day if not set)
  *
  * Auth: x-secret header or cron bearer token
  */
@@ -28,7 +36,12 @@ module.exports = async function handler(req, res) {
 
   const phase = req.query.phase || "stories";
   const now = new Date();
-  const batchId = req.body?.batchId || getBatchIdForDate(now);
+  // Detect which batch: A (Sunday run → Mon-Thu) or B (Wednesday run → Thu-Sun)
+  const batchHalf = req.query.batch || req.body?.batch || (now.getDay() <= 2 ? "A" : "B");
+  const baseBatchId = req.body?.batchId || getBatchIdForDate(now);
+  const batchId = baseBatchId.includes("-") && !baseBatchId.endsWith(batchHalf)
+    ? `${baseBatchId}-${batchHalf}`
+    : baseBatchId;
   const baseUrl = `https://${req.headers.host}`;
   const headers = { "x-secret": expected, "Content-Type": "application/json" };
 
@@ -53,9 +66,19 @@ module.exports = async function handler(req, res) {
         .sort().join("\n");
     }
 
+    // Check if the other batch already exists this week (to avoid duplicate players)
+    const otherHalf = batchHalf === "A" ? "B" : "A";
+    const otherBatchId = `${getBatchIdForDate(now)}-${otherHalf}`;
+    const otherScripts = await getBatchScripts(otherBatchId);
+    const alreadyUsedPlayers = otherScripts.map(s => s.playerName).filter(Boolean);
+    const avoidList = alreadyUsedPlayers.length > 0
+      ? `\nDO NOT use these players (already covered this week): ${alreadyUsedPlayers.join(", ")}`
+      : "";
+
     const storyPrompt = `You are the content strategist for Sports Lore, a YouTube Shorts channel about forgotten and surprising sports history.
 
-Select 7 unique story ideas for this week. Each story should be about a different player/event from a different sport if possible.
+Select 7 unique story ideas. This is Batch ${batchHalf} of 2 weekly batches (14 videos total per week, 2 per day). Each story should be about a different player/event. Mix sports as much as possible.
+${avoidList}
 
 PERFORMANCE DATA FROM LAST 4 WEEKS:
 ${analyticsContext}
@@ -63,7 +86,7 @@ ${analyticsContext}
 Story types available:
 - forgotten_legend, trending_callback, what_if, rivalry, record_breaker, comeback, scandal, draft_bust, underdog, goat_debate
 
-Weight toward higher-performing story types but include at least 1 experimental type.
+Weight toward higher-performing story types but include at least 1 experimental type. Mix provocation levels — include at least 2 "hot take" story types (rivalry, scandal, draft_bust, goat_debate) for engagement.
 
 Return JSON:
 {"stories":[{"player_name":"...","player_sport":"NBA|MLB|NFL|NHL|Soccer|Boxing|Tennis","story_type":"...","one_line_pitch":"..."},...]}`;
@@ -73,8 +96,12 @@ Return JSON:
     const rowIds = [];
     for (let i = 0; i < stories.length; i++) {
       const story = stories[i];
+      // 2 videos per day: i=0,1 → day+1, i=2,3 → day+2, etc.
+      // Even index = morning slot, odd index = evening slot
+      const dayOffset = Math.floor(i / 2) + 1;
+      const timeSlot = i % 2 === 0 ? "morning" : "evening";
       const scheduledDate = new Date(now);
-      scheduledDate.setDate(scheduledDate.getDate() + (i + 1));
+      scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
 
       // Get story template for structure guidance
       const template = getStoryTemplate(story.story_type);
@@ -129,12 +156,15 @@ Return JSON: {"script":"...","word_count":140,"opinion_stance":"what stance you 
 
       const result = await askClaudeJSON(scriptPrompt, { maxTokens: 800 });
 
+      const { getOptimalPostTime } = require("./lib/post-times");
       const row = newScriptRow(batchId, i + 1, {
         scheduledDate: scheduledDate.toISOString().split("T")[0],
         playerName: story.player_name,
         playerSport: story.player_sport,
         storyType: story.story_type,
         script: result.script,
+        commentBait: result.comment_bait || "",
+        scheduledPostTime: getOptimalPostTime(story.player_sport, timeSlot),
         status: "Pending",
       });
 

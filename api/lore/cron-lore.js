@@ -2,7 +2,16 @@
  * api/lore/cron-lore.js  →  GET /api/lore/cron-lore
  * Central cron dispatcher for all Sports Lore scheduled workflows.
  *
- * Query: ?workflow=analytics|weekly-batch|auto-start|performance-check|comments
+ * Schedule (2 videos/day, 14/week):
+ *   Sunday 8PM EST     → analytics (pulls last week's performance)
+ *   Sunday 9PM EST     → weekly-batch A (Mon-Thu stories, 7 videos)
+ *   Wednesday 9PM EST  → weekly-batch B (Thu-Sun stories, 7 videos)
+ *   Daily 6AM EST      → auto-start (produces today's 2 videos)
+ *   Daily 10AM EST     → performance-check (48h underperformer detection)
+ *   Every hour          → comments (monitoring + auto-pin after 12h)
+ *
+ * Query: ?workflow=analytics|weekly-batch|auto-start|performance-check|comments|auto-pin
+ *        &batch=A|B (for weekly-batch, auto-detected if not set)
  */
 
 const axios = require("axios");
@@ -21,6 +30,7 @@ module.exports = async function handler(req, res) {
 
   const baseUrl = `https://${req.headers.host}`;
   const headers = { "x-secret": expected, "Content-Type": "application/json" };
+  const batch = req.query.batch || "";
 
   try {
     switch (workflow) {
@@ -30,29 +40,44 @@ module.exports = async function handler(req, res) {
       }
 
       case "weekly-batch": {
-        const resp = await axios.post(`${baseUrl}/api/lore/weekly-batch?phase=stories`, {}, { headers });
-        return res.status(200).json({ workflow, result: resp.data });
+        // batch=A or batch=B determines which half of the week
+        const batchParam = batch || (new Date().getDay() <= 2 ? "A" : "B");
+        const resp = await axios.post(
+          `${baseUrl}/api/lore/weekly-batch?phase=stories&batch=${batchParam}`,
+          {},
+          { headers }
+        );
+        return res.status(200).json({ workflow, batch: batchParam, result: resp.data });
       }
 
       case "auto-start": {
-        const batchId = getBatchIdForDate(new Date());
-        const batch = await getBatch(batchId);
-        if (!batch) return res.status(200).json({ workflow, message: "No batch found" });
+        // Daily: find today's scripts from BOTH batches and produce them
+        const now = new Date();
+        const today = now.toISOString().split("T")[0];
+        const baseBatchId = getBatchIdForDate(now);
+        const started = [];
 
-        if (batch.status === "Paused") {
-          return res.status(200).json({ workflow, message: "Batch is paused, skipping auto-start" });
+        for (const half of ["A", "B"]) {
+          const bid = `${baseBatchId}-${half}`;
+          const batch = await getBatch(bid);
+          if (!batch || batch.status === "Paused") continue;
+
+          const scripts = await getBatchScripts(bid);
+          // Find scripts scheduled for today that haven't been produced yet
+          const todayScripts = scripts.filter(s =>
+            s.scheduledDate === today &&
+            (s.status === "Pending" || s.status === "Ready" || s.status === "Review")
+          );
+
+          todayScripts.forEach(script => {
+            axios.post(`${baseUrl}/api/lore/video-production`, { rowId: script.rowId }, { headers }).catch(e => {
+              console.error(`[auto-start] Production failed for ${script.rowId}:`, e.message);
+            });
+            started.push(script.rowId);
+          });
         }
 
-        const scripts = await getBatchScripts(batchId);
-        const readyScripts = scripts.filter(s => s.status === "Pending" || s.status === "Ready");
-
-        readyScripts.forEach(script => {
-          axios.post(`${baseUrl}/api/lore/video-production`, { rowId: script.rowId }, { headers }).catch(e => {
-            console.error(`[auto-start] Production failed for ${script.rowId}:`, e.message);
-          });
-        });
-
-        return res.status(200).json({ workflow, started: readyScripts.length });
+        return res.status(200).json({ workflow, today, started: started.length, rowIds: started });
       }
 
       case "performance-check": {
@@ -62,6 +87,12 @@ module.exports = async function handler(req, res) {
 
       case "comments": {
         const resp = await axios.post(`${baseUrl}/api/lore/comments`, {}, { headers });
+        return res.status(200).json({ workflow, result: resp.data });
+      }
+
+      case "auto-pin": {
+        // Pin top-liked comment after 12 hours
+        const resp = await axios.post(`${baseUrl}/api/lore/comments?action=auto-pin`, {}, { headers });
         return res.status(200).json({ workflow, result: resp.data });
       }
 

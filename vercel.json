@@ -9,11 +9,13 @@
     { "path": "/api/cron",  "schedule": "0 21 * * *" },
     { "path": "/api/cron",  "schedule": "0 2 * * *"  },
     { "path": "/api/grade", "schedule": "0 15 * * *" },
-    { "path": "/api/lore/cron-lore?workflow=analytics",         "schedule": "0 1 * * 1"  },
-    { "path": "/api/lore/cron-lore?workflow=weekly-batch",      "schedule": "0 2 * * 1"  },
-    { "path": "/api/lore/cron-lore?workflow=auto-start",        "schedule": "0 11 * * 1" },
-    { "path": "/api/lore/cron-lore?workflow=performance-check", "schedule": "0 15 * * *" },
-    { "path": "/api/lore/cron-lore?workflow=comments",          "schedule": "0 * * * *"  }
+    { "path": "/api/lore/cron-lore?workflow=analytics",              "schedule": "0 1 * * 1"  },
+    { "path": "/api/lore/cron-lore?workflow=weekly-batch&batch=A",  "schedule": "0 2 * * 1"  },
+    { "path": "/api/lore/cron-lore?workflow=weekly-batch&batch=B",  "schedule": "0 2 * * 4"  },
+    { "path": "/api/lore/cron-lore?workflow=auto-start",           "schedule": "0 11 * * *" },
+    { "path": "/api/lore/cron-lore?workflow=performance-check",    "schedule": "0 15 * * *" },
+    { "path": "/api/lore/cron-lore?workflow=comments",             "schedule": "0 * * * *"  },
+    { "path": "/api/lore/cron-lore?workflow=auto-pin",             "schedule": "30 * * * *" }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
