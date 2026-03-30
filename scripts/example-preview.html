@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Lore — Full Example Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Montserrat', sans-serif; background: #0a0a0a; color: #e0e0e0; }
+
+  /* Layout */
+  .container { display: flex; gap: 24px; padding: 20px; max-width: 1200px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+  .phone-col { flex-shrink: 0; }
+  .script-col { flex: 1; min-width: 320px; max-width: 550px; }
+
+  h1 { text-align: center; font-size: 22px; color: #fff; padding: 16px 0 4px; }
+  .page-sub { text-align: center; color: #666; font-size: 12px; margin-bottom: 16px; }
+
+  /* Phone */
+  .phone { width: 280px; height: 497px; border-radius: 24px; overflow: hidden; position: relative; border: 2px solid #333; background: #000; box-shadow: 0 0 40px rgba(255,68,68,0.1); }
+
+  /* Video layers */
+  .clip-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .clip-layer.active { opacity: 1; }
+  .clip-label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7);
+    width: 80%; line-height: 1.5;
+  }
+  .clip-label small { font-size: 9px; color: rgba(100,180,255,0.7); font-weight: 400; }
+
+  /* Vignette + overlay */
+  .vignette {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+  }
+  .overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.2);
+  }
+
+  /* Caption */
+  .caption-area {
+    position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%);
+    width: 85%; text-align: center;
+  }
+  .caption {
+    font-weight: 800; font-size: 17px; line-height: 1.4;
+    color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.5);
+    opacity: 0; transition: opacity 0.15s;
+    -webkit-text-stroke: 0.3px rgba(0,0,0,0.3);
+  }
+  .caption.visible { opacity: 1; }
+  .caption .em { color: #FFD700; }
+
+  /* Hero stat */
+  .hero-stat {
+    position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
+    font-weight: 900; font-size: 72px; color: #FFD700;
+    text-shadow: 3px 3px 0 #000, -1px -1px 0 #000;
+    -webkit-text-stroke: 2px #000;
+    opacity: 0; transition: opacity 0.2s, transform 0.3s;
+    letter-spacing: -2px;
+  }
+  .hero-stat.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .hero-stat .unit { font-size: 28px; color: #fff; letter-spacing: 2px; }
+
+  /* Stat ticker */
+  .stat-ticker {
+    position: absolute; bottom: 120px; left: 0; width: 100%;
+    background: rgba(0,0,0,0.75); padding: 6px 12px;
+    font-size: 11px; font-weight: 700; color: #FFD700;
+    letter-spacing: 1px; text-align: center;
+    opacity: 0; transition: opacity 0.2s;
+    border-top: 1px solid rgba(255,215,0,0.3);
+    border-bottom: 1px solid rgba(255,215,0,0.3);
+  }
+  .stat-ticker.visible { opacity: 1; }
+
+  /* Player name lower third */
+  .player-name {
+    position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,68,68,0.9); color: #fff;
+    font-weight: 700; font-size: 11px; padding: 5px 14px;
+    border-radius: 5px; white-space: nowrap;
+  }
+
+  /* Watermark */
+  .watermark {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    font-weight: 600; font-size: 7px; color: rgba(255,255,255,0.35);
+    letter-spacing: 3px;
+  }
+
+  /* Progress */
+  .progress-wrap { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: rgba(255,255,255,0.1); }
+  .progress-bar { height: 100%; background: #FF4444; width: 0%; transition: width 0.1s linear; }
+
+  /* Timer */
+  .timer {
+    position: absolute; top: 10px; right: 10px; font-size: 9px; color: rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 3px; font-weight: 600;
+  }
+
+  /* Phase indicator */
+  .phase-indicator {
+    position: absolute; top: 10px; left: 10px; font-size: 8px;
+    background: rgba(255,68,68,0.8); color: #fff; padding: 2px 6px;
+    border-radius: 3px; font-weight: 700; letter-spacing: 0.5px;
+  }
+
+  /* Music indicator */
+  .music-indicator {
+    position: absolute; bottom: 90px; left: 10px;
+    display: flex; align-items: center; gap: 4px;
+    font-size: 7px; color: rgba(255,255,255,0.4);
+  }
+  .music-bars { display: flex; align-items: flex-end; gap: 1px; height: 10px; }
+  .bar { width: 2px; background: rgba(255,255,255,0.3); }
+  .bar.playing { animation: barBounce 0.6s ease-in-out infinite; }
+  @keyframes barBounce { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(0.3); } }
+  .bar:nth-child(1) { height: 3px; animation-delay: 0s; }
+  .bar:nth-child(2) { height: 7px; animation-delay: 0.1s; }
+  .bar:nth-child(3) { height: 4px; animation-delay: 0.2s; }
+  .bar:nth-child(4) { height: 8px; animation-delay: 0.05s; }
+
+  /* YT UI */
+  .yt-ui { position: absolute; right: 8px; bottom: 90px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .yt-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .yt-btn .icon { width: 22px; height: 22px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .yt-btn .cnt { font-size: 7px; color: rgba(255,255,255,0.6); }
+
+  /* Controls */
+  .controls { text-align: center; margin: 10px 0; display: flex; gap: 8px; justify-content: center; }
+  .ctrl-btn { background: #222; border: 1px solid #444; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .ctrl-btn:hover { background: #333; }
+  .ctrl-btn.active { background: #FF4444; border-color: #FF4444; }
+
+  /* Script panel */
+  .script-panel { background: #111; border: 1px solid #222; border-radius: 12px; overflow: hidden; }
+  .script-header { background: #1a1a1a; padding: 12px 16px; border-bottom: 1px solid #333; }
+  .script-header h2 { font-size: 15px; color: #fff; }
+  .script-header .meta { font-size: 11px; color: #888; margin-top: 4px; }
+
+  .segment { padding: 10px 16px; border-bottom: 1px solid #1a1a1a; transition: background 0.2s; }
+  .segment.active { background: #1a1a2e; border-left: 3px solid #FF4444; }
+  .segment .seg-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .segment .seg-time { font-size: 10px; color: #FF4444; font-weight: 700; }
+  .segment .seg-name { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .segment .seg-text { font-size: 12px; color: #ccc; line-height: 1.5; }
+  .segment .seg-text .hook-word { color: #FFD700; font-weight: 700; }
+
+  .clip-info { margin-top: 6px; font-size: 10px; }
+  .clip-info .search-q { color: #1E88E5; }
+  .clip-info .clip-type { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: 700; }
+  .clip-info .clip-type.gameplay { background: #1565C0; color: #fff; }
+  .clip-info .clip-type.photo { background: #6A1B9A; color: #fff; }
+  .clip-info .clip-type.graphic { background: #E65100; color: #fff; }
+
+  .retention-hook { background: #2a1a1a; border-left: 3px solid #FFD700; padding: 6px 12px; margin: 4px 16px; border-radius: 0 6px 6px 0; }
+  .retention-hook .rh-label { font-size: 9px; color: #FFD700; font-weight: 700; letter-spacing: 1px; }
+  .retention-hook .rh-text { font-size: 11px; color: #ccc; margin-top: 2px; }
+
+  .music-note { padding: 4px 16px; }
+  .music-note span { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .music-note .m-nostalgic { background: #1a2a1a; color: #81C784; }
+  .music-note .m-melancholy { background: #1a1a2a; color: #90CAF9; }
+  .music-note .m-silent { background: #2a2a1a; color: #FFD54F; }
+
+  /* Title preview */
+  .title-preview { background: #111; border: 1px solid #222; border-radius: 12px; padding: 16px; margin-top: 12px; }
+  .title-preview h3 { font-size: 12px; color: #888; margin-bottom: 8px; letter-spacing: 1px; }
+  .title-option { margin-bottom: 8px; }
+  .title-option .label { font-size: 10px; color: #FF4444; font-weight: 700; }
+  .title-option .text { font-size: 14px; color: #fff; font-weight: 700; }
+  .desc-text { font-size: 11px; color: #888; line-height: 1.4; margin-top: 8px; }
+  .hashtags { font-size: 11px; color: #1E88E5; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Sports Lore — Example Output</h1>
+<p class="page-sub">Story: Connie Hawkins (forgotten_legend) &bull; Full pipeline output preview</p>
+
+<div class="container">
+
+<!-- ═══ PHONE PREVIEW ═══ -->
+<div class="phone-col">
+  <div class="phone" id="phone">
+    <!-- Clip layers — labeled to show what REAL clips would be sourced -->
+    <div class="clip-layer active" id="clip1" style="background:#1a0a2e;transform:scale(1.1)"><div class="clip-label">Hawkins ABA dunk<br><small>youtube: "Connie Hawkins ABA dunk highlight"</small></div></div>
+    <div class="clip-layer" id="clip2" style="background:#0a1a2e;transform:scale(1.08)"><div class="clip-label">Pipers championship<br><small>youtube: "Connie Hawkins Pittsburgh Pipers 1968"</small></div></div>
+    <div class="clip-layer" id="clip3" style="background:#1a1a0e;transform:scale(1.12)"><div class="clip-label">Young Hawkins photo<br><small>Ken Burns zoom on 1961 portrait</small></div></div>
+    <div class="clip-layer" id="clip4" style="background:#2e1a0a;transform:scale(1.06)"><div class="clip-label">Globetrotters footage<br><small>youtube: "Connie Hawkins Harlem Globetrotters"</small></div></div>
+    <div class="clip-layer" id="clip5" style="background:#0e1a2e;transform:scale(1.1)"><div class="clip-label">Suns debut highlights<br><small>youtube: "Connie Hawkins Phoenix Suns 1969"</small></div></div>
+    <div class="clip-layer" id="clip6" style="background:#1a0e1a;transform:scale(1.08)"><div class="clip-label">Hall of Fame photo<br><small>Ken Burns zoom on HOF induction 1992</small></div></div>
+
+    <div class="overlay"></div>
+    <div class="vignette"></div>
+
+    <div class="phase-indicator" id="phaseLabel">HOOK</div>
+    <div class="timer" id="timer">0:00 / 0:55</div>
+
+    <div class="hero-stat" id="heroStat">24.6 <span class="unit">PPG</span></div>
+
+    <div class="caption-area">
+      <div class="caption" id="caption"></div>
+    </div>
+
+    <div class="stat-ticker" id="statTicker">24.6 PPG &nbsp;|&nbsp; 10.4 RPG &nbsp;|&nbsp; 4.8 APG</div>
+
+    <div class="music-indicator" id="musicIndicator">
+      <div class="music-bars">
+        <div class="bar playing"></div><div class="bar playing"></div>
+        <div class="bar playing"></div><div class="bar playing"></div>
+      </div>
+      <span id="musicLabel">silent (hook)</span>
+    </div>
+
+    <div class="player-name" id="playerName" style="opacity:0;transition:opacity 0.4s">Connie Hawkins</div>
+    <div class="watermark">SPORTS LORE</div>
+
+    <div class="yt-ui">
+      <div class="yt-btn"><div class="icon">&#9825;</div><div class="cnt">24K</div></div>
+      <div class="yt-btn"><div class="icon">&#9997;</div><div class="cnt">891</div></div>
+      <div class="yt-btn"><div class="icon">&#8634;</div><div class="cnt">Share</div></div>
+    </div>
+
+    <div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn active" id="playBtn" onclick="togglePlay()">&#9654; Play</button>
+    <button class="ctrl-btn" onclick="restart()">&#8634; Restart</button>
+  </div>
+</div>
+
+<!-- ═══ SCRIPT + DETAILS ═══ -->
+<div class="script-col">
+  <div class="script-panel">
+    <div class="script-header">
+      <h2>Script — Connie Hawkins</h2>
+      <div class="meta">forgotten_legend &bull; NBA &bull; 55 seconds &bull; 138 words</div>
+    </div>
+
+    <!-- HOOK 0-3s -->
+    <div class="segment" data-start="0" data-end="3" id="seg0">
+      <div class="seg-head">
+        <span class="seg-time">0:00–0:03</span>
+        <span class="seg-name">HOOK</span>
+      </div>
+      <div class="seg-text">
+        <span class="hook-word">The NBA banned this man before he ever played a single game.</span>
+      </div>
+      <div class="clip-info">
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins ABA dunk highlight"</span>
+      </div>
+    </div>
+
+    <div class="music-note"><span class="m-silent">Music: SILENT (voice only for hook)</span></div>
+
+    <!-- GREATNESS 3-12s -->
+    <div class="segment" data-start="3" data-end="12" id="seg1">
+      <div class="seg-head">
+        <span class="seg-time">0:03–0:12</span>
+        <span class="seg-name">GREATNESS</span>
+      </div>
+      <div class="seg-text">
+        Connie Hawkins was <span class="hook-word">Magic Johnson before Magic Johnson</span>. Six-foot-eight with guard handles, a 44-inch vertical, and moves that made defenders look like they were standing still. In the ABA, he averaged <span class="hook-word">26 points</span> and led the Pittsburgh Pipers to a championship.
+      </div>
+      <div class="clip-info">
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins Pittsburgh Pipers ABA championship 1968"</span><br>
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins dunk ABA highlight reel"</span><br>
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins ball handling moves 1960s"</span><br>
+        <span class="clip-type graphic">graphic</span>
+        <span class="search-q">STAT TICKER: 26.0 PPG | ABA CHAMP | MVP</span>
+      </div>
+    </div>
+
+    <div class="music-note"><span class="m-nostalgic">Music: nostalgic piano — fades in at 20% vol</span></div>
+
+    <!-- RETENTION HOOK at 10s -->
+    <div class="retention-hook">
+      <div class="rh-label">RETENTION HOOK @ 10s</div>
+      <div class="rh-text">"But that's not even the craziest part of his story."</div>
+    </div>
+
+    <!-- CONTEXT 12-20s -->
+    <div class="segment" data-start="12" data-end="20" id="seg2">
+      <div class="seg-head">
+        <span class="seg-time">0:12–0:20</span>
+        <span class="seg-name">CONTEXT</span>
+      </div>
+      <div class="seg-text">
+        See, back in <span class="hook-word">1961</span>, when Hawkins was just <span class="hook-word">18 years old</span>, the NBA accused him of being involved in a point-shaving scandal. No trial. No evidence. Just accusations. And just like that, the most talented player in America was <span class="hook-word">blacklisted</span>.
+      </div>
+      <div class="clip-info">
+        <span class="clip-type photo">photo</span>
+        <span class="search-q">"Connie Hawkins young 1961 Iowa portrait"</span><br>
+        <span class="clip-type photo">photo</span>
+        <span class="search-q">"1960s NBA newspaper headline basketball scandal"</span><br>
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins college basketball Iowa highlights"</span>
+      </div>
+    </div>
+
+    <!-- MUSIC SHIFT -->
+    <div class="music-note"><span class="m-melancholy">Music: shifts to melancholy strings at 20s (1s crossfade)</span></div>
+
+    <!-- TURN 20-32s -->
+    <div class="segment" data-start="20" data-end="32" id="seg3">
+      <div class="seg-head">
+        <span class="seg-time">0:20–0:32</span>
+        <span class="seg-name">TURN</span>
+      </div>
+      <div class="seg-text">
+        For <span class="hook-word">eight years</span>, Hawkins couldn't play in the NBA. Eight years of his prime — gone. He played in the ABL, the ABA, even the Harlem Globetrotters. Anywhere that would have him. He dominated every league he entered, but none of them were the NBA. The world never got to see what he could really do.
+      </div>
+      <div class="clip-info">
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins Harlem Globetrotters highlights"</span><br>
+        <span class="clip-type photo">photo</span>
+        <span class="search-q">"Connie Hawkins ABA jersey 1960s"</span><br>
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"ABA basketball 1960s vintage game footage"</span>
+      </div>
+    </div>
+
+    <!-- RETENTION HOOK at 30s -->
+    <div class="retention-hook">
+      <div class="rh-label">RETENTION HOOK @ 30s</div>
+      <div class="rh-text">"And when the NBA finally let him in, it was already too late."</div>
+    </div>
+
+    <!-- FORGOTTEN 32-45s -->
+    <div class="segment" data-start="32" data-end="45" id="seg4">
+      <div class="seg-head">
+        <span class="seg-time">0:32–0:45</span>
+        <span class="seg-name">FORGOTTEN</span>
+      </div>
+      <div class="seg-text">
+        In <span class="hook-word">1969</span>, Hawkins sued the NBA and won. He finally got his shot — with the Phoenix Suns. And even at <span class="hook-word">27</span>, past his athletic prime, he still averaged <span class="hook-word">24.6 points per game</span> and made four All-Star teams. Imagine what he would have done with those eight years back.
+      </div>
+      <div class="clip-info">
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins Phoenix Suns 1969 debut highlights"</span><br>
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins Suns All-Star game highlights"</span><br>
+        <span class="clip-type graphic">graphic</span>
+        <span class="search-q">HERO STAT: 24.6 PPG</span><br>
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins dunk Phoenix Suns 1970s"</span>
+      </div>
+    </div>
+
+    <!-- LEGACY 45-52s -->
+    <div class="segment" data-start="45" data-end="52" id="seg5">
+      <div class="seg-head">
+        <span class="seg-time">0:45–0:52</span>
+        <span class="seg-name">LEGACY</span>
+      </div>
+      <div class="seg-text">
+        Hawkins made the <span class="hook-word">Hall of Fame</span> in 1992. But most fans today have never heard his name. The NBA stole his best years and never apologized.
+      </div>
+      <div class="clip-info">
+        <span class="clip-type photo">photo</span>
+        <span class="search-q">"Connie Hawkins Hall of Fame induction 1992"</span><br>
+        <span class="clip-type gameplay">gameplay</span>
+        <span class="search-q">"Connie Hawkins career retrospective tribute"</span>
+      </div>
+    </div>
+
+    <!-- KICKER 52-55s -->
+    <div class="segment" data-start="52" data-end="55" id="seg6">
+      <div class="seg-head">
+        <span class="seg-time">0:52–0:55</span>
+        <span class="seg-name">KICKER</span>
+      </div>
+      <div class="seg-text">
+        How many other Connie Hawkins are out there that <span class="hook-word">we'll never know about?</span>
+      </div>
+      <div class="clip-info">
+        <span class="clip-type photo">photo</span>
+        <span class="search-q">"Connie Hawkins portrait older"</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TITLE PREVIEW -->
+  <div class="title-preview">
+    <h3>GENERATED METADATA</h3>
+    <div class="title-option">
+      <div class="label">TITLE A (curiosity-gap)</div>
+      <div class="text">The NBA Banned Him Before He Could Play</div>
+    </div>
+    <div class="title-option">
+      <div class="label">TITLE B (bold claim)</div>
+      <div class="text">Nobody Remembers Basketball's Stolen GOAT</div>
+    </div>
+    <div class="desc-text">
+      Connie Hawkins was one of the most gifted basketball players of the 1960s, but the NBA blacklisted him for 8 years based on unproven accusations. When he finally got his chance with the Phoenix Suns, he proved he belonged — averaging 24.6 PPG and making 4 All-Star teams despite losing his prime years.
+    </div>
+    <div class="hashtags">#shorts #nba #basketball #conniehawkins #phoenixsuns #nbaban #sportshistory</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ═══ Video simulation engine ═══
+const SCRIPT_SEGMENTS = [
+  { start: 0,  end: 3,  phase: "HOOK",      music: "silent",    words: "The NBA banned this man before he ever played a single game." },
+  { start: 3,  end: 7,  phase: "GREATNESS",  music: "nostalgic 20%", words: "Connie Hawkins was Magic Johnson before Magic Johnson." },
+  { start: 7,  end: 10, phase: "GREATNESS",  music: "nostalgic 20%", words: "Six-foot-eight with guard handles, a 44-inch vertical," },
+  { start: 10, end: 12, phase: "GREATNESS",  music: "nostalgic 20%", words: "and moves that made defenders look like they were standing still." },
+  { start: 12, end: 15, phase: "CONTEXT",    music: "nostalgic 25%", words: "See, back in 1961, when Hawkins was just 18 years old," },
+  { start: 15, end: 18, phase: "CONTEXT",    music: "nostalgic 25%", words: "the NBA accused him of being involved in a point-shaving scandal." },
+  { start: 18, end: 20, phase: "CONTEXT",    music: "— drops —",  words: "No trial. No evidence. Just accusations." },
+  { start: 20, end: 24, phase: "TURN",       music: "melancholy 20%", words: "For eight years, Hawkins couldn't play in the NBA." },
+  { start: 24, end: 28, phase: "TURN",       music: "melancholy 25%", words: "He played in the ABL, the ABA, even the Harlem Globetrotters." },
+  { start: 28, end: 32, phase: "TURN",       music: "melancholy 25%", words: "He dominated every league he entered, but none of them were the NBA." },
+  { start: 32, end: 36, phase: "FORGOTTEN",  music: "melancholy 25%", words: "In 1969, Hawkins sued the NBA and won." },
+  { start: 36, end: 40, phase: "FORGOTTEN",  music: "melancholy 30%", words: "Even at 27, past his athletic prime, he still averaged", heroStat: true },
+  { start: 40, end: 44, phase: "FORGOTTEN",  music: "melancholy 35%", words: "24.6 points per game and made four All-Star teams.", ticker: true },
+  { start: 44, end: 48, phase: "LEGACY",     music: "melancholy 40%", words: "Hawkins made the Hall of Fame in 1992." },
+  { start: 48, end: 52, phase: "LEGACY",     music: "melancholy 45%", words: "But most fans today have never heard his name." },
+  { start: 52, end: 55, phase: "KICKER",     music: "melancholy 50%", words: "How many other Connie Hawkins are out there that we'll never know about?" },
+];
+
+const CLIPS = ["clip1","clip2","clip3","clip4","clip5","clip6"];
+const EMPHASIS = /\b(NBA|banned|Magic Johnson|26|1961|18|blacklisted|eight|1969|27|24\.6|Hall of Fame|never)\b/gi;
+
+let time = 0;
+let playing = false;
+let interval;
+
+function formatTime(s) {
+  return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+}
+
+function highlightWords(text) {
+  return text.replace(EMPHASIS, '<span class="em">$&</span>');
+}
+
+function update() {
+  time += 0.1;
+  if (time >= 55) { time = 0; }
+
+  // Progress
+  document.getElementById("progress").style.width = (time/55*100)+"%";
+  document.getElementById("timer").textContent = formatTime(time) + " / 0:55";
+
+  // Find current segment
+  const seg = SCRIPT_SEGMENTS.find(s => time >= s.start && time < s.end);
+  if (!seg) return;
+
+  // Phase
+  document.getElementById("phaseLabel").textContent = seg.phase;
+
+  // Music
+  const bars = document.querySelectorAll(".bar");
+  if (seg.music.includes("silent") || seg.music.includes("drops")) {
+    bars.forEach(b => b.classList.remove("playing"));
+    document.getElementById("musicLabel").textContent = seg.music;
+  } else {
+    bars.forEach(b => b.classList.add("playing"));
+    document.getElementById("musicLabel").textContent = seg.music;
+  }
+
+  // Player name — hidden during hook (0-3s), visible after
+  document.getElementById("playerName").style.opacity = time >= 3 ? "1" : "0";
+
+  // Clips (switch every ~3s)
+  const clipIdx = Math.floor(time / 3) % CLIPS.length;
+  CLIPS.forEach((id, i) => {
+    document.getElementById(id).classList.toggle("active", i === clipIdx);
+  });
+
+  // Caption
+  const caption = document.getElementById("caption");
+  caption.innerHTML = highlightWords(seg.words);
+  caption.classList.add("visible");
+
+  // Hero stat
+  const hero = document.getElementById("heroStat");
+  hero.classList.toggle("visible", !!seg.heroStat);
+
+  // Ticker
+  const ticker = document.getElementById("statTicker");
+  ticker.classList.toggle("visible", !!seg.ticker);
+
+  // Highlight active script segment
+  document.querySelectorAll(".segment").forEach(el => {
+    const s = parseFloat(el.dataset.start);
+    const e = parseFloat(el.dataset.end);
+    el.classList.toggle("active", time >= s && time < e);
+  });
+}
+
+function togglePlay() {
+  playing = !playing;
+  const btn = document.getElementById("playBtn");
+  if (playing) {
+    interval = setInterval(update, 100);
+    btn.textContent = "⏸ Pause";
+  } else {
+    clearInterval(interval);
+    btn.textContent = "▶ Play";
+  }
+}
+
+function restart() {
+  time = 0;
+  update();
+}
+
+// Auto-start
+togglePlay();
+</script>
+</body>
+</html>

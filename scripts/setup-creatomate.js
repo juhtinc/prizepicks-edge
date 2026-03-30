@@ -210,7 +210,7 @@ const videoTemplate = {
       time: 25,  // Default shift time, overridden per render
       duration: 30,
     },
-    // Player name: persistent lower-third
+    // Player name: appears AFTER hook (3s), not from the start
     {
       type: "text",
       name: "player_name",
@@ -229,8 +229,11 @@ const videoTemplate = {
       background_y_padding: "1.5 vmin",
       background_border_radius: "1 vmin",
       text_alignment: "center",
-      time: 0,
-      duration: 55,
+      time: 3,         // Appears after hook, not at start
+      duration: 52,    // Shows from 3s to 55s
+      animations: [
+        { type: "slide", fade: true, direction: "up", duration: 0.4 },
+      ],
     },
     // Channel watermark
     {
