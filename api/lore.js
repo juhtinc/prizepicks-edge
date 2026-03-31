@@ -44,6 +44,7 @@ const handlers = {
   "clip-review":       () => require("../lib/lore/clip-review"),
   "cron-lore":         () => require("../lib/lore/cron-lore"),
   "generate-thumbnail":() => require("../lib/lore/generate-thumbnail"),
+  "audio":             () => require("../lib/lore/audio"),
 };
 
 module.exports = async function handler(req, res) {
