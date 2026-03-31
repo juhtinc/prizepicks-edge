@@ -10,7 +10,6 @@
     { "path": "/api/grade", "schedule": "0 15 * * *" },
     { "path": "/api/lore?route=cron-lore&workflow=analytics",              "schedule": "0 1 * * 1"  },
     { "path": "/api/lore?route=cron-lore&workflow=weekly-batch&batch=A",   "schedule": "0 2 * * 1"  },
-    { "path": "/api/lore?route=cron-lore&workflow=weekly-batch&batch=B",   "schedule": "0 2 * * 4"  },
     { "path": "/api/lore?route=cron-lore&workflow=auto-start",            "schedule": "0 11 * * *" },
     { "path": "/api/lore?route=cron-lore&workflow=performance-check",     "schedule": "0 15 * * *" },
     { "path": "/api/lore?route=cron-lore&workflow=comments",              "schedule": "0 14 * * *" },
