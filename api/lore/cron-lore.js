@@ -35,7 +35,7 @@ module.exports = async function handler(req, res) {
   try {
     switch (workflow) {
       case "analytics": {
-        const resp = await axios.post(`${baseUrl}/api/lore/analytics`, {}, { headers });
+        const resp = await axios.post(`${baseUrl}/api/lore?route=analytics`, {}, { headers });
         return res.status(200).json({ workflow, result: resp.data });
       }
 
@@ -43,7 +43,7 @@ module.exports = async function handler(req, res) {
         // batch=A or batch=B determines which half of the week
         const batchParam = batch || (new Date().getDay() <= 2 ? "A" : "B");
         const resp = await axios.post(
-          `${baseUrl}/api/lore/weekly-batch?phase=stories&batch=${batchParam}`,
+          `${baseUrl}/api/lore?route=weekly-batch&phase=stories&batch=${batchParam}`,
           {},
           { headers }
         );
@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
           );
 
           todayScripts.forEach(script => {
-            axios.post(`${baseUrl}/api/lore/video-production`, { rowId: script.rowId }, { headers }).catch(e => {
+            axios.post(`${baseUrl}/api/lore?route=video-production`, { rowId: script.rowId }, { headers }).catch(e => {
               console.error(`[auto-start] Production failed for ${script.rowId}:`, e.message);
             });
             started.push(script.rowId);
@@ -81,18 +81,18 @@ module.exports = async function handler(req, res) {
       }
 
       case "performance-check": {
-        const resp = await axios.post(`${baseUrl}/api/lore/performance-check`, {}, { headers });
+        const resp = await axios.post(`${baseUrl}/api/lore?route=performance-check`, {}, { headers });
         return res.status(200).json({ workflow, result: resp.data });
       }
 
       case "comments": {
-        const resp = await axios.post(`${baseUrl}/api/lore/comments`, {}, { headers });
+        const resp = await axios.post(`${baseUrl}/api/lore?route=comments`, {}, { headers });
         return res.status(200).json({ workflow, result: resp.data });
       }
 
       case "auto-pin": {
         // Pin top-liked comment after 12 hours
-        const resp = await axios.post(`${baseUrl}/api/lore/comments?action=auto-pin`, {}, { headers });
+        const resp = await axios.post(`${baseUrl}/api/lore?route=comments&action=auto-pin`, {}, { headers });
         return res.status(200).json({ workflow, result: resp.data });
       }
 
