@@ -108,12 +108,17 @@ function downloadClip(videoId, startTime, duration, outputPath) {
   console.log(`    yt-dlp cmd: ${downloadCmd.slice(0, 150)}...`);
 
   try {
-    // Step 1: Download full video
-    execSync(downloadCmd, { timeout: 180000, stdio: "pipe" });
+    // Step 1: Download full video (capture stderr for error diagnosis)
+    const result = execSync(downloadCmd, { timeout: 180000, stdio: ["pipe", "pipe", "pipe"], encoding: "utf8" });
+    if (result) console.log(`    yt-dlp stdout: ${result.slice(0, 200)}`);
+
     if (!fs.existsSync(fullVideoPath)) {
       console.error(`  yt-dlp: no output file created for ${videoId}`);
       return false;
     }
+
+    const fileSize = fs.statSync(fullVideoPath).size;
+    console.log(`    Downloaded: ${(fileSize / 1024 / 1024).toFixed(1)}MB`);
 
     // Step 2: Extract segment with ffmpeg (fast, no re-encode)
     const trimCmd = `ffmpeg -ss ${startTime} -i "${fullVideoPath}" -t ${duration} -c copy -y "${outputPath}"`;
@@ -124,7 +129,9 @@ function downloadClip(videoId, startTime, duration, outputPath) {
 
     return fs.existsSync(outputPath);
   } catch (e) {
-    console.error(`  Download failed for ${videoId}: ${e.message.slice(0, 150)}`);
+    // Show the actual yt-dlp error (usually in stderr)
+    const stderr = e.stderr ? e.stderr.toString().slice(-300) : "no stderr";
+    console.error(`  Download failed for ${videoId}: ${stderr}`);
     // Clean up
     try { fs.unlinkSync(fullVideoPath); } catch {}
     return false;

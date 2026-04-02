@@ -53,24 +53,40 @@ jobs:
 
       - name: Test yt-dlp can access YouTube
         run: |
-          echo "Testing yt-dlp download..."
+          echo "Testing yt-dlp with verbose output..."
           COOKIES_ARG=""
           if [ -f "/tmp/yt_cookies.txt" ]; then
             COOKIES_ARG="--cookies /tmp/yt_cookies.txt"
+            echo "Using cookies file"
           fi
-          yt-dlp -f "best[height<=480]/best" \
+          # Test with a popular NBA highlight video (Kobe 81 points)
+          yt-dlp -v -f "best[height<=480]/best" \
             --extractor-args "youtube:player_client=tv_embedded" \
             --js-runtimes node \
             $COOKIES_ARG \
             --merge-output-format mp4 \
             -o "/tmp/test_clip.mp4" \
-            --no-playlist --no-warnings --socket-timeout 30 \
-            "https://youtube.com/watch?v=VkGT0m24e-M" || echo "TEST DOWNLOAD FAILED"
+            --no-playlist --socket-timeout 30 \
+            "https://www.youtube.com/watch?v=wV9CMVdY3dM" 2>&1 | tail -30 || true
           if [ -f "/tmp/test_clip.mp4" ]; then
             echo "SUCCESS: test clip downloaded ($(du -h /tmp/test_clip.mp4 | cut -f1))"
             rm /tmp/test_clip.mp4
           else
-            echo "FAILED: no output file. yt-dlp may need different settings."
+            echo "FAILED: no output file"
+            echo "Trying without tv_embedded client..."
+            yt-dlp -v -f "best[height<=480]/best" \
+              --js-runtimes node \
+              $COOKIES_ARG \
+              --merge-output-format mp4 \
+              -o "/tmp/test_clip2.mp4" \
+              --no-playlist --socket-timeout 30 \
+              "https://www.youtube.com/watch?v=wV9CMVdY3dM" 2>&1 | tail -30 || true
+            if [ -f "/tmp/test_clip2.mp4" ]; then
+              echo "SUCCESS with default client ($(du -h /tmp/test_clip2.mp4 | cut -f1))"
+              rm /tmp/test_clip2.mp4
+            else
+              echo "BOTH APPROACHES FAILED - YouTube is blocking this runner"
+            fi
           fi
 
       - name: Install dependencies
