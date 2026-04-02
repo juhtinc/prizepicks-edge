@@ -101,12 +101,16 @@ function isBlockedChannel(channelTitle) {
 function downloadClip(videoId, startTime, duration, outputPath) {
   const startStr = formatTime(startTime);
   const endStr = formatTime(startTime + duration);
-  // Use "best" format (combined audio+video) to avoid merge issues
-  // Fallback chain: best 1080p → best available
-  const cmd = `yt-dlp -f "best[height<=1080]/best" --download-sections "*${startStr}-${endStr}" --force-keyframes-at-cuts -o "${outputPath}" --no-playlist --quiet --no-warnings --no-check-certificates "https://youtube.com/watch?v=${videoId}"`;
+  // Download clip segment from YouTube
+  // - Format: best combined stream up to 1080p, fallback to any best
+  // - No --force-keyframes-at-cuts (causes 30x slowdown on modern yt-dlp)
+  // - Post-process trim with ffmpeg instead for accuracy
+  // - tv_embedded client bypasses SABR streaming blocks
+  // - JS runtime + cookies configured in workflow yml
+  const cmd = `yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best" --download-sections "*${startStr}-${endStr}" --merge-output-format mp4 -o "${outputPath}" --no-playlist --no-warnings "https://youtube.com/watch?v=${videoId}"`;
 
   try {
-    execSync(cmd, { timeout: 30000, stdio: "pipe" });
+    execSync(cmd, { timeout: 120000, stdio: "pipe" });
     return fs.existsSync(outputPath);
   } catch (e) {
     console.error(`  yt-dlp failed for ${videoId} at ${startStr}: ${e.message.slice(0, 100)}`);

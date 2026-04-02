@@ -32,10 +32,29 @@ jobs:
         with:
           ffmpeg-version: release
 
-      - name: Install yt-dlp
+      - name: Install yt-dlp with JS runtime support
         run: |
-          pip install yt-dlp
+          pip install -U "yt-dlp[default]"
           yt-dlp --version
+          echo "Node.js version (JS runtime for yt-dlp):"
+          node --version
+
+      - name: Configure yt-dlp
+        env:
+          YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
+        run: |
+          mkdir -p ~/.config/yt-dlp
+          # Set default options
+          echo "--js-runtimes node" >> ~/.config/yt-dlp/config
+          echo '--extractor-args "youtube:player_client=tv_embedded"' >> ~/.config/yt-dlp/config
+          # Set up cookies if available
+          if [ -n "$YOUTUBE_COOKIES" ]; then
+            echo "$YOUTUBE_COOKIES" | base64 -d > ~/.config/yt-dlp/cookies.txt
+            echo "--cookies ~/.config/yt-dlp/cookies.txt" >> ~/.config/yt-dlp/config
+            echo "YouTube cookies configured"
+          else
+            echo "No YouTube cookies - downloads may be rate-limited"
+          fi
 
       - name: Install dependencies
         run: npm ci
