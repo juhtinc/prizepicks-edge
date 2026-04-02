@@ -99,30 +99,36 @@ function isBlockedChannel(channelTitle) {
 
 // ── yt-dlp download ──
 function downloadClip(videoId, startTime, duration, outputPath) {
-  const startStr = formatTime(startTime);
-  const endStr = formatTime(startTime + duration);
-  // Download clip segment from YouTube
-  // - Format: best combined stream up to 1080p, fallback to any best
-  // - No --force-keyframes-at-cuts (causes 30x slowdown on modern yt-dlp)
-  // - Post-process trim with ffmpeg instead for accuracy
-  // - tv_embedded client bypasses SABR streaming blocks
-  // - JS runtime + cookies configured in workflow yml
-  const cmd = `yt-dlp -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best" --download-sections "*${startStr}-${endStr}" --merge-output-format mp4 -o "${outputPath}" --no-playlist --no-warnings "https://youtube.com/watch?v=${videoId}"`;
+  // Download full video first, then extract segment with ffmpeg
+  // This avoids --download-sections issues with modern yt-dlp + SABR
+  const fullVideoPath = outputPath.replace(".mp4", "_full.mp4");
+  const cookiesArg = process.env.YOUTUBE_COOKIES_PATH ? `--cookies "${process.env.YOUTUBE_COOKIES_PATH}"` : "";
+  const downloadCmd = `yt-dlp -f "best[height<=1080]/best" --merge-output-format mp4 --extractor-args "youtube:player_client=tv_embedded" --js-runtimes node ${cookiesArg} -o "${fullVideoPath}" --no-playlist --no-warnings --socket-timeout 30 "https://youtube.com/watch?v=${videoId}"`;
+
+  console.log(`    yt-dlp cmd: ${downloadCmd.slice(0, 150)}...`);
 
   try {
-    execSync(cmd, { timeout: 120000, stdio: "pipe" });
+    // Step 1: Download full video
+    execSync(downloadCmd, { timeout: 180000, stdio: "pipe" });
+    if (!fs.existsSync(fullVideoPath)) {
+      console.error(`  yt-dlp: no output file created for ${videoId}`);
+      return false;
+    }
+
+    // Step 2: Extract segment with ffmpeg (fast, no re-encode)
+    const trimCmd = `ffmpeg -ss ${startTime} -i "${fullVideoPath}" -t ${duration} -c copy -y "${outputPath}"`;
+    execSync(trimCmd, { timeout: 30000, stdio: "pipe" });
+
+    // Clean up full video
+    try { fs.unlinkSync(fullVideoPath); } catch {}
+
     return fs.existsSync(outputPath);
   } catch (e) {
-    console.error(`  yt-dlp failed for ${videoId} at ${startStr}: ${e.message.slice(0, 100)}`);
+    console.error(`  Download failed for ${videoId}: ${e.message.slice(0, 150)}`);
+    // Clean up
+    try { fs.unlinkSync(fullVideoPath); } catch {}
     return false;
   }
-}
-
-function formatTime(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 // ── FFmpeg scene detection ──

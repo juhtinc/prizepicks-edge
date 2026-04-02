@@ -39,21 +39,38 @@ jobs:
           echo "Node.js version (JS runtime for yt-dlp):"
           node --version
 
-      - name: Configure yt-dlp
+      - name: Configure YouTube cookies
         env:
           YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
         run: |
-          mkdir -p ~/.config/yt-dlp
-          # Set default options
-          echo "--js-runtimes node" >> ~/.config/yt-dlp/config
-          echo '--extractor-args "youtube:player_client=tv_embedded"' >> ~/.config/yt-dlp/config
-          # Set up cookies if available
           if [ -n "$YOUTUBE_COOKIES" ]; then
-            echo "$YOUTUBE_COOKIES" | base64 -d > ~/.config/yt-dlp/cookies.txt
-            echo "--cookies ~/.config/yt-dlp/cookies.txt" >> ~/.config/yt-dlp/config
-            echo "YouTube cookies configured"
+            echo "$YOUTUBE_COOKIES" | base64 -d > /tmp/yt_cookies.txt
+            echo "YOUTUBE_COOKIES_PATH=/tmp/yt_cookies.txt" >> $GITHUB_ENV
+            echo "YouTube cookies configured ($(wc -l < /tmp/yt_cookies.txt) lines)"
           else
-            echo "No YouTube cookies - downloads may be rate-limited"
+            echo "No YouTube cookies configured"
+          fi
+
+      - name: Test yt-dlp can access YouTube
+        run: |
+          echo "Testing yt-dlp download..."
+          COOKIES_ARG=""
+          if [ -f "/tmp/yt_cookies.txt" ]; then
+            COOKIES_ARG="--cookies /tmp/yt_cookies.txt"
+          fi
+          yt-dlp -f "best[height<=480]/best" \
+            --extractor-args "youtube:player_client=tv_embedded" \
+            --js-runtimes node \
+            $COOKIES_ARG \
+            --merge-output-format mp4 \
+            -o "/tmp/test_clip.mp4" \
+            --no-playlist --no-warnings --socket-timeout 30 \
+            "https://youtube.com/watch?v=VkGT0m24e-M" || echo "TEST DOWNLOAD FAILED"
+          if [ -f "/tmp/test_clip.mp4" ]; then
+            echo "SUCCESS: test clip downloaded ($(du -h /tmp/test_clip.mp4 | cut -f1))"
+            rm /tmp/test_clip.mp4
+          else
+            echo "FAILED: no output file. yt-dlp may need different settings."
           fi
 
       - name: Install dependencies
