@@ -1,0 +1,68 @@
+name: Source Real NBA Clips
+
+on:
+  repository_dispatch:
+    types: [source-clips]
+  workflow_dispatch:
+    inputs:
+      batchId:
+        description: 'Batch ID (e.g., 2026-W14-A)'
+        required: true
+      rowIds:
+        description: 'Comma-separated row IDs (e.g., 2026-W14-A-1,2026-W14-A-2)'
+        required: true
+
+jobs:
+  process-clips:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install FFmpeg (cached)
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: release
+
+      - name: Install yt-dlp
+        run: |
+          pip install yt-dlp
+          yt-dlp --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install R2 SDK
+        run: npm install @aws-sdk/client-s3
+
+      - name: Process clips
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          # Get payload from dispatch event or manual input
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            BATCH_ID='${{ github.event.client_payload.batchId }}'
+            ROW_IDS='${{ toJSON(github.event.client_payload.rowIds) }}'
+          else
+            BATCH_ID='${{ github.event.inputs.batchId }}'
+            ROW_IDS='${{ github.event.inputs.rowIds }}'
+          fi
+
+          echo "Processing batch: $BATCH_ID"
+          node scripts/process-clips.js "$BATCH_ID" "$ROW_IDS"
