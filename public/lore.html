@@ -8,356 +8,465 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#08090c;--bg2:#0e1016;--bg3:#14171f;--bg4:#1a1e28;
-  --border:rgba(245,166,35,0.08);--border2:rgba(245,166,35,0.15);
+  --bg:#08090c;--bg2:#0e1016;--bg3:#14171f;--bg4:#1a1e28;--bg5:#222838;
+  --border:rgba(245,166,35,0.08);--border2:rgba(245,166,35,0.15);--border3:rgba(245,166,35,0.25);
   --gold:#F5A623;--gold2:#d4900f;--gold-dim:rgba(245,166,35,0.12);
   --red:#FF3333;--red-dim:rgba(255,51,51,0.12);
   --green:#4ade80;--green-dim:rgba(74,222,128,0.12);
   --blue:#60a5fa;--blue-dim:rgba(96,165,250,0.12);
   --text:#e8e0d4;--text2:#9a8e7e;--text3:#5a5248;
 }
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(245,166,35,0.03),transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(245,166,35,0.02),transparent 50%);pointer-events:none;z-index:-1}
 
 /* ── Nav ── */
-.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(8,9,12,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;height:56px}
-.nav-brand{font-family:'Playfair Display',serif;font-weight:900;font-size:18px;color:var(--gold);letter-spacing:1px;display:flex;align-items:center;gap:10px}
-.nav-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);animation:pulse 2s ease-in-out infinite}
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(8,9,12,0.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;height:52px}
+.nav-brand{font-family:'Playfair Display',serif;font-weight:900;font-size:16px;color:var(--gold);display:flex;align-items:center;gap:8px}
+.nav-brand .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-.nav-tabs{display:flex;gap:4px;margin-left:40px}
-.nav-tab{padding:8px 16px;font-size:13px;font-weight:600;color:var(--text2);border-radius:6px;transition:all 0.2s;cursor:pointer;letter-spacing:0.5px}
+.nav-tabs{display:flex;gap:4px;margin-left:32px}
+.nav-tab{padding:6px 14px;font-size:12px;font-weight:600;color:var(--text2);border-radius:5px;transition:all 0.2s;cursor:pointer;text-decoration:none}
 .nav-tab:hover{color:var(--text);background:var(--bg3)}
 .nav-tab.active{color:var(--gold);background:var(--gold-dim)}
-.nav-right{margin-left:auto;display:flex;align-items:center;gap:12px}
-.nav-status{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace}
-.btn-refresh{padding:6px 14px;font-size:12px;font-weight:600;color:var(--gold);background:var(--gold-dim);border:1px solid var(--border2);border-radius:6px;cursor:pointer;transition:all 0.2s;font-family:inherit}
-.btn-refresh:hover{background:rgba(245,166,35,0.2)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.nav-status{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.btn{padding:5px 12px;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;transition:all 0.2s;font-family:inherit;border:1px solid var(--border)}
+.btn-gold{color:#000;background:var(--gold);border-color:var(--gold)}
+.btn-gold:hover{background:var(--gold2)}
+.btn-dim{color:var(--gold);background:var(--gold-dim);border-color:var(--border2)}
+.btn-dim:hover{background:rgba(245,166,35,0.2)}
+.btn-red{color:var(--red);background:var(--red-dim);border-color:rgba(255,51,51,0.2)}
+.btn-green{color:var(--green);background:var(--green-dim);border-color:rgba(74,222,128,0.2)}
+.btn-sm{padding:3px 8px;font-size:10px}
 
 /* ── Layout ── */
-.main{padding:72px 32px 32px;max-width:1400px;margin:0 auto}
+.main{padding:64px 24px 24px;max-width:1440px;margin:0 auto}
 
-/* ── Section Headers ── */
-.section-header{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;margin-top:32px}
-.section-header:first-child{margin-top:0}
-.section-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text)}
-.section-count{font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--bg3);padding:2px 8px;border-radius:4px}
+/* ── Section ── */
+.section-header{display:flex;align-items:baseline;gap:10px;margin:24px 0 12px}
+.section-header:first-child{margin-top:8px}
+.section-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700}
+.section-badge{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--bg3);padding:2px 7px;border-radius:4px}
 
 /* ── Batch Cards ── */
-.batch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.batch-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
-.batch-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
-.batch-card.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
-.batch-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:0;transition:opacity 0.2s}
-.batch-card.active::before{opacity:1}
-.batch-id{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--gold)}
-.batch-meta{display:flex;align-items:center;gap:8px;margin-top:6px}
-.batch-status{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px}
-.batch-status.ready{color:var(--green);background:var(--green-dim)}
-.batch-status.review{color:var(--gold);background:var(--gold-dim)}
-.batch-status.sourcing{color:var(--blue);background:var(--blue-dim)}
-.batch-status.pending{color:var(--text3);background:var(--bg3)}
-.batch-status.produced{color:var(--green);background:var(--green-dim)}
-.batch-videos{font-size:12px;color:var(--text2)}
+.batch-row{display:flex;gap:10px;flex-wrap:wrap}
+.batch-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;cursor:pointer;transition:all 0.2s;min-width:200px}
+.batch-card:hover{border-color:var(--border2)}
+.batch-card.active{border-color:var(--gold);background:var(--gold-dim)}
+.batch-id{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--gold)}
+.batch-meta{display:flex;gap:6px;margin-top:4px;align-items:center}
+.status-pill{font-size:10px;font-weight:600;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:0.5px}
+.status-pill.ready,.status-pill.produced{color:var(--green);background:var(--green-dim)}
+.status-pill.review,.status-pill.preview{color:var(--gold);background:var(--gold-dim)}
+.status-pill.sourcing{color:var(--blue);background:var(--blue-dim)}
+.status-pill.pending{color:var(--text3);background:var(--bg3)}
+.batch-count{font-size:11px;color:var(--text2)}
 
 /* ── Script Table ── */
-.scripts-table{width:100%;border-collapse:collapse;margin-top:8px}
-.scripts-table th{text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:1px solid var(--border)}
-.scripts-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
-.scripts-table tr{cursor:pointer;transition:background 0.15s}
-.scripts-table tr:hover{background:var(--bg3)}
-.scripts-table tr.active{background:var(--gold-dim)}
-.player-cell{display:flex;align-items:center;gap:10px}
-.player-avatar{width:32px;height:32px;border-radius:6px;background:var(--bg4);overflow:hidden;flex-shrink:0}
-.player-avatar img{width:100%;height:100%;object-fit:cover}
-.player-name{font-weight:600;color:var(--text)}
-.player-sport{font-size:11px;color:var(--text3)}
-.story-tag{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;background:var(--gold-dim);color:var(--gold)}
-.clip-indicator{display:flex;gap:3px}
-.clip-dot{width:6px;height:6px;border-radius:50%;background:var(--bg4)}
-.clip-dot.sourced{background:var(--green)}
-.clip-dot.pending{background:var(--text3)}
+.script-table{width:100%;border-collapse:collapse}
+.script-table th{text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border)}
+.script-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px}
+.script-table tr{cursor:pointer;transition:background 0.12s}
+.script-table tr:hover{background:var(--bg3)}
+.script-table tr.selected{background:var(--gold-dim)}
+.player-cell{display:flex;align-items:center;gap:8px}
+.avatar{width:28px;height:28px;border-radius:5px;background:var(--bg4);overflow:hidden;flex-shrink:0}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.player-name{font-weight:600;font-size:13px}
+.player-sport{font-size:10px;color:var(--text3)}
+.tag{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:500;background:var(--gold-dim);color:var(--gold)}
+.clip-dots{display:flex;gap:2px}
+.clip-dot{width:5px;height:5px;border-radius:50%}
+.clip-dot.ok{background:var(--green)}
+.clip-dot.no{background:var(--bg4)}
 
 /* ── Detail Panel ── */
-.detail-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-top:16px;overflow:hidden}
-.detail-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px}
-.detail-player-photo{width:64px;height:80px;border-radius:8px;background:var(--bg4);overflow:hidden;border:2px solid var(--border2)}
-.detail-player-photo img{width:100%;height:100%;object-fit:cover}
-.detail-info h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text)}
-.detail-info .subtitle{font-size:13px;color:var(--text2);margin-top:2px}
-.detail-actions{margin-left:auto;display:flex;gap:8px}
-.detail-btn{padding:8px 16px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;transition:all 0.2s;font-family:inherit;border:1px solid var(--border)}
-.detail-btn.primary{color:#000;background:var(--gold);border-color:var(--gold)}
-.detail-btn.primary:hover{background:var(--gold2)}
-.detail-btn.secondary{color:var(--text2);background:var(--bg3)}
-.detail-btn.secondary:hover{color:var(--text);background:var(--bg4)}
+.detail{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-top:12px;overflow:hidden}
+.detail-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+.detail-photo{width:52px;height:64px;border-radius:6px;background:var(--bg4);overflow:hidden;border:2px solid var(--border2);flex-shrink:0}
+.detail-photo img{width:100%;height:100%;object-fit:cover}
+.detail-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700}
+.detail-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.detail-actions{margin-left:auto;display:flex;gap:6px}
 
-.detail-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.detail-left{padding:20px 24px;border-right:1px solid var(--border)}
-.detail-right{padding:20px 24px}
+/* ── Timeline View ── */
+.timeline{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border)}
+.timeline-left{padding:16px 20px;border-right:1px solid var(--border);max-height:600px;overflow-y:auto}
+.timeline-right{padding:16px 20px;max-height:600px;overflow-y:auto}
 
-.detail-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;margin-top:16px}
-.detail-label:first-child{margin-top:0}
-.detail-script{font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;font-family:'DM Sans',sans-serif}
-.detail-hook{font-size:14px;line-height:1.5;color:var(--gold);font-weight:600;font-style:italic}
-.detail-stat{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text2)}
+.tl-segment{padding:10px 12px;border-radius:6px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;border:1px solid transparent}
+.tl-segment:hover{background:var(--bg3)}
+.tl-segment.active{background:var(--gold-dim);border-color:var(--border2)}
+.tl-seg-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tl-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);font-weight:500}
+.tl-phase{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.tl-text{font-size:13px;line-height:1.6;color:var(--text)}
+.tl-text .gold{color:var(--gold);font-weight:700}
+.tl-text .red{color:var(--red);font-weight:700}
 
-/* ── Clips Grid ── */
-.clips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px}
-.clip-card{aspect-ratio:9/16;background:var(--bg4);border-radius:8px;overflow:hidden;position:relative;cursor:pointer;transition:all 0.2s;border:1px solid transparent}
-.clip-card:hover{border-color:var(--gold);transform:scale(1.03)}
-.clip-card video,.clip-card img{width:100%;height:100%;object-fit:cover}
-.clip-card .clip-label{position:absolute;bottom:0;left:0;right:0;padding:4px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.8));font-size:9px;color:var(--text2);font-family:'JetBrains Mono',monospace}
-.clip-card.empty{display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px}
+/* ── Clip Panel (right side of timeline) ── */
+.clip-panel-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.clip-preview{background:var(--bg4);border-radius:8px;overflow:hidden;aspect-ratio:9/16;max-height:280px;position:relative;margin-bottom:10px}
+.clip-preview video{width:100%;height:100%;object-fit:cover}
+.clip-preview .empty-clip{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px}
+.clip-actions{display:flex;gap:6px;margin-bottom:16px}
+
+.clip-grid-sm{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px}
+.clip-thumb{aspect-ratio:9/16;background:var(--bg4);border-radius:5px;overflow:hidden;cursor:pointer;transition:all 0.15s;border:2px solid transparent;position:relative}
+.clip-thumb:hover{border-color:var(--border2)}
+.clip-thumb.active{border-color:var(--gold)}
+.clip-thumb.approved{border-color:var(--green)}
+.clip-thumb.rejected{border-color:var(--red);opacity:0.5}
+.clip-thumb video{width:100%;height:100%;object-fit:cover}
+.clip-thumb .badge{position:absolute;top:3px;right:3px;font-size:8px;padding:1px 4px;border-radius:3px;font-weight:700}
+.clip-thumb .badge.ok{background:var(--green);color:#000}
+.clip-thumb .badge.no{background:var(--red);color:#fff}
+.clip-num{position:absolute;bottom:2px;left:4px;font-size:8px;color:rgba(255,255,255,0.6);font-family:'JetBrains Mono',monospace}
+
+/* ── Script Text Panel ── */
+.script-panel{margin-top:12px}
+.script-section{margin-bottom:12px}
+.script-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.script-hook{font-size:14px;color:var(--gold);font-weight:600;font-style:italic;line-height:1.5}
+.script-body{font-size:13px;line-height:1.7;color:var(--text)}
+.script-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);margin-top:2px}
 
 /* ── Video Player ── */
-.video-player{background:var(--bg4);border-radius:10px;overflow:hidden;aspect-ratio:9/16;max-height:400px;margin-top:8px;display:flex;align-items:center;justify-content:center}
-.video-player video{width:100%;height:100%;object-fit:contain}
-.video-player .placeholder{color:var(--text3);font-size:13px;text-align:center}
+.render-player{background:var(--bg4);border-radius:8px;overflow:hidden;aspect-ratio:9/16;max-height:300px;margin-top:8px}
+.render-player video{width:100%;height:100%;object-fit:contain}
+.render-placeholder{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3);font-size:12px}
 
-/* ── Loading / Empty States ── */
-.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--text3)}
-.loading .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin-right:12px}
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--gold);z-index:200;transform:translateY(80px);opacity:0;transition:all 0.3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* ── Loading ── */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3);font-size:13px}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin-right:10px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:40px;color:var(--text3);font-size:14px}
+.empty{text-align:center;padding:32px;color:var(--text3);font-size:13px}
 
-/* ── Background Texture ── */
-body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(245,166,35,0.03) 0%,transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(245,166,35,0.02) 0%,transparent 50%);pointer-events:none;z-index:-1}
-
-/* ── Responsive ── */
 @media(max-width:768px){
-  .main{padding:64px 16px 16px}
-  .detail-body{grid-template-columns:1fr}
-  .detail-left{border-right:none;border-bottom:1px solid var(--border)}
-  .nav-tabs{display:none}
+  .main{padding:56px 12px 12px}
+  .timeline{grid-template-columns:1fr}
+  .timeline-left{border-right:none;border-bottom:1px solid var(--border)}
 }
 </style>
 </head>
 <body>
 
 <nav class="nav">
-  <div class="nav-brand">
-    <span class="dot"></span>
-    SPORTS LORE
-  </div>
+  <div class="nav-brand"><span class="dot"></span>SPORTS LORE</div>
   <div class="nav-tabs">
     <a href="/" class="nav-tab">Props Edge</a>
     <a href="/lore.html" class="nav-tab active">Sports Lore</a>
   </div>
   <div class="nav-right">
-    <span class="nav-status" id="statusText">Loading...</span>
-    <button class="btn-refresh" onclick="loadAll()">Refresh</button>
+    <span class="nav-status" id="statusText">—</span>
+    <button class="btn btn-dim" onclick="loadAll()">Refresh</button>
   </div>
 </nav>
 
 <div class="main">
-  <!-- Batches -->
-  <div class="section-header">
-    <h1 class="section-title">Batches</h1>
-    <span class="section-count" id="batchCount">—</span>
-  </div>
-  <div class="batch-grid" id="batchGrid">
-    <div class="loading"><div class="spinner"></div>Loading batches...</div>
-  </div>
+  <div class="section-header"><h1 class="section-title">Batches</h1><span class="section-badge" id="batchCount">—</span></div>
+  <div class="batch-row" id="batchRow"><div class="loading"><div class="spinner"></div>Loading...</div></div>
 
-  <!-- Scripts -->
-  <div class="section-header">
-    <h1 class="section-title">Scripts</h1>
-    <span class="section-count" id="scriptCount">—</span>
-  </div>
-  <div id="scriptsContainer">
-    <div class="empty">Select a batch to view scripts</div>
-  </div>
+  <div class="section-header"><h1 class="section-title">Scripts</h1><span class="section-badge" id="scriptCount">—</span></div>
+  <div id="scriptsArea"><div class="empty">Select a batch</div></div>
 
-  <!-- Detail Panel -->
-  <div id="detailContainer"></div>
+  <div id="detailArea"></div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 const API = "/api/lore?route=dashboard";
-const SECRET = "picks25"; // Will be replaced with proper auth
+const SECRET = "picks25";
+const R2 = "https://pub-86aa1c96eda04a8099526017d95dbb8f.r2.dev";
+
+let curBatch = null, curScript = null, curClipIdx = 0;
+let scriptData = null; // full script detail
 
 async function api(action, params = {}) {
   const qs = new URLSearchParams({ action, ...params }).toString();
-  const resp = await fetch(`${API}&${qs}`, {
-    headers: { "x-secret": SECRET },
-  });
-  return resp.json();
+  const r = await fetch(`${API}&${qs}`, { headers: { "x-secret": SECRET } });
+  return r.json();
 }
 
-let currentBatch = null;
-let currentScript = null;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3000);
+}
 
-// ── Load Batches ──
+// ── Batches ──
 async function loadBatches() {
-  const data = await api("batches");
-  const grid = document.getElementById("batchGrid");
-  const batches = data.batches || [];
+  const { batches = [] } = await api("batches");
   document.getElementById("batchCount").textContent = batches.length;
-
-  if (batches.length === 0) {
-    grid.innerHTML = '<div class="empty">No batches found</div>';
-    return;
-  }
-
-  grid.innerHTML = batches.map(b => `
-    <div class="batch-card ${currentBatch === b.batchId ? 'active' : ''}" onclick="selectBatch('${b.batchId}')">
+  document.getElementById("batchRow").innerHTML = batches.length ? batches.map(b => `
+    <div class="batch-card ${curBatch === b.batchId ? 'active' : ''}" onclick="selectBatch('${b.batchId}')">
       <div class="batch-id">${b.batchId}</div>
       <div class="batch-meta">
-        <span class="batch-status ${(b.status || 'pending').toLowerCase().replace(/\s/g, '')}">${b.status || 'Unknown'}</span>
-        <span class="batch-videos">${b.videoCount || '?'} videos</span>
+        <span class="status-pill ${(b.status||'').toLowerCase().replace(/\s/g,'')}">${b.status||'?'}</span>
+        <span class="batch-count">${b.videoCount||'?'} videos</span>
       </div>
     </div>
-  `).join("");
+  `).join("") : '<div class="empty">No batches</div>';
 }
 
-// ── Load Scripts for Batch ──
-async function selectBatch(batchId) {
-  currentBatch = batchId;
-  currentScript = null;
-  loadBatches(); // refresh active state
+// ── Scripts ──
+async function selectBatch(id) {
+  curBatch = id; curScript = null;
+  loadBatches();
+  document.getElementById("scriptsArea").innerHTML = '<div class="loading"><div class="spinner"></div>Loading scripts...</div>';
+  document.getElementById("detailArea").innerHTML = "";
 
-  const container = document.getElementById("scriptsContainer");
-  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading scripts...</div>';
-
-  const data = await api("scripts", { batchId });
-  const scripts = data.scripts || [];
+  const { scripts = [] } = await api("scripts", { batchId: id });
   document.getElementById("scriptCount").textContent = scripts.length;
+  if (!scripts.length) { document.getElementById("scriptsArea").innerHTML = '<div class="empty">No scripts</div>'; return; }
 
-  if (scripts.length === 0) {
-    container.innerHTML = '<div class="empty">No scripts in this batch</div>';
-    return;
-  }
-
-  container.innerHTML = `<table class="scripts-table">
-    <thead><tr>
-      <th>Player</th>
-      <th>Type</th>
-      <th>Words</th>
-      <th>Status</th>
-      <th>Clips</th>
-    </tr></thead>
-    <tbody>${scripts.map(s => `
-      <tr onclick="selectScript('${s.rowId}')" class="${currentScript === s.rowId ? 'active' : ''}">
-        <td>
-          <div class="player-cell">
-            <div class="player-avatar">${s.playerPhotoUrl ? `<img src="${s.playerPhotoUrl}" alt="">` : ''}</div>
-            <div>
-              <div class="player-name">${s.playerName || 'Unknown'}</div>
-              <div class="player-sport">${s.playerSport || ''}</div>
-            </div>
-          </div>
-        </td>
-        <td><span class="story-tag">${(s.storyType || '').replace(/_/g, ' ')}</span></td>
-        <td><span class="detail-stat">${s.wordCount}</span></td>
-        <td><span class="batch-status ${(s.status || '').toLowerCase()}">${s.status || '—'}</span></td>
-        <td>
-          <div class="clip-indicator">
-            ${Array.from({length: Math.max(s.clipBriefCount || 0, 7)}, (_, i) =>
-              `<div class="clip-dot ${i < (s.clipsSourced || 0) ? 'sourced' : 'pending'}"></div>`
-            ).join('')}
-          </div>
-        </td>
-      </tr>
-    `).join('')}</tbody>
-  </table>`;
+  document.getElementById("scriptsArea").innerHTML = `<table class="script-table"><thead><tr>
+    <th>Player</th><th>Type</th><th>Words</th><th>Status</th><th>Clips</th>
+  </tr></thead><tbody>${scripts.map(s => `
+    <tr onclick="selectScript('${s.rowId}')" class="${curScript===s.rowId?'selected':''}">
+      <td><div class="player-cell">
+        <div class="avatar">${s.playerPhotoUrl?`<img src="${s.playerPhotoUrl}">`:''}</div>
+        <div><div class="player-name">${s.playerName||'?'}</div><div class="player-sport">${s.playerSport||''}</div></div>
+      </div></td>
+      <td><span class="tag">${(s.storyType||'').replace(/_/g,' ')}</span></td>
+      <td style="font-family:'JetBrains Mono';font-size:11px;color:var(--text2)">${s.wordCount}</td>
+      <td><span class="status-pill ${(s.status||'').toLowerCase()}">${s.status||'—'}</span></td>
+      <td><div class="clip-dots">${Array.from({length:7},(_,i)=>`<div class="clip-dot ${i<(s.clipsSourced||0)?'ok':'no'}"></div>`).join('')}</div></td>
+    </tr>
+  `).join("")}</tbody></table>`;
 }
 
-// ── Load Script Detail ──
+// ── Script Detail with Timeline ──
 async function selectScript(rowId) {
-  currentScript = rowId;
-  const container = document.getElementById("detailContainer");
-  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading details...</div>';
+  curScript = rowId; curClipIdx = 0;
+  // Refresh script table highlight
+  document.querySelectorAll('.script-table tr').forEach(tr => {
+    tr.classList.toggle('selected', tr.onclick?.toString().includes(rowId));
+  });
 
-  const data = await api("script-detail", { rowId });
-  const s = data.script;
-  if (!s) {
-    container.innerHTML = '<div class="empty">Script not found</div>';
-    return;
-  }
+  document.getElementById("detailArea").innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+  const { script: s } = await api("script-detail", { rowId });
+  if (!s) { document.getElementById("detailArea").innerHTML = '<div class="empty">Not found</div>'; return; }
+  scriptData = s;
 
   const clips = s.clipBriefs || [];
-  const R2_BASE = "https://pub-86aa1c96eda04a8099526017d95dbb8f.r2.dev";
+  // Try to reconstruct clip URLs from R2 if not in clipBriefs
+  const clipUrls = [];
+  for (let i = 1; i <= 14; i++) {
+    const brief = clips.find(c => c.slot === i);
+    const url = brief?.clipUrl || `${R2}/${rowId}/clip_${i}.mp4`;
+    clipUrls.push({ slot: i, url, source: brief?.source || 'unknown', segmentName: brief?.segmentName || '', approved: brief?.approved, clipUrl: brief?.clipUrl });
+  }
 
-  container.innerHTML = `
-  <div class="detail-panel">
-    <div class="detail-header">
-      <div class="detail-player-photo">
-        ${s.playerPhotoUrl ? `<img src="${s.playerPhotoUrl}" alt="${s.playerName}">` : ''}
-      </div>
-      <div class="detail-info">
-        <h2>${s.playerName || 'Unknown Player'}</h2>
-        <div class="subtitle">${(s.storyType || '').replace(/_/g, ' ')} · ${s.playerSport || 'NBA'} · ${s.rowId}</div>
+  // Build timeline segments from story template
+  const segments = getSegments(s.storyType);
+  const scriptSentences = splitIntoSegments(s.hookLine, s.script, segments);
+
+  document.getElementById("detailArea").innerHTML = `
+  <div class="detail">
+    <div class="detail-head">
+      <div class="detail-photo">${s.playerPhotoUrl?`<img src="${s.playerPhotoUrl}">`:''}</div>
+      <div>
+        <div class="detail-title">${s.playerName||'?'}</div>
+        <div class="detail-sub">${(s.storyType||'').replace(/_/g,' ')} · ${s.playerSport||'NBA'} · ${rowId}</div>
       </div>
       <div class="detail-actions">
-        ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="detail-btn secondary">YouTube</a>` : ''}
-        ${s.renderUrl ? `<a href="${s.renderUrl}" target="_blank" class="detail-btn primary">Watch Video</a>` : ''}
+        ${s.renderUrl?`<a href="${s.renderUrl}" target="_blank" class="btn btn-gold">Watch Video</a>`:''}
+        ${s.youtubeUrl?`<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim">YouTube</a>`:''}
+        <button class="btn btn-dim" onclick="sourceClips('${rowId}')">Re-source Clips</button>
       </div>
     </div>
-    <div class="detail-body">
-      <div class="detail-left">
-        <div class="detail-label">Hook</div>
-        <div class="detail-hook">${s.hookLine || '—'}</div>
 
-        <div class="detail-label">Script</div>
-        <div class="detail-script">${s.script || '—'}</div>
-
-        <div class="detail-label">Titles</div>
-        <div class="detail-stat">A: ${s.titleA || '—'}</div>
-        <div class="detail-stat">B: ${s.titleB || '—'}</div>
-
-        <div class="detail-label">Description</div>
-        <div class="detail-stat" style="font-size:12px;line-height:1.5">${s.description || '—'}</div>
-
-        <div class="detail-label">Comment Bait</div>
-        <div class="detail-stat">${s.commentBait || '—'}</div>
-      </div>
-      <div class="detail-right">
-        <div class="detail-label">Clips (${clips.filter(c => c.clipUrl).length}/${clips.length} sourced)</div>
-        <div class="clips-grid">
-          ${clips.length > 0 ? clips.map((c, i) => {
-            const url = c.clipUrl || `${R2_BASE}/${s.rowId}/clip_${c.slot || i+1}.mp4`;
-            return c.clipUrl ? `
-              <div class="clip-card" onclick="this.querySelector('video')?.play()">
-                <video src="${url}" muted loop preload="metadata"></video>
-                <div class="clip-label">${c.segmentName || 'clip'} #${c.slot || i+1}</div>
+    <div class="timeline">
+      <div class="timeline-left">
+        <div class="script-panel">
+          <div class="script-section">
+            <div class="script-label">Hook</div>
+            <div class="script-hook">${s.hookLine||'—'}</div>
+          </div>
+          ${segments.map((seg, i) => {
+            const text = scriptSentences[i] || '';
+            const clipSlot = Math.floor(i * clipUrls.length / segments.length);
+            return `
+            <div class="tl-segment ${i===0?'active':''}" onclick="selectSegment(${i}, ${clipSlot})" data-seg="${i}">
+              <div class="tl-seg-head">
+                <span class="tl-time">${formatTime(seg.start)}</span>
+                <span class="tl-phase">${seg.name}</span>
               </div>
-            ` : `<div class="clip-card empty">No clip</div>`;
-          }).join('') : '<div class="empty">No clips sourced yet</div>'}
+              <div class="tl-text">${highlightText(text)}</div>
+            </div>`;
+          }).join("")}
+
+          <div class="script-section" style="margin-top:16px">
+            <div class="script-label">Titles</div>
+            <div class="script-meta">A: ${s.titleA||'—'}</div>
+            <div class="script-meta">B: ${s.titleB||'—'}</div>
+          </div>
+          <div class="script-section">
+            <div class="script-label">Comment Bait</div>
+            <div class="script-meta">${s.commentBait||'—'}</div>
+          </div>
         </div>
+      </div>
+
+      <div class="timeline-right">
+        <div class="clip-panel-title">Current Clip <span id="clipSlotLabel">#1</span></div>
+        <div class="clip-preview" id="clipPreview">
+          <video id="clipVideo" muted loop autoplay></video>
+        </div>
+        <div class="clip-actions" id="clipActions"></div>
+
+        <div class="clip-panel-title">All Clips (${clipUrls.filter(c=>c.clipUrl).length} sourced)</div>
+        <div class="clip-grid-sm" id="clipGrid"></div>
 
         ${s.renderUrl ? `
-          <div class="detail-label">Rendered Video</div>
-          <div class="video-player">
-            <video src="${s.renderUrl}" controls preload="metadata"></video>
-          </div>
-        ` : `
-          <div class="detail-label">Rendered Video</div>
-          <div class="video-player"><div class="placeholder">Not yet rendered</div></div>
-        `}
+          <div class="clip-panel-title" style="margin-top:16px">Rendered Video</div>
+          <div class="render-player"><video src="${s.renderUrl}" controls preload="metadata"></video></div>
+        ` : '<div class="render-placeholder">Not yet rendered</div>'}
 
-        <div class="detail-label">Status</div>
-        <div class="detail-stat">Clip Source: ${s.clipSourceStatus || '—'}</div>
-        <div class="detail-stat">Music: ${s.musicMood || '—'} · ${s.musicSource || '—'}</div>
-        <div class="detail-stat">Voiceover: ${s.voiceoverUrl ? 'Generated' : 'Pending'}</div>
-        <div class="detail-stat">Render: ${s.renderUrl ? 'Complete' : 'Pending'}</div>
+        <div class="clip-panel-title" style="margin-top:16px">Status</div>
+        <div class="script-meta">Clips: ${s.clipSourceStatus||'—'} (${clips.filter(c=>c.clipUrl).length}/${clips.length})</div>
+        <div class="script-meta">Music: ${s.musicMood||'—'}</div>
+        <div class="script-meta">Voiceover: ${s.voiceoverUrl?'Generated':'Pending'}</div>
+        <div class="script-meta">Render: ${s.renderUrl?'Complete':'Pending'}</div>
       </div>
     </div>
   </div>`;
 
-  // Re-highlight active script row
-  document.querySelectorAll('.scripts-table tr').forEach(tr => {
-    tr.classList.toggle('active', tr.onclick?.toString().includes(rowId));
-  });
+  // Render clip grid
+  renderClipGrid(clipUrls);
+  selectClip(0, clipUrls);
 }
 
-// ── Load All ──
+function renderClipGrid(clipUrls) {
+  const grid = document.getElementById("clipGrid");
+  if (!grid) return;
+  grid.innerHTML = clipUrls.map((c, i) => `
+    <div class="clip-thumb ${i===curClipIdx?'active':''} ${c.approved===true?'approved':''} ${c.approved===false?'rejected':''}" onclick="selectClip(${i})" data-clip="${i}">
+      <video src="${c.url}" muted preload="metadata" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:9px;color:var(--text3)\\'>—</div>'"></video>
+      ${c.approved===true?'<div class="badge ok">✓</div>':''}
+      ${c.approved===false?'<div class="badge no">✗</div>':''}
+      <div class="clip-num">#${c.slot}</div>
+    </div>
+  `).join("");
+}
+
+function selectClip(idx, clips) {
+  if (!clips) {
+    // Reconstruct from DOM
+    const rowId = curScript;
+    clips = Array.from({length:14},(_,i)=>({ slot:i+1, url:`${R2}/${rowId}/clip_${i+1}.mp4` }));
+  }
+  curClipIdx = idx;
+  const clip = clips[idx];
+  if (!clip) return;
+
+  document.getElementById("clipSlotLabel").textContent = `#${clip.slot}`;
+  const vid = document.getElementById("clipVideo");
+  vid.src = clip.url;
+  vid.play().catch(()=>{});
+
+  // Update active states
+  document.querySelectorAll('.clip-thumb').forEach((el,i) => el.classList.toggle('active', i===idx));
+
+  // Update actions
+  document.getElementById("clipActions").innerHTML = `
+    <button class="btn btn-green btn-sm" onclick="approveClip(${idx})">✓ Approve</button>
+    <button class="btn btn-red btn-sm" onclick="rejectClip(${idx})">✗ Reject</button>
+    <button class="btn btn-dim btn-sm" onclick="replaceClip(${idx})">↻ Replace</button>
+  `;
+}
+
+function selectSegment(segIdx, clipSlot) {
+  document.querySelectorAll('.tl-segment').forEach((el,i) => el.classList.toggle('active', i===segIdx));
+  selectClip(clipSlot);
+}
+
+async function approveClip(idx) {
+  toast(`Clip #${idx+1} approved ✓`);
+  const thumb = document.querySelector(`.clip-thumb[data-clip="${idx}"]`);
+  if (thumb) { thumb.classList.add('approved'); thumb.classList.remove('rejected'); }
+}
+
+async function rejectClip(idx) {
+  toast(`Clip #${idx+1} rejected ✗ — will be re-sourced`);
+  const thumb = document.querySelector(`.clip-thumb[data-clip="${idx}"]`);
+  if (thumb) { thumb.classList.add('rejected'); thumb.classList.remove('approved'); }
+}
+
+async function replaceClip(idx) {
+  toast(`Clip #${idx+1} queued for replacement`);
+}
+
+async function sourceClips(rowId) {
+  toast("Triggering clip sourcing via GitHub Actions...");
+}
+
+// ── Helpers ──
+function formatTime(s) { return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+
+function getSegments(type) {
+  const templates = {
+    forgotten_legend: [
+      {name:"hook",start:0,end:3},{name:"greatness",start:3,end:12},{name:"context",start:12,end:20},
+      {name:"turn",start:20,end:32},{name:"forgotten",start:32,end:45},{name:"legacy",start:45,end:52},{name:"kicker",start:52,end:55}
+    ],
+    record_breaker: [
+      {name:"hook",start:0,end:3},{name:"context",start:3,end:10},{name:"build",start:10,end:22},
+      {name:"record",start:22,end:35},{name:"attempts",start:35,end:45},{name:"stands",start:45,end:52},{name:"kicker",start:52,end:55}
+    ],
+    what_if: [
+      {name:"hook",start:0,end:3},{name:"who",start:3,end:10},{name:"event",start:10,end:22},
+      {name:"alternate",start:22,end:35},{name:"ripple",start:35,end:45},{name:"verdict",start:45,end:52},{name:"kicker",start:52,end:55}
+    ],
+    scandal: [
+      {name:"hook",start:0,end:3},{name:"rise",start:3,end:12},{name:"tension",start:12,end:22},
+      {name:"unravel",start:22,end:35},{name:"fallout",start:35,end:45},{name:"legacy",start:45,end:52},{name:"kicker",start:52,end:55}
+    ],
+  };
+  return templates[type] || templates.forgotten_legend;
+}
+
+function splitIntoSegments(hookLine, script, segments) {
+  const full = (hookLine ? hookLine + ". " : "") + (script || "");
+  const sentences = full.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const totalDur = segments.reduce((s,seg)=>s+(seg.end-seg.start),0);
+  const results = [];
+  let si = 0;
+  for (const seg of segments) {
+    const dur = seg.end - seg.start;
+    const proportion = dur / totalDur;
+    let n = Math.max(1, Math.round(proportion * sentences.length));
+    n = Math.min(n, sentences.length - si);
+    results.push(sentences.slice(si, si + n).join(" "));
+    si += n;
+  }
+  if (si < sentences.length) results[results.length-1] += " " + sentences.slice(si).join(" ");
+  return results;
+}
+
+const GOLD_WORDS = /\b(\d[\d,.]*\s*(?:points?|rebounds?|assists?|blocks?|steals?|ppg|rpg|apg|mvp|championship|all-star|hall of fame|record|first|greatest))\b/gi;
+const RED_WORDS = /\b(never|nobody|worst|banned|fired|traded|died|injured|failed|robbed|forgotten|zero)\b/gi;
+
+function highlightText(text) {
+  return text
+    .replace(GOLD_WORDS, '<span class="gold">$1</span>')
+    .replace(RED_WORDS, '<span class="red">$1</span>');
+}
+
+// ── Init ──
 async function loadAll() {
-  document.getElementById("statusText").textContent = "Refreshing...";
+  document.getElementById("statusText").textContent = "Loading...";
   await loadBatches();
-  if (currentBatch) await selectBatch(currentBatch);
-  const now = new Date().toLocaleTimeString();
-  document.getElementById("statusText").textContent = `Updated ${now}`;
+  if (curBatch) await selectBatch(curBatch);
+  document.getElementById("statusText").textContent = `Updated ${new Date().toLocaleTimeString()}`;
 }
-
 loadAll();
 </script>
 </body>

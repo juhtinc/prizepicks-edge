@@ -206,7 +206,9 @@ async function uploadToR2(filePath, key) {
   }));
 
   // Public URL via R2 public development URL
-  return `https://pub-${process.env.R2_ACCOUNT_ID}.r2.dev/${key}`;
+  // Use explicit public URL (the pub-xxx hash differs from account ID)
+  const publicBase = process.env.R2_PUBLIC_URL || "https://pub-86aa1c96eda04a8099526017d95dbb8f.r2.dev";
+  return `${publicBase}/${key}`;
 }
 
 // ── Player image sourcing ──
