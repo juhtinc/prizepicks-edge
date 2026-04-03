@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Lore — Production Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090c;--bg2:#0e1016;--bg3:#14171f;--bg4:#1a1e28;
+  --border:rgba(245,166,35,0.08);--border2:rgba(245,166,35,0.15);
+  --gold:#F5A623;--gold2:#d4900f;--gold-dim:rgba(245,166,35,0.12);
+  --red:#FF3333;--red-dim:rgba(255,51,51,0.12);
+  --green:#4ade80;--green-dim:rgba(74,222,128,0.12);
+  --blue:#60a5fa;--blue-dim:rgba(96,165,250,0.12);
+  --text:#e8e0d4;--text2:#9a8e7e;--text3:#5a5248;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── Nav ── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(8,9,12,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;height:56px}
+.nav-brand{font-family:'Playfair Display',serif;font-weight:900;font-size:18px;color:var(--gold);letter-spacing:1px;display:flex;align-items:center;gap:10px}
+.nav-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.nav-tabs{display:flex;gap:4px;margin-left:40px}
+.nav-tab{padding:8px 16px;font-size:13px;font-weight:600;color:var(--text2);border-radius:6px;transition:all 0.2s;cursor:pointer;letter-spacing:0.5px}
+.nav-tab:hover{color:var(--text);background:var(--bg3)}
+.nav-tab.active{color:var(--gold);background:var(--gold-dim)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.nav-status{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.btn-refresh{padding:6px 14px;font-size:12px;font-weight:600;color:var(--gold);background:var(--gold-dim);border:1px solid var(--border2);border-radius:6px;cursor:pointer;transition:all 0.2s;font-family:inherit}
+.btn-refresh:hover{background:rgba(245,166,35,0.2)}
+
+/* ── Layout ── */
+.main{padding:72px 32px 32px;max-width:1400px;margin:0 auto}
+
+/* ── Section Headers ── */
+.section-header{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;margin-top:32px}
+.section-header:first-child{margin-top:0}
+.section-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text)}
+.section-count{font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--bg3);padding:2px 8px;border-radius:4px}
+
+/* ── Batch Cards ── */
+.batch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.batch-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
+.batch-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.batch-card.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.batch-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:0;transition:opacity 0.2s}
+.batch-card.active::before{opacity:1}
+.batch-id{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--gold)}
+.batch-meta{display:flex;align-items:center;gap:8px;margin-top:6px}
+.batch-status{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px}
+.batch-status.ready{color:var(--green);background:var(--green-dim)}
+.batch-status.review{color:var(--gold);background:var(--gold-dim)}
+.batch-status.sourcing{color:var(--blue);background:var(--blue-dim)}
+.batch-status.pending{color:var(--text3);background:var(--bg3)}
+.batch-status.produced{color:var(--green);background:var(--green-dim)}
+.batch-videos{font-size:12px;color:var(--text2)}
+
+/* ── Script Table ── */
+.scripts-table{width:100%;border-collapse:collapse;margin-top:8px}
+.scripts-table th{text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.scripts-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.scripts-table tr{cursor:pointer;transition:background 0.15s}
+.scripts-table tr:hover{background:var(--bg3)}
+.scripts-table tr.active{background:var(--gold-dim)}
+.player-cell{display:flex;align-items:center;gap:10px}
+.player-avatar{width:32px;height:32px;border-radius:6px;background:var(--bg4);overflow:hidden;flex-shrink:0}
+.player-avatar img{width:100%;height:100%;object-fit:cover}
+.player-name{font-weight:600;color:var(--text)}
+.player-sport{font-size:11px;color:var(--text3)}
+.story-tag{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;background:var(--gold-dim);color:var(--gold)}
+.clip-indicator{display:flex;gap:3px}
+.clip-dot{width:6px;height:6px;border-radius:50%;background:var(--bg4)}
+.clip-dot.sourced{background:var(--green)}
+.clip-dot.pending{background:var(--text3)}
+
+/* ── Detail Panel ── */
+.detail-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-top:16px;overflow:hidden}
+.detail-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px}
+.detail-player-photo{width:64px;height:80px;border-radius:8px;background:var(--bg4);overflow:hidden;border:2px solid var(--border2)}
+.detail-player-photo img{width:100%;height:100%;object-fit:cover}
+.detail-info h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text)}
+.detail-info .subtitle{font-size:13px;color:var(--text2);margin-top:2px}
+.detail-actions{margin-left:auto;display:flex;gap:8px}
+.detail-btn{padding:8px 16px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;transition:all 0.2s;font-family:inherit;border:1px solid var(--border)}
+.detail-btn.primary{color:#000;background:var(--gold);border-color:var(--gold)}
+.detail-btn.primary:hover{background:var(--gold2)}
+.detail-btn.secondary{color:var(--text2);background:var(--bg3)}
+.detail-btn.secondary:hover{color:var(--text);background:var(--bg4)}
+
+.detail-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.detail-left{padding:20px 24px;border-right:1px solid var(--border)}
+.detail-right{padding:20px 24px}
+
+.detail-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;margin-top:16px}
+.detail-label:first-child{margin-top:0}
+.detail-script{font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;font-family:'DM Sans',sans-serif}
+.detail-hook{font-size:14px;line-height:1.5;color:var(--gold);font-weight:600;font-style:italic}
+.detail-stat{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text2)}
+
+/* ── Clips Grid ── */
+.clips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px}
+.clip-card{aspect-ratio:9/16;background:var(--bg4);border-radius:8px;overflow:hidden;position:relative;cursor:pointer;transition:all 0.2s;border:1px solid transparent}
+.clip-card:hover{border-color:var(--gold);transform:scale(1.03)}
+.clip-card video,.clip-card img{width:100%;height:100%;object-fit:cover}
+.clip-card .clip-label{position:absolute;bottom:0;left:0;right:0;padding:4px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.8));font-size:9px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.clip-card.empty{display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px}
+
+/* ── Video Player ── */
+.video-player{background:var(--bg4);border-radius:10px;overflow:hidden;aspect-ratio:9/16;max-height:400px;margin-top:8px;display:flex;align-items:center;justify-content:center}
+.video-player video{width:100%;height:100%;object-fit:contain}
+.video-player .placeholder{color:var(--text3);font-size:13px;text-align:center}
+
+/* ── Loading / Empty States ── */
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--text3)}
+.loading .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin-right:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px;color:var(--text3);font-size:14px}
+
+/* ── Background Texture ── */
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(245,166,35,0.03) 0%,transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(245,166,35,0.02) 0%,transparent 50%);pointer-events:none;z-index:-1}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .main{padding:64px 16px 16px}
+  .detail-body{grid-template-columns:1fr}
+  .detail-left{border-right:none;border-bottom:1px solid var(--border)}
+  .nav-tabs{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="dot"></span>
+    SPORTS LORE
+  </div>
+  <div class="nav-tabs">
+    <a href="/" class="nav-tab">Props Edge</a>
+    <a href="/lore.html" class="nav-tab active">Sports Lore</a>
+  </div>
+  <div class="nav-right">
+    <span class="nav-status" id="statusText">Loading...</span>
+    <button class="btn-refresh" onclick="loadAll()">Refresh</button>
+  </div>
+</nav>
+
+<div class="main">
+  <!-- Batches -->
+  <div class="section-header">
+    <h1 class="section-title">Batches</h1>
+    <span class="section-count" id="batchCount">—</span>
+  </div>
+  <div class="batch-grid" id="batchGrid">
+    <div class="loading"><div class="spinner"></div>Loading batches...</div>
+  </div>
+
+  <!-- Scripts -->
+  <div class="section-header">
+    <h1 class="section-title">Scripts</h1>
+    <span class="section-count" id="scriptCount">—</span>
+  </div>
+  <div id="scriptsContainer">
+    <div class="empty">Select a batch to view scripts</div>
+  </div>
+
+  <!-- Detail Panel -->
+  <div id="detailContainer"></div>
+</div>
+
+<script>
+const API = "/api/lore?route=dashboard";
+const SECRET = "picks25"; // Will be replaced with proper auth
+
+async function api(action, params = {}) {
+  const qs = new URLSearchParams({ action, ...params }).toString();
+  const resp = await fetch(`${API}&${qs}`, {
+    headers: { "x-secret": SECRET },
+  });
+  return resp.json();
+}
+
+let currentBatch = null;
+let currentScript = null;
+
+// ── Load Batches ──
+async function loadBatches() {
+  const data = await api("batches");
+  const grid = document.getElementById("batchGrid");
+  const batches = data.batches || [];
+  document.getElementById("batchCount").textContent = batches.length;
+
+  if (batches.length === 0) {
+    grid.innerHTML = '<div class="empty">No batches found</div>';
+    return;
+  }
+
+  grid.innerHTML = batches.map(b => `
+    <div class="batch-card ${currentBatch === b.batchId ? 'active' : ''}" onclick="selectBatch('${b.batchId}')">
+      <div class="batch-id">${b.batchId}</div>
+      <div class="batch-meta">
+        <span class="batch-status ${(b.status || 'pending').toLowerCase().replace(/\s/g, '')}">${b.status || 'Unknown'}</span>
+        <span class="batch-videos">${b.videoCount || '?'} videos</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ── Load Scripts for Batch ──
+async function selectBatch(batchId) {
+  currentBatch = batchId;
+  currentScript = null;
+  loadBatches(); // refresh active state
+
+  const container = document.getElementById("scriptsContainer");
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading scripts...</div>';
+
+  const data = await api("scripts", { batchId });
+  const scripts = data.scripts || [];
+  document.getElementById("scriptCount").textContent = scripts.length;
+
+  if (scripts.length === 0) {
+    container.innerHTML = '<div class="empty">No scripts in this batch</div>';
+    return;
+  }
+
+  container.innerHTML = `<table class="scripts-table">
+    <thead><tr>
+      <th>Player</th>
+      <th>Type</th>
+      <th>Words</th>
+      <th>Status</th>
+      <th>Clips</th>
+    </tr></thead>
+    <tbody>${scripts.map(s => `
+      <tr onclick="selectScript('${s.rowId}')" class="${currentScript === s.rowId ? 'active' : ''}">
+        <td>
+          <div class="player-cell">
+            <div class="player-avatar">${s.playerPhotoUrl ? `<img src="${s.playerPhotoUrl}" alt="">` : ''}</div>
+            <div>
+              <div class="player-name">${s.playerName || 'Unknown'}</div>
+              <div class="player-sport">${s.playerSport || ''}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="story-tag">${(s.storyType || '').replace(/_/g, ' ')}</span></td>
+        <td><span class="detail-stat">${s.wordCount}</span></td>
+        <td><span class="batch-status ${(s.status || '').toLowerCase()}">${s.status || '—'}</span></td>
+        <td>
+          <div class="clip-indicator">
+            ${Array.from({length: Math.max(s.clipBriefCount || 0, 7)}, (_, i) =>
+              `<div class="clip-dot ${i < (s.clipsSourced || 0) ? 'sourced' : 'pending'}"></div>`
+            ).join('')}
+          </div>
+        </td>
+      </tr>
+    `).join('')}</tbody>
+  </table>`;
+}
+
+// ── Load Script Detail ──
+async function selectScript(rowId) {
+  currentScript = rowId;
+  const container = document.getElementById("detailContainer");
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading details...</div>';
+
+  const data = await api("script-detail", { rowId });
+  const s = data.script;
+  if (!s) {
+    container.innerHTML = '<div class="empty">Script not found</div>';
+    return;
+  }
+
+  const clips = s.clipBriefs || [];
+  const R2_BASE = "https://pub-86aa1c96eda04a8099526017d95dbb8f.r2.dev";
+
+  container.innerHTML = `
+  <div class="detail-panel">
+    <div class="detail-header">
+      <div class="detail-player-photo">
+        ${s.playerPhotoUrl ? `<img src="${s.playerPhotoUrl}" alt="${s.playerName}">` : ''}
+      </div>
+      <div class="detail-info">
+        <h2>${s.playerName || 'Unknown Player'}</h2>
+        <div class="subtitle">${(s.storyType || '').replace(/_/g, ' ')} · ${s.playerSport || 'NBA'} · ${s.rowId}</div>
+      </div>
+      <div class="detail-actions">
+        ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="detail-btn secondary">YouTube</a>` : ''}
+        ${s.renderUrl ? `<a href="${s.renderUrl}" target="_blank" class="detail-btn primary">Watch Video</a>` : ''}
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-left">
+        <div class="detail-label">Hook</div>
+        <div class="detail-hook">${s.hookLine || '—'}</div>
+
+        <div class="detail-label">Script</div>
+        <div class="detail-script">${s.script || '—'}</div>
+
+        <div class="detail-label">Titles</div>
+        <div class="detail-stat">A: ${s.titleA || '—'}</div>
+        <div class="detail-stat">B: ${s.titleB || '—'}</div>
+
+        <div class="detail-label">Description</div>
+        <div class="detail-stat" style="font-size:12px;line-height:1.5">${s.description || '—'}</div>
+
+        <div class="detail-label">Comment Bait</div>
+        <div class="detail-stat">${s.commentBait || '—'}</div>
+      </div>
+      <div class="detail-right">
+        <div class="detail-label">Clips (${clips.filter(c => c.clipUrl).length}/${clips.length} sourced)</div>
+        <div class="clips-grid">
+          ${clips.length > 0 ? clips.map((c, i) => {
+            const url = c.clipUrl || `${R2_BASE}/${s.rowId}/clip_${c.slot || i+1}.mp4`;
+            return c.clipUrl ? `
+              <div class="clip-card" onclick="this.querySelector('video')?.play()">
+                <video src="${url}" muted loop preload="metadata"></video>
+                <div class="clip-label">${c.segmentName || 'clip'} #${c.slot || i+1}</div>
+              </div>
+            ` : `<div class="clip-card empty">No clip</div>`;
+          }).join('') : '<div class="empty">No clips sourced yet</div>'}
+        </div>
+
+        ${s.renderUrl ? `
+          <div class="detail-label">Rendered Video</div>
+          <div class="video-player">
+            <video src="${s.renderUrl}" controls preload="metadata"></video>
+          </div>
+        ` : `
+          <div class="detail-label">Rendered Video</div>
+          <div class="video-player"><div class="placeholder">Not yet rendered</div></div>
+        `}
+
+        <div class="detail-label">Status</div>
+        <div class="detail-stat">Clip Source: ${s.clipSourceStatus || '—'}</div>
+        <div class="detail-stat">Music: ${s.musicMood || '—'} · ${s.musicSource || '—'}</div>
+        <div class="detail-stat">Voiceover: ${s.voiceoverUrl ? 'Generated' : 'Pending'}</div>
+        <div class="detail-stat">Render: ${s.renderUrl ? 'Complete' : 'Pending'}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Re-highlight active script row
+  document.querySelectorAll('.scripts-table tr').forEach(tr => {
+    tr.classList.toggle('active', tr.onclick?.toString().includes(rowId));
+  });
+}
+
+// ── Load All ──
+async function loadAll() {
+  document.getElementById("statusText").textContent = "Refreshing...";
+  await loadBatches();
+  if (currentBatch) await selectBatch(currentBatch);
+  const now = new Date().toLocaleTimeString();
+  document.getElementById("statusText").textContent = `Updated ${now}`;
+}
+
+loadAll();
+</script>
+</body>
+</html>

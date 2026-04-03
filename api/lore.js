@@ -45,6 +45,7 @@ const handlers = {
   "cron-lore":         () => require("../lib/lore/cron-lore"),
   "generate-thumbnail":() => require("../lib/lore/generate-thumbnail"),
   "audio":             () => require("../lib/lore/audio"),
+  "dashboard":         () => require("../lib/lore/dashboard"),
 };
 
 module.exports = async function handler(req, res) {
