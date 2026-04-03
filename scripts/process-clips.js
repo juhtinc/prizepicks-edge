@@ -98,42 +98,33 @@ function isBlockedChannel(channelTitle) {
 }
 
 // ── yt-dlp download ──
-function downloadClip(videoId, startTime, duration, outputPath) {
-  // Download full video first, then extract segment with ffmpeg
-  // This avoids --download-sections issues with modern yt-dlp + SABR
-  const fullVideoPath = outputPath.replace(".mp4", "_full.mp4");
-  const cookiesArg = process.env.YOUTUBE_COOKIES_PATH ? `--cookies "${process.env.YOUTUBE_COOKIES_PATH}"` : "";
-  const downloadCmd = `yt-dlp -f "best[height<=1080]/best" --merge-output-format mp4 --extractor-args "youtube:player_client=tv_embedded" --js-runtimes node ${cookiesArg} -o "${fullVideoPath}" --no-playlist --no-warnings --socket-timeout 30 "https://youtube.com/watch?v=${videoId}"`;
+async function downloadClip(videoId, startTime, duration, outputPath) {
+  // Download clip via VPS API (yt-dlp + Cloudflare WARP on Contabo server)
+  const apiUrl = process.env.CLIP_API_URL || "http://194.163.180.19:3456";
+  const apiSecret = process.env.CLIP_API_SECRET || "sports-lore-clips-2026";
 
-  console.log(`    yt-dlp cmd: ${downloadCmd.slice(0, 150)}...`);
+  console.log(`    Requesting clip from VPS: ${videoId} @ ${startTime}s +${duration}s`);
 
   try {
-    // Step 1: Download full video (capture stderr for error diagnosis)
-    const result = execSync(downloadCmd, { timeout: 180000, stdio: ["pipe", "pipe", "pipe"], encoding: "utf8" });
-    if (result) console.log(`    yt-dlp stdout: ${result.slice(0, 200)}`);
+    const resp = await fetch(`${apiUrl}/download-clip`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId, startTime, duration, secret: apiSecret }),
+      signal: AbortSignal.timeout(120000),
+    });
 
-    if (!fs.existsSync(fullVideoPath)) {
-      console.error(`  yt-dlp: no output file created for ${videoId}`);
+    if (!resp.ok) {
+      const err = await resp.text();
+      console.error(`    VPS returned ${resp.status}: ${err.slice(0, 150)}`);
       return false;
     }
 
-    const fileSize = fs.statSync(fullVideoPath).size;
-    console.log(`    Downloaded: ${(fileSize / 1024 / 1024).toFixed(1)}MB`);
-
-    // Step 2: Extract segment with ffmpeg (fast, no re-encode)
-    const trimCmd = `ffmpeg -ss ${startTime} -i "${fullVideoPath}" -t ${duration} -c copy -y "${outputPath}"`;
-    execSync(trimCmd, { timeout: 30000, stdio: "pipe" });
-
-    // Clean up full video
-    try { fs.unlinkSync(fullVideoPath); } catch {}
-
-    return fs.existsSync(outputPath);
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    fs.writeFileSync(outputPath, buffer);
+    console.log(`    Downloaded: ${(buffer.length / 1024).toFixed(0)}KB`);
+    return true;
   } catch (e) {
-    // Show the actual yt-dlp error (usually in stderr)
-    const stderr = e.stderr ? e.stderr.toString().slice(-300) : "no stderr";
-    console.error(`  Download failed for ${videoId}: ${stderr}`);
-    // Clean up
-    try { fs.unlinkSync(fullVideoPath); } catch {}
+    console.error(`    VPS download failed: ${e.message.slice(0, 150)}`);
     return false;
   }
 }
@@ -378,7 +369,7 @@ Return JSON:
     const transformedPath = path.join(tmpDir, `clip_${i}.mp4`);
 
     console.log(`  Clip ${i + 1}: downloading from ${video.videoId} at ${startTime}s...`);
-    const ok = downloadClip(video.videoId, startTime, clipDuration, rawPath);
+    const ok = await downloadClip(video.videoId, startTime, clipDuration, rawPath);
 
     if (!ok) {
       console.log(`  Clip ${i + 1}: download failed, skipping`);

@@ -27,73 +27,18 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install FFmpeg (cached)
-        uses: FedericoCarboni/setup-ffmpeg@v3
-        with:
-          ffmpeg-version: release
-
-      - name: Install yt-dlp with JS runtime support
-        run: |
-          pip install -U "yt-dlp[default]"
-          yt-dlp --version
-          echo "Node.js version (JS runtime for yt-dlp):"
-          node --version
-
-      - name: Configure YouTube cookies
-        env:
-          YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
-        run: |
-          if [ -n "$YOUTUBE_COOKIES" ]; then
-            echo "$YOUTUBE_COOKIES" | base64 -d > /tmp/yt_cookies.txt
-            echo "YOUTUBE_COOKIES_PATH=/tmp/yt_cookies.txt" >> $GITHUB_ENV
-            echo "YouTube cookies configured ($(wc -l < /tmp/yt_cookies.txt) lines)"
-          else
-            echo "No YouTube cookies configured"
-          fi
-
-      - name: Test yt-dlp can access YouTube
-        run: |
-          echo "Testing yt-dlp with verbose output..."
-          COOKIES_ARG=""
-          if [ -f "/tmp/yt_cookies.txt" ]; then
-            COOKIES_ARG="--cookies /tmp/yt_cookies.txt"
-            echo "Using cookies file"
-          fi
-          # Test with a popular NBA highlight video (Kobe 81 points)
-          yt-dlp -v -f "best[height<=480]/best" \
-            --extractor-args "youtube:player_client=tv_embedded" \
-            --js-runtimes node \
-            $COOKIES_ARG \
-            --merge-output-format mp4 \
-            -o "/tmp/test_clip.mp4" \
-            --no-playlist --socket-timeout 30 \
-            "https://www.youtube.com/watch?v=wV9CMVdY3dM" 2>&1 | tail -30 || true
-          if [ -f "/tmp/test_clip.mp4" ]; then
-            echo "SUCCESS: test clip downloaded ($(du -h /tmp/test_clip.mp4 | cut -f1))"
-            rm /tmp/test_clip.mp4
-          else
-            echo "FAILED: no output file"
-            echo "Trying without tv_embedded client..."
-            yt-dlp -v -f "best[height<=480]/best" \
-              --js-runtimes node \
-              $COOKIES_ARG \
-              --merge-output-format mp4 \
-              -o "/tmp/test_clip2.mp4" \
-              --no-playlist --socket-timeout 30 \
-              "https://www.youtube.com/watch?v=wV9CMVdY3dM" 2>&1 | tail -30 || true
-            if [ -f "/tmp/test_clip2.mp4" ]; then
-              echo "SUCCESS with default client ($(du -h /tmp/test_clip2.mp4 | cut -f1))"
-              rm /tmp/test_clip2.mp4
-            else
-              echo "BOTH APPROACHES FAILED - YouTube is blocking this runner"
-            fi
-          fi
-
       - name: Install dependencies
         run: npm ci
 
       - name: Install R2 SDK
         run: npm install @aws-sdk/client-s3
+
+      - name: Test VPS clip API
+        env:
+          CLIP_API_URL: ${{ secrets.CLIP_API_URL }}
+        run: |
+          echo "Testing VPS clip API..."
+          curl -s --max-time 10 "${CLIP_API_URL}/health" || echo "VPS unreachable!"
 
       - name: Process clips
         env:
@@ -106,6 +51,8 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          CLIP_API_URL: ${{ secrets.CLIP_API_URL }}
+          CLIP_API_SECRET: ${{ secrets.CLIP_API_SECRET }}
         run: |
           # Get payload from dispatch event or manual input
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
