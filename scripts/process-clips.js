@@ -280,21 +280,30 @@ async function processScript(rowId) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `clips-${rowId}-`));
   console.log(`  Temp dir: ${tmpDir}`);
 
-  // 2. Claude plans clip slots
+  // 2. Claude plans clip slots — each search matches what the narrator says
   console.log("  Asking Claude for clip plan...");
   const clipPlan = await askClaude(`You are sourcing video clips for a YouTube Short about ${script.playerName} (${script.playerSport}).
 
-THE SCRIPT:
-${script.hookLine || ""}
-${script.script || ""}
+THE FULL SCRIPT (what the narrator says):
+"${script.hookLine || ""}"
+"${script.script || ""}"
 
-I need a clip description for each of these segments. For each, provide a specific YouTube search query to find a SHORT clip of that SPECIFIC play/moment. Generate HYPER-SPECIFIC queries for single plays, not compilations.
+I need YouTube search queries to find clips that MATCH what the narrator is saying at each moment. The clips should visually represent the narration.
 
-SEGMENTS:
-${segments.map((s, i) => `${i + 1}. [${s.start}s-${s.end}s] "${s.name}" (${s.clipCategory})`).join("\n")}
+SEGMENTS (each gets 2-3 clips):
+${segments.map((s, i) => `${i + 1}. [${s.start}s-${s.end}s] "${s.name}"`).join("\n")}
+
+RULES:
+- Every search query MUST include "${script.playerName}"
+- Match the search to the CONTENT being narrated at that timestamp
+- If narration talks about blocks → search for "${script.playerName} blocks"
+- If narration talks about rookie season → search for "${script.playerName} rookie highlights"
+- If narration talks about a specific game/moment → search for that exact moment
+- Generate 2-3 different search queries per segment for variety
+- Prefer highlight compilations (4-20 min videos) over short clips
 
 Return JSON:
-{"clips":[{"slot":1,"search_query":"specific play search","clip_type":"gameplay"},...],"player_photo_search":"${script.playerName} portrait"}`, 1500);
+{"clips":[{"slot":1,"search_query":"${script.playerName} specific play","visual_match":"what narrator says here"},...],"searches":["query1","query2","query3"]}`, 2000);
 
   if (!clipPlan || !clipPlan.clips) {
     console.error("  Claude clip plan failed");
@@ -303,14 +312,14 @@ Return JSON:
 
   console.log(`  ${clipPlan.clips.length} clip slots planned`);
 
-  // 3. Search YouTube for PLAYER-SPECIFIC highlights only
-  // Use the player's name in EVERY search to ensure relevance
+  // 3. Search YouTube using Claude's content-matched queries + general searches
   const playerName = script.playerName;
+  const claudeSearches = (clipPlan.searches || []).slice(0, 3);
   const playerSearches = [
+    ...claudeSearches,
     `${playerName} highlights compilation`,
-    `${playerName} best plays career`,
-    `${playerName} ${script.playerSport || "NBA"} highlights`,
-  ];
+    `${playerName} best plays career highlights`,
+  ].slice(0, 5); // max 5 searches
 
   const allVideos = [];
   for (const query of playerSearches) {
@@ -346,12 +355,12 @@ Return JSON:
   // 4. Download clips from MULTIPLE player-specific videos for variety
   // Skip scene detection — download 2s clips at varied intervals from each video
   const clipBriefs = [];
-  const clipDuration = 2; // 2s clips for quick-cut pacing
+  const clipDuration = 3; // 3s clips
   const mood = script.storyType === "forgotten_legend" ? "nostalgic" :
                script.storyType === "record_breaker" ? "epic" : "dramatic";
 
   // Download MORE clips than segments (for quick-cut pacing — 2 clips per segment)
-  const totalClips = Math.min(clipPlan.clips.length * 4, 28);
+  const totalClips = Math.min(clipPlan.clips.length * 3, 18);
 
   for (let i = 0; i < totalClips; i++) {
     const segIdx = Math.floor(i / 2); // 2 clips per segment

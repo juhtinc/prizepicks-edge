@@ -259,7 +259,7 @@ async function selectScript(rowId) {
   scriptData = s;
 
   const clips = s.clipBriefs || [];
-  const TOTAL_CLIPS = 28; // ~2s per clip for 55s video
+  const TOTAL_CLIPS = 18; // ~3s per clip for 55s video
   const clipUrls = [];
   for (let i = 1; i <= TOTAL_CLIPS; i++) {
     const brief = clips.find(c => c.slot === i);
@@ -420,8 +420,8 @@ function selectClip(idx, clips) {
   // Show what text plays during this clip
   const segments = getSegments(scriptData?.storyType || 'forgotten_legend');
   const totalDur = Math.max(...segments.map(s => s.end), 55);
-  const clipTime = (idx / 28) * totalDur; // approximate time for this clip
-  const clipEndTime = clipTime + (totalDur / 28);
+  const clipTime = (idx / 18) * totalDur; // approximate time for this clip
+  const clipEndTime = clipTime + (totalDur / 18);
 
   // Find the matching caption from the full script
   const fullText = (scriptData?.hookLine ? scriptData.hookLine + '. ' : '') + (scriptData?.script || '');
@@ -594,7 +594,7 @@ function openUploadModal(slot) {
           <label style="font-size:11px;color:var(--text2)">Trim start (s):</label>
           <input type="number" id="trimStart" value="0" min="0" step="0.5" style="width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text);font-size:12px">
           <label style="font-size:11px;color:var(--text2)">Duration (s):</label>
-          <input type="number" id="trimDur" value="2" min="0.5" max="5" step="0.5" style="width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text);font-size:12px">
+          <input type="number" id="trimDur" value="3" min="0.5" max="5" step="0.5" style="width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text);font-size:12px">
         </div>
       </div>
 
