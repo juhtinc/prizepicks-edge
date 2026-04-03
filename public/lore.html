@@ -566,69 +566,46 @@ async function doUpload(slot) {
   if (!uploadFile || !curScript) return;
   const btn = document.getElementById('uploadBtn');
   btn.disabled = true;
-  btn.textContent = 'Uploading...';
+  btn.textContent = 'Processing...';
   document.getElementById('uploadProgress').style.display = 'block';
-  document.getElementById('uploadBar').style.width = '20%';
-  document.getElementById('uploadStatus').textContent = 'Reading file...';
+  document.getElementById('uploadBar').style.width = '10%';
+
+  const trimStart = parseFloat(document.getElementById('trimStart').value) || 0;
+  const trimDur = parseFloat(document.getElementById('trimDur').value) || 2;
 
   try {
-    // Step 1: Read file as ArrayBuffer
-    const buffer = await uploadFile.arrayBuffer();
+    // Step 1: Trim the video in the browser using a hidden video + canvas + MediaRecorder
+    document.getElementById('uploadStatus').textContent = 'Trimming video...';
+    const trimmedBlob = await trimVideoInBrowser(uploadFile, trimStart, trimDur);
     document.getElementById('uploadBar').style.width = '40%';
-    document.getElementById('uploadStatus').textContent = 'Uploading to storage...';
 
-    // Step 2: Upload directly to R2 via a presigned-style approach
-    // For now, use the VPS as a relay (it can handle large files)
-    const formData = new FormData();
-    formData.append('clip', uploadFile);
-    formData.append('rowId', curScript);
-    formData.append('slot', slot);
-    formData.append('secret', 'sports-lore-clips-2026');
-
-    // Upload through Vercel API (works for clips under 4MB)
-    // Read file as base64
+    // Step 2: Convert trimmed blob to base64
+    document.getElementById('uploadStatus').textContent = 'Preparing upload...';
     const reader = new FileReader();
     const base64 = await new Promise((resolve, reject) => {
       reader.onload = () => resolve(reader.result.split(',')[1]);
       reader.onerror = reject;
-      reader.readAsDataURL(uploadFile);
+      reader.readAsDataURL(trimmedBlob);
     });
 
-    // Vercel body limit is 4.5MB. Base64 adds ~33% overhead.
-    // So actual file limit is ~3.3MB
-    if (uploadFile.size > 3.3 * 1024 * 1024) {
-      document.getElementById('uploadStatus').textContent = 'File too large (' + (uploadFile.size/1024/1024).toFixed(1) + 'MB). Max ~3MB. Try a shorter or lower-res clip.';
-      btn.disabled = false;
-      btn.textContent = 'Upload & Replace';
-      return;
-    }
+    document.getElementById('uploadBar').style.width = '60%';
+    document.getElementById('uploadStatus').textContent = 'Uploading (' + (trimmedBlob.size/1024).toFixed(0) + 'KB)...';
 
+    // Step 3: Upload to R2 via Vercel API
     const uploadResp = await fetch(`${API}&action=upload-clip`, {
       method: 'POST',
       headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
       body: JSON.stringify({ rowId: curScript, slot, videoBase64: base64 }),
     });
 
-    document.getElementById('uploadBar').style.width = '80%';
+    document.getElementById('uploadBar').style.width = '90%';
 
     if (uploadResp.ok) {
       const result = await uploadResp.json();
-      document.getElementById('uploadStatus').textContent = 'Updating database...';
-
-      // Step 3: Update KV with the new clip URL
-      await fetch(`${API}&action=replace-clip`, {
-        method: 'POST',
-        headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowId: curScript, slot, clipUrl: result.url }),
-      });
-
       document.getElementById('uploadBar').style.width = '100%';
       document.getElementById('uploadStatus').textContent = 'Clip replaced!';
       toast(`Clip #${slot} replaced successfully`);
-      setTimeout(() => {
-        closeUploadModal();
-        selectScript(curScript);
-      }, 1000);
+      setTimeout(() => { closeUploadModal(); selectScript(curScript); }, 1000);
     } else {
       const err = await uploadResp.text();
       document.getElementById('uploadStatus').textContent = 'Upload failed: ' + err.slice(0, 100);
@@ -640,6 +617,68 @@ async function doUpload(slot) {
     btn.disabled = false;
     btn.textContent = 'Upload & Replace';
   }
+}
+
+// Trim video in browser using MediaRecorder + video element
+function trimVideoInBrowser(file, startTime, duration) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.src = URL.createObjectURL(file);
+
+    video.onloadedmetadata = () => {
+      // Create a canvas to capture frames
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.min(video.videoWidth, 1080);
+      canvas.height = Math.min(video.videoHeight, 1920);
+      const ctx = canvas.getContext('2d');
+
+      // Use MediaRecorder to capture the canvas as video
+      const stream = canvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 2000000,
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        URL.revokeObjectURL(video.src);
+        resolve(blob);
+      };
+
+      // Seek to start time, then play and record for duration
+      video.currentTime = startTime;
+      video.onseeked = () => {
+        recorder.start();
+        video.play();
+
+        // Draw frames to canvas
+        const drawFrame = () => {
+          if (video.currentTime >= startTime + duration || video.ended) {
+            recorder.stop();
+            video.pause();
+            return;
+          }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          requestAnimationFrame(drawFrame);
+        };
+        drawFrame();
+
+        // Safety timeout
+        setTimeout(() => {
+          if (recorder.state === 'recording') {
+            recorder.stop();
+            video.pause();
+          }
+        }, (duration + 1) * 1000);
+      };
+    };
+
+    video.onerror = reject;
+  });
 }
 
 // Override the replaceClip function to open the upload modal
