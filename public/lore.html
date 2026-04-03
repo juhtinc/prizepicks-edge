@@ -95,6 +95,21 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .timeline-right{padding:16px 20px;max-height:600px;overflow-y:auto}
 
 .tl-segment{padding:10px 12px;border-radius:6px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;border:1px solid transparent}
+
+/* Unified clip-text timeline rows */
+.clip-row{display:flex;gap:10px;align-items:stretch;padding:6px 8px;border-radius:6px;margin-bottom:4px;border:1px solid transparent;transition:all 0.15s;cursor:grab;user-select:none}
+.clip-row:hover{background:var(--bg3);border-color:var(--border)}
+.clip-row.active{background:var(--gold-dim);border-color:var(--border2)}
+.clip-row.drag-over{border-color:var(--gold);background:rgba(245,166,35,0.08)}
+.clip-row.dragging{opacity:0.4}
+.clip-row-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.clip-row-thumb{width:40px;height:70px;border-radius:4px;background:var(--bg4);overflow:hidden;flex-shrink:0}
+.clip-row-thumb video{width:100%;height:100%;object-fit:cover}
+.clip-row-text{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.clip-row-caption{font-size:12px;line-height:1.4;color:var(--text)}
+.clip-row-time{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:2px}
+.clip-row-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
+.drag-handle{cursor:grab;color:var(--text3);font-size:14px;padding:0 4px}
 .tl-segment:hover{background:var(--bg3)}
 .tl-segment.active{background:var(--gold-dim);border-color:var(--border2)}
 .tl-seg-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -338,14 +353,18 @@ async function selectScript(rowId) {
       </div>
 
       <div class="timeline-right">
-        <div class="clip-panel-title">Current Clip <span id="clipSlotLabel">#1</span></div>
-        <div class="clip-preview" id="clipPreview">
-          <video id="clipVideo" muted loop autoplay></video>
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <div style="flex:1">
+            <div class="clip-panel-title">Current Clip <span id="clipSlotLabel">#1</span></div>
+            <div class="clip-preview" id="clipPreview">
+              <video id="clipVideo" muted loop autoplay></video>
+            </div>
+            <div class="clip-actions" id="clipActions"></div>
+          </div>
         </div>
-        <div class="clip-actions" id="clipActions"></div>
 
-        <div class="clip-panel-title">All Clips (${clipUrls.filter(c=>c.clipUrl).length} sourced)</div>
-        <div class="clip-grid-sm" id="clipGrid"></div>
+        <div class="clip-panel-title">Clip Timeline — drag to reorder</div>
+        <div id="clipTimeline" style="max-height:400px;overflow-y:auto"></div>
 
         ${s.renderUrl ? `
           <div class="clip-panel-title" style="margin-top:16px">Rendered Video</div>
@@ -362,19 +381,50 @@ async function selectScript(rowId) {
   </div>`;
 
   // Render clip grid
-  renderClipGrid(clipUrls);
+  renderClipTimeline(clipUrls);
   selectClip(0, clipUrls);
 }
 
-function renderClipGrid(clipUrls) {
-  const grid = document.getElementById("clipGrid");
-  if (!grid) return;
-  grid.innerHTML = clipUrls.map((c, i) => `
-    <div class="clip-thumb ${i===curClipIdx?'active':''} ${c.approved===true?'approved':''} ${c.approved===false?'rejected':''}" onclick="selectClip(${i})" data-clip="${i}">
-      <video src="${c.url}" muted preload="metadata" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:9px;color:var(--text3)\\'>—</div>'"></video>
-      ${c.approved===true?'<div class="badge ok">✓</div>':''}
-      ${c.approved===false?'<div class="badge no">✗</div>':''}
-      <div class="clip-num">#${c.slot}</div>
+function renderClipTimeline(clipUrls) {
+  const timeline = document.getElementById("clipTimeline");
+  if (!timeline) return;
+
+  // Build caption chunks matched to each clip's timestamp
+  const s = scriptData;
+  const fullText = (s?.hookLine ? s.hookLine + '. ' : '') + (s?.script || '');
+  const totalDur = 55;
+  const clipDur = totalDur / clipUrls.length;
+
+  // Split text into chunks, one per clip
+  const allWords = fullText.split(/\s+/).filter(Boolean);
+  const wordsPerClip = Math.ceil(allWords.length / clipUrls.length);
+
+  const clipCaptions = clipUrls.map((c, i) => {
+    const startWord = i * wordsPerClip;
+    const words = allWords.slice(startWord, startWord + wordsPerClip);
+    return words.map(w => {
+      const clean = w.replace(/[.,!?;:'"()\-—]/g, '');
+      if (/^\d[\d,.]*$/.test(clean)) return `<span style="color:#F5A623">${w}</span>`;
+      if (/^(never|nobody|worst|banned|fired|died|forgotten|zero)$/i.test(clean)) return `<span style="color:#FF3333">${w}</span>`;
+      return w;
+    }).join(' ');
+  });
+
+  timeline.innerHTML = clipUrls.map((c, i) => `
+    <div class="clip-row ${i===curClipIdx?'active':''}" data-idx="${i}" onclick="selectClip(${i})"
+         draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropClip(event,${i})" ondragend="dragEnd(event)">
+      <div class="clip-row-num">${i+1}</div>
+      <div class="clip-row-thumb">
+        <video src="${c.url}" muted preload="metadata" onerror="this.style.display='none'"></video>
+      </div>
+      <div class="clip-row-text">
+        <div class="clip-row-caption">${clipCaptions[i] || '—'}</div>
+        <div class="clip-row-time">${formatTime(i * clipDur)}–${formatTime((i+1) * clipDur)}</div>
+      </div>
+      <div class="clip-row-actions">
+        <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();replaceClip(${i})" title="Replace">↻</button>
+        <span class="drag-handle" title="Drag to reorder">⠿</span>
+      </div>
     </div>
   `).join("");
 }
@@ -473,6 +523,54 @@ function selectSegment(segIdx, clipSlot) {
 
   // Select the first clip in the range
   selectClip(clipSlot);
+}
+
+// ── Drag and Drop ──
+let dragIdx = null;
+
+function dragStart(e, idx) {
+  dragIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.target.classList.add('dragging');
+}
+
+function dragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const row = e.target.closest('.clip-row');
+  document.querySelectorAll('.clip-row').forEach(r => r.classList.remove('drag-over'));
+  if (row) row.classList.add('drag-over');
+}
+
+function dropClip(e, targetIdx) {
+  e.preventDefault();
+  document.querySelectorAll('.clip-row').forEach(r => { r.classList.remove('drag-over'); r.classList.remove('dragging'); });
+  if (dragIdx === null || dragIdx === targetIdx) return;
+
+  // Reorder the clips in the timeline
+  const timeline = document.getElementById('clipTimeline');
+  const rows = Array.from(timeline.children);
+  const draggedRow = rows[dragIdx];
+
+  if (dragIdx < targetIdx) {
+    rows[targetIdx].after(draggedRow);
+  } else {
+    rows[targetIdx].before(draggedRow);
+  }
+
+  // Update indices
+  Array.from(timeline.children).forEach((row, i) => {
+    row.querySelector('.clip-row-num').textContent = i + 1;
+    row.dataset.idx = i;
+  });
+
+  toast(`Clip moved from #${dragIdx+1} to #${targetIdx+1}`);
+  dragIdx = null;
+}
+
+function dragEnd(e) {
+  document.querySelectorAll('.clip-row').forEach(r => { r.classList.remove('drag-over'); r.classList.remove('dragging'); });
+  dragIdx = null;
 }
 
 async function approveClip(idx) {
