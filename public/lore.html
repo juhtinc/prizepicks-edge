@@ -280,7 +280,8 @@ async function selectScript(rowId) {
         <div class="detail-sub">${(s.storyType||'').replace(/_/g,' ')} · ${s.playerSport||'NBA'} · ${rowId}</div>
       </div>
       <div class="detail-actions">
-        ${s.renderUrl?`<a href="${s.renderUrl}" target="_blank" class="btn btn-gold">Watch Video</a>`:''}
+        <button class="btn btn-gold" onclick="openVideoPreview()">▶ Preview Video</button>
+        ${s.renderUrl?`<a href="${s.renderUrl}" target="_blank" class="btn btn-dim">Rendered</a>`:''}
         ${s.youtubeUrl?`<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim">YouTube</a>`:''}
         <button class="btn btn-dim" onclick="sourceClips('${rowId}')">Re-source Clips</button>
       </div>
@@ -723,6 +724,193 @@ function trimVideoInBrowser(file, startTime, duration) {
 // Override the replaceClip function to open the upload modal
 async function replaceClip(idx) {
   openUploadModal(idx + 1); // slots are 1-indexed
+}
+
+// ── Video Preview Modal ──
+function openVideoPreview() {
+  if (!scriptData) return;
+  const s = scriptData;
+  const segments = getSegments(s.storyType);
+  const sentences = splitIntoSegments(s.hookLine, s.script, segments);
+  const clips = s.clipBriefs || [];
+
+  // Build clip URLs for each 2s cut
+  const cutClips = [];
+  let clipIdx = 0;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const dur = seg.end - seg.start;
+    const numCuts = Math.max(1, Math.ceil(dur / 2));
+    const cutDur = dur / numCuts;
+    for (let c = 0; c < numCuts; c++) {
+      const brief = clips[clipIdx] || clips[clipIdx % Math.max(clips.length, 1)];
+      cutClips.push({
+        start: seg.start + c * cutDur,
+        duration: cutDur,
+        url: brief?.clipUrl || `${R2}/${s.rowId}/clip_${clipIdx + 1}.mp4`,
+        segIdx: i,
+      });
+      clipIdx++;
+    }
+  }
+
+  // Build caption groups (simplified — split sentences into 4-5 word chunks timed to segments)
+  const captions = [];
+  segments.forEach((seg, i) => {
+    const text = sentences[i] || '';
+    if (!text) return;
+    const words = text.split(/\s+/);
+    const groupSize = 5;
+    const numGroups = Math.ceil(words.length / groupSize);
+    const groupDur = (seg.end - seg.start) / numGroups;
+    for (let g = 0; g < numGroups; g++) {
+      const groupText = words.slice(g * groupSize, (g + 1) * groupSize).join(' ');
+      const hasGold = /\d|points?|rebounds?|blocks?|mvp|championship|record|all-star/i.test(groupText);
+      const hasRed = /never|nobody|worst|banned|fired|died|forgotten|zero/i.test(groupText);
+      captions.push({
+        text: groupText,
+        start: seg.start + g * groupDur,
+        duration: groupDur,
+        color: hasRed ? '#FF3333' : hasGold ? '#F5A623' : '#ffffff',
+      });
+    }
+  });
+
+  const totalDur = Math.max(...segments.map(s => s.end), 55);
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.id = 'previewModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:300;display:flex;align-items:center;justify-content:center;gap:24px';
+  modal.innerHTML = `
+    <div style="position:relative;width:270px;height:480px;border-radius:24px;border:3px solid #1a1a1a;overflow:hidden;background:#000;flex-shrink:0">
+      <video id="pvVideo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" muted></video>
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.6) 100%);pointer-events:none"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.85));pointer-events:none"></div>
+      <div id="pvCaption" style="position:absolute;left:43%;top:42%;transform:translate(-50%,-50%);width:70%;text-align:center;font-size:13px;font-weight:800;line-height:1.35;text-shadow:0 2px 8px rgba(0,0,0,1);transition:opacity 0.15s;font-family:'DM Sans',sans-serif"></div>
+      <div id="pvStatCard" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);opacity:0;transition:opacity 0.3s;pointer-events:none">
+        <div id="pvStatText" style="font-family:'DM Sans',sans-serif;font-weight:900;font-size:40px;color:#F5A623;text-shadow:0 0 30px rgba(245,166,35,.4)"></div>
+      </div>
+      <div style="position:absolute;top:10px;left:10px;font-size:7px;font-weight:800;color:rgba(245,166,35,.7);letter-spacing:2px;background:rgba(0,0,0,.4);padding:2px 6px;border-radius:3px">SPORTS LORE</div>
+      <div id="pvLowerThird" style="position:absolute;bottom:60px;left:10px;opacity:0;transition:opacity 0.3s">
+        <div style="font-size:6px;color:rgba(245,166,35,.7);letter-spacing:2px;display:flex;align-items:center;gap:4px"><span style="display:block;width:8px;height:1px;background:#F5A623"></span>${(s.storyType||'').replace(/_/g,' ').toUpperCase()}</div>
+        <div style="font-size:10px;font-weight:900;color:#fff;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,1)">${(s.playerName||'').toUpperCase()}</div>
+      </div>
+      <div style="position:absolute;bottom:6px;right:8px;font-size:6px;color:rgba(255,255,255,.3)">@SportsLore1</div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.1)"><div id="pvProgress" style="height:100%;background:#F5A623;width:0;transition:width 0.1s"></div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+      <div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--gold)">${s.playerName}</div>
+      <div style="font-size:11px;color:var(--text2)">${totalDur.toFixed(0)}s · ${cutClips.length} clips · ${captions.length} captions</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-dim" onclick="pvReset()">Reset</button>
+        <button class="btn btn-gold" id="pvPlayBtn" onclick="pvToggle()">▶ Play</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3)"><span id="pvTimeLabel">0.0s</span> / ${totalDur.toFixed(0)}s</div>
+      <button class="btn btn-dim" onclick="document.getElementById('previewModal').remove();pvStop();" style="margin-top:12px">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Store preview data globally
+  window.pvData = { cutClips, captions, totalDur, segments, sentences };
+  window.pvTime = 0;
+  window.pvPlaying = false;
+  window.pvInterval = null;
+
+  // Preload first clip
+  const vid = document.getElementById('pvVideo');
+  if (cutClips[0]?.url) vid.src = cutClips[0].url;
+}
+
+function pvToggle() {
+  if (window.pvPlaying) pvStop();
+  else pvPlay();
+}
+
+function pvPlay() {
+  window.pvPlaying = true;
+  document.getElementById('pvPlayBtn').textContent = '⏸ Pause';
+  window.pvInterval = setInterval(pvTick, 100);
+}
+
+function pvStop() {
+  window.pvPlaying = false;
+  if (window.pvInterval) clearInterval(window.pvInterval);
+  window.pvInterval = null;
+  const btn = document.getElementById('pvPlayBtn');
+  if (btn) btn.textContent = '▶ Play';
+}
+
+function pvReset() {
+  pvStop();
+  window.pvTime = 0;
+  pvRender(0);
+}
+
+function pvTick() {
+  window.pvTime += 0.1;
+  if (window.pvTime >= window.pvData.totalDur) { pvStop(); return; }
+  pvRender(window.pvTime);
+}
+
+function pvRender(t) {
+  const { cutClips, captions, totalDur } = window.pvData;
+
+  // Update progress
+  const prog = document.getElementById('pvProgress');
+  const timeLabel = document.getElementById('pvTimeLabel');
+  if (prog) prog.style.width = (t / totalDur * 100) + '%';
+  if (timeLabel) timeLabel.textContent = t.toFixed(1) + 's';
+
+  // Find and play the right clip
+  const vid = document.getElementById('pvVideo');
+  const curCut = cutClips.find(c => t >= c.start && t < c.start + c.duration);
+  if (curCut && vid) {
+    const newSrc = curCut.url;
+    if (!vid.src.endsWith(newSrc.split('/').pop())) {
+      vid.src = newSrc;
+      vid.play().catch(()=>{});
+    }
+  }
+
+  // Show/hide lower third (after hook, 3s+)
+  const lt = document.getElementById('pvLowerThird');
+  if (lt) lt.style.opacity = t >= 3 ? '1' : '0';
+
+  // Show hook stat card (first 2s)
+  const statCard = document.getElementById('pvStatCard');
+  const statText = document.getElementById('pvStatText');
+  if (statCard && statText) {
+    if (t < 2) {
+      // Extract stats from hookLine
+      const hookStats = (scriptData?.hookLine || '').match(/\d[\d,.]*\s*(?:points?|rebounds?|blocks?|shots?|assists?|steals?)/gi) || [];
+      if (hookStats.length > 0) {
+        statCard.style.opacity = 1 - (t / 2); // Fade out over 2s
+        statText.innerHTML = hookStats.map(s => {
+          const parts = s.match(/^([\d,.]+)\s*(.*)/);
+          const num = parts?.[1] || s;
+          const unit = (parts?.[2] || '').toUpperCase().slice(0, 3);
+          return `<div>${num} ${unit}</div>`;
+        }).join('');
+      }
+    } else {
+      statCard.style.opacity = '0';
+    }
+  }
+
+  // Show caption
+  const capEl = document.getElementById('pvCaption');
+  if (capEl) {
+    const activeCap = captions.find(c => t >= c.start && t < c.start + c.duration);
+    if (activeCap) {
+      capEl.style.opacity = '1';
+      capEl.style.color = activeCap.color;
+      capEl.textContent = activeCap.text;
+    } else {
+      capEl.style.opacity = '0';
+    }
+  }
 }
 
 // ── Init ──
