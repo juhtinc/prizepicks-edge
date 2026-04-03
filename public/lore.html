@@ -805,11 +805,11 @@ function openVideoPreview() {
   const fullText = (s.hookLine ? s.hookLine + '. ' : '') + (s.script || '');
 
   // Step 1: Split into sentences
-  const sentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const captionSentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
 
   // Step 2: Split long sentences at commas, dashes, and clause starters
   const phrases = [];
-  for (const sentence of sentences) {
+  for (const sentence of captionSentences) {
     const parts = sentence.split(/(?<=,)\s+|(?<=—)\s*|(?=\s+(?:but|and|because|when|where|who|that|then|so)\s)/i).filter(p => p.trim());
     if (parts.length > 1) {
       phrases.push(...parts.map(p => p.trim()));
