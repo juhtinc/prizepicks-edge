@@ -41,6 +41,12 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 
 /* ── Layout ── */
 .main{padding:64px 24px 24px;max-width:1440px;margin:0 auto}
+.main.detail-open .section-header,.main.detail-open .batch-row,.main.detail-open #scriptsArea{display:none}
+.main.detail-open .detail-back-row{display:flex}
+.detail-back-row{display:none;align-items:center;gap:10px;margin:8px 0 12px}
+.detail-back-row .back-btn{font-size:12px;color:var(--gold);cursor:pointer;display:flex;align-items:center;gap:4px;padding:4px 0}
+.detail-back-row .back-btn:hover{text-decoration:underline}
+.detail-back-row .breadcrumb{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace}
 
 /* ── Section ── */
 .section-header{display:flex;align-items:baseline;gap:10px;margin:24px 0 12px}
@@ -90,9 +96,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .detail-actions{margin-left:auto;display:flex;gap:6px}
 
 /* ── Detail Layout: Editor Style ── */
-.detail-workspace{display:grid;grid-template-columns:1fr 300px;gap:0;border-top:1px solid var(--border)}
-.detail-main{padding:16px 20px;overflow-y:auto;max-height:calc(100vh - 200px)}
-.detail-sidebar{position:sticky;top:0;padding:16px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 200px);overflow-y:auto}
+.detail-workspace{display:grid;grid-template-columns:1fr 300px;gap:0;border-top:1px solid var(--border);max-height:calc(100vh - 180px);overflow:hidden}
+.detail-main{padding:16px 20px;overflow-y:auto}
+.detail-sidebar{padding:16px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:12px;overflow-y:auto}
 
 /* Phone preview */
 .phone-frame{width:180px;height:320px;border-radius:16px;border:2px solid var(--bg4);overflow:hidden;background:#000;margin:0 auto;position:relative}
@@ -131,9 +137,30 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 /* Clip section header */
 .clip-section-label{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;justify-content:space-between}
 
+/* Approval state on clip rows */
+.clip-row.approved{border-left:3px solid var(--green)}
+.clip-row.rejected{border-left:3px solid var(--red);opacity:0.5}
+.clip-row.rejected:hover{opacity:0.8}
+.clip-status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.clip-status-dot.ok{background:var(--green)}
+.clip-status-dot.no{background:var(--red)}
+.clip-status-dot.pending{background:var(--text3)}
+
+/* Approval progress bar */
+.approval-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 0}
+.approval-track{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.approval-fill{height:100%;border-radius:2px;transition:width 0.3s}
+.approval-fill.green{background:var(--green)}
+.approval-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);white-space:nowrap}
+
+/* Rejection reason picker */
+.reject-picker{position:absolute;z-index:10;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);min-width:180px}
+.reject-option{display:block;width:100%;text-align:left;padding:6px 10px;font-size:11px;color:var(--text);background:none;border:none;border-radius:4px;cursor:pointer;font-family:inherit}
+.reject-option:hover{background:var(--red-dim);color:var(--red)}
+
 @media(max-width:900px){
-  .detail-workspace{grid-template-columns:1fr}
-  .detail-sidebar{position:relative;border-left:none;border-top:1px solid var(--border);max-height:none;flex-direction:row;flex-wrap:wrap;justify-content:center}
+  .detail-workspace{grid-template-columns:1fr;max-height:none}
+  .detail-sidebar{border-left:none;border-top:1px solid var(--border);flex-direction:row;flex-wrap:wrap;justify-content:center}
 }
 .tl-segment.active{background:var(--gold-dim);border-color:var(--border2)}
 .tl-seg-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -206,7 +233,12 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   </div>
 </nav>
 
-<div class="main">
+<div class="main" id="mainContainer">
+  <div class="detail-back-row" id="detailBackRow">
+    <span class="back-btn" onclick="closeDetail()">← Back</span>
+    <span class="breadcrumb" id="detailBreadcrumb"></span>
+  </div>
+
   <div class="section-header"><h1 class="section-title">Batches</h1><span class="section-badge" id="batchCount">—</span></div>
   <div class="batch-row" id="batchRow"><div class="loading"><div class="spinner"></div>Loading...</div></div>
 
@@ -231,6 +263,24 @@ async function api(action, params = {}) {
   const r = await fetch(`${API}&${qs}`, { headers: { "x-secret": SECRET } });
   return r.json();
 }
+
+async function apiPost(action, body = {}) {
+  const r = await fetch(`${API}&action=${action}`, {
+    method: "POST",
+    headers: { "x-secret": SECRET, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+const REJECTION_REASONS = [
+  { id: "wrong_player", label: "Wrong player" },
+  { id: "low_res", label: "Low resolution" },
+  { id: "irrelevant", label: "Irrelevant footage" },
+  { id: "wrong_sport", label: "Wrong sport" },
+  { id: "too_short", label: "Too short / cut off" },
+  { id: "bad_audio", label: "Bad audio / watermark" },
+];
 
 function toast(msg) {
   const t = document.getElementById("toast");
@@ -276,7 +326,7 @@ async function selectBatch(id) {
       <td><span class="tag">${(s.storyType||'').replace(/_/g,' ')}</span></td>
       <td style="font-family:'JetBrains Mono';font-size:11px;color:var(--text2)">${s.wordCount}</td>
       <td><span class="status-pill ${(s.status||'').toLowerCase()}">${s.status||'—'}</span></td>
-      <td><div class="clip-dots">${Array.from({length:7},(_,i)=>`<div class="clip-dot ${i<(s.clipsSourced||0)?'ok':'no'}"></div>`).join('')}</div></td>
+      <td><div class="clip-dots" title="${s.clipsSourced||0} sourced">${Array.from({length:Math.min(s.clipBriefCount||7, 18)},(_,i)=>`<div class="clip-dot ${i<(s.clipsSourced||0)?'ok':'no'}"></div>`).join('')}</div></td>
     </tr>
   `).join("")}</tbody></table>`;
 
@@ -285,12 +335,18 @@ async function selectBatch(id) {
 }
 
 // ── Script Detail with Timeline ──
+function closeDetail() {
+  curScript = null;
+  scriptData = null;
+  document.getElementById("mainContainer").classList.remove("detail-open");
+  document.getElementById("detailArea").innerHTML = "";
+}
+
 async function selectScript(rowId) {
   curScript = rowId; curClipIdx = 0;
-  // Refresh script table highlight
-  document.querySelectorAll('.script-table tr').forEach(tr => {
-    tr.classList.toggle('selected', tr.onclick?.toString().includes(rowId));
-  });
+  // Collapse batches/scripts, show back button
+  document.getElementById("mainContainer").classList.add("detail-open");
+  document.getElementById("detailBreadcrumb").textContent = `${curBatch} / ${rowId}`;
 
   document.getElementById("detailArea").innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
   const { script: s } = await api("script-detail", { rowId });
@@ -303,7 +359,14 @@ async function selectScript(rowId) {
   for (let i = 1; i <= TOTAL_CLIPS; i++) {
     const brief = clips.find(c => c.slot === i);
     const url = brief?.clipUrl || `${R2}/${rowId}/clip_${i}.mp4`;
-    clipUrls.push({ slot: i, url, source: brief?.source || 'unknown', segmentName: brief?.segmentName || '', approved: brief?.approved, clipUrl: brief?.clipUrl });
+    clipUrls.push({
+      slot: i, url, source: brief?.source || 'unknown',
+      segmentName: brief?.segmentName || '',
+      approved: !!brief?.approved,
+      rejected: !!brief?.rejected,
+      rejectionReason: brief?.rejectionReason || null,
+      clipUrl: brief?.clipUrl,
+    });
   }
 
   // Build timeline segments from story template
@@ -319,12 +382,27 @@ async function selectScript(rowId) {
         <div class="detail-sub">${(s.storyType||'').replace(/_/g,' ')} · ${s.playerSport||'NBA'} · ${rowId}</div>
       </div>
       <div class="detail-actions">
-        <button class="btn btn-gold" onclick="openVideoPreview()">▶ Preview Video</button>
-        ${s.renderUrl?`<a href="${s.renderUrl}" target="_blank" class="btn btn-dim">Rendered</a>`:''}
-        ${s.youtubeUrl?`<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim">YouTube</a>`:''}
-        <button class="btn btn-dim" onclick="sourceClips('${rowId}')">Re-source Clips</button>
+        <button class="btn btn-gold" onclick="openVideoPreview()">▶ Preview</button>
+        <button class="btn btn-green btn-sm" onclick="approveAllClips('${rowId}')">✓ Approve All</button>
+        <button class="btn btn-dim btn-sm" onclick="updateScriptStatus('${rowId}','Ready')">Mark Ready</button>
+        ${s.renderUrl?`<a href="${s.renderUrl}" target="_blank" class="btn btn-dim btn-sm">Rendered</a>`:''}
+        ${s.youtubeUrl?`<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim btn-sm">YouTube</a>`:''}
+        <button class="btn btn-dim btn-sm" onclick="sourceClips('${rowId}')">Re-source</button>
       </div>
     </div>
+
+    ${(() => {
+      const totalClips = clips.filter(c => c.clipUrl).length;
+      const approvedClips = clips.filter(c => c.approved).length;
+      const rejectedClips = clips.filter(c => c.rejected).length;
+      const pct = totalClips > 0 ? Math.round((approvedClips / totalClips) * 100) : 0;
+      return `<div class="approval-bar" style="padding:8px 20px;border-bottom:1px solid var(--border)">
+        <span class="approval-label">${approvedClips}/${totalClips} approved</span>
+        <div class="approval-track"><div class="approval-fill green" style="width:${pct}%"></div></div>
+        ${rejectedClips > 0 ? `<span class="approval-label" style="color:var(--red)">${rejectedClips} rejected</span>` : ''}
+        <span class="status-pill ${(s.status||'').toLowerCase()}">${s.status||'—'}</span>
+      </div>`;
+    })()}
 
     <div class="detail-workspace">
       <div class="detail-main">
@@ -382,11 +460,9 @@ async function selectScript(rowId) {
             <div class="script-label">Comment Bait</div>
             <div class="script-meta">${s.commentBait||'—'}</div>
           </div>
-        </div>
-      </div>
 
-        <div id="clipTimeline"></div>
-      </div>
+          <div id="clipTimeline"></div>
+        </div>
 
       <div class="detail-sidebar">
         <div class="phone-frame">
@@ -400,9 +476,9 @@ async function selectScript(rowId) {
         </div>
         <div class="sidebar-actions">
           <div id="clipActions" style="display:flex;gap:4px">
-            <button class="btn btn-green btn-sm" style="flex:1">✓ Approve</button>
-            <button class="btn btn-red btn-sm" style="flex:1">✗ Reject</button>
-            <button class="btn btn-dim btn-sm" style="flex:1">↻ Replace</button>
+            <button class="btn btn-green btn-sm" style="flex:1" onclick="approveClip(curClipIdx)">✓ Approve</button>
+            <button class="btn btn-red btn-sm" style="flex:1" onclick="rejectClip(curClipIdx)">✗ Reject</button>
+            <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(curClipIdx)">↻ Replace</button>
           </div>
         </div>
         <div class="sidebar-info">
@@ -456,9 +532,15 @@ function renderClipTimeline(clipUrls) {
     }).join(' ');
   });
 
-  timeline.innerHTML = clipUrls.map((c, i) => `
-    <div class="clip-row ${i===curClipIdx?'active':''}" data-idx="${i}" onclick="selectClip(${i})"
+  timeline.innerHTML = clipUrls.map((c, i) => {
+    const approvalClass = c.approved ? 'approved' : (c.rejected ? 'rejected' : '');
+    const statusDot = c.approved ? '<div class="clip-status-dot ok"></div>' :
+                      c.rejected ? '<div class="clip-status-dot no" title="'+((c.rejectionReason||'rejected')).replace(/"/g,'')+'"></div>' :
+                      '<div class="clip-status-dot pending"></div>';
+    return `
+    <div class="clip-row ${i===curClipIdx?'active':''} ${approvalClass}" data-idx="${i}" data-slot="${c.slot}" onclick="selectClip(${i})"
          draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropClip(event,${i})" ondragend="dragEnd(event)">
+      ${statusDot}
       <div class="clip-row-num">${i+1}</div>
       <div class="clip-row-thumb">
         <video src="${c.url}" muted preload="metadata" onerror="this.style.display='none'"></video>
@@ -468,11 +550,13 @@ function renderClipTimeline(clipUrls) {
         <div class="clip-row-time">${formatTime(i * clipDur)}–${formatTime((i+1) * clipDur)}</div>
       </div>
       <div class="clip-row-actions">
+        <button class="btn btn-sm btn-green" onclick="event.stopPropagation();approveClip(${i})" title="Approve" style="padding:2px 5px">✓</button>
+        <button class="btn btn-sm btn-red" onclick="event.stopPropagation();rejectClip(${i})" title="Reject" style="padding:2px 5px">✗</button>
         <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();replaceClip(${i})" title="Replace">↻</button>
         <span class="drag-handle" title="Drag to reorder">⠿</span>
       </div>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 }
 
 function selectClip(idx, clips) {
@@ -536,19 +620,15 @@ function selectClip(idx, clips) {
     t += dur;
   }
 
-  // Show caption text for this clip
-  const captionDisplay = document.createElement('div');
+  // Update narrator text in sidebar
   const captionText = matchingText || '—';
+  document.getElementById("clipNarratorText").innerHTML = highlightText(captionText);
+
+  // Update sidebar action buttons to current clip
   document.getElementById("clipActions").innerHTML = `
-    <div style="font-size:11px;color:var(--text);background:var(--bg3);padding:8px 10px;border-radius:6px;margin-bottom:6px;line-height:1.5;border-left:3px solid var(--gold)">
-      <div style="font-size:9px;color:var(--text3);margin-bottom:3px">NARRATOR SAYS DURING THIS CLIP:</div>
-      ${highlightText(captionText)}
-    </div>
-    <div style="display:flex;gap:6px">
-      <button class="btn btn-green btn-sm" onclick="approveClip(${idx})">✓ Approve</button>
-      <button class="btn btn-red btn-sm" onclick="rejectClip(${idx})">✗ Reject</button>
-      <button class="btn btn-dim btn-sm" onclick="replaceClip(${idx})">↻ Replace</button>
-    </div>
+    <button class="btn btn-green btn-sm" style="flex:1" onclick="approveClip(${idx})">✓ Approve</button>
+    <button class="btn btn-red btn-sm" style="flex:1" onclick="rejectClip(${idx})">✗ Reject</button>
+    <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(${idx})">↻ Replace</button>
   `;
 }
 
@@ -620,19 +700,77 @@ function dragEnd(e) {
 }
 
 async function approveClip(idx) {
-  toast(`Clip #${idx+1} approved ✓`);
-  const thumb = document.querySelector(`.clip-thumb[data-clip="${idx}"]`);
-  if (thumb) { thumb.classList.add('approved'); thumb.classList.remove('rejected'); }
+  const slot = idx + 1;
+  const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+  if (row) { row.classList.add('approved'); row.classList.remove('rejected'); }
+
+  // Update status dot
+  const dot = row?.querySelector('.clip-status-dot');
+  if (dot) { dot.className = 'clip-status-dot ok'; }
+
+  toast(`Clip #${slot} approved ✓`);
+  await apiPost("approve-clip", { rowId: curScript, slot });
 }
 
 async function rejectClip(idx) {
-  toast(`Clip #${idx+1} rejected ✗ — will be re-sourced`);
-  const thumb = document.querySelector(`.clip-thumb[data-clip="${idx}"]`);
-  if (thumb) { thumb.classList.add('rejected'); thumb.classList.remove('approved'); }
+  const slot = idx + 1;
+  // Show rejection reason picker
+  const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+  if (!row) return;
+
+  // Remove any existing picker
+  document.querySelector('.reject-picker')?.remove();
+
+  const picker = document.createElement('div');
+  picker.className = 'reject-picker';
+  picker.style.cssText = `position:fixed;z-index:10;top:${row.getBoundingClientRect().top}px;left:${row.getBoundingClientRect().right + 8}px`;
+  picker.innerHTML = `
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Why reject?</div>
+    ${REJECTION_REASONS.map(r => `<button class="reject-option" onclick="doRejectClip(${idx},'${r.id}')">${r.label}</button>`).join('')}
+  `;
+  document.body.appendChild(picker);
+
+  // Close on click outside
+  setTimeout(() => {
+    const close = (e) => { if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 50);
 }
 
-async function replaceClip(idx) {
-  toast(`Clip #${idx+1} queued for replacement`);
+async function doRejectClip(idx, reason) {
+  document.querySelector('.reject-picker')?.remove();
+  const slot = idx + 1;
+  const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+  if (row) { row.classList.add('rejected'); row.classList.remove('approved'); }
+
+  const dot = row?.querySelector('.clip-status-dot');
+  if (dot) { dot.className = 'clip-status-dot no'; dot.title = reason; }
+
+  const label = REJECTION_REASONS.find(r => r.id === reason)?.label || reason;
+  toast(`Clip #${slot} rejected: ${label}`);
+  await apiPost("reject-clip", { rowId: curScript, slot, reason });
+}
+
+async function approveAllClips(rowId) {
+  toast("Approving all clips...");
+  const result = await apiPost("approve-all", { rowId });
+  if (result.ok) {
+    toast(`${result.approved} clips approved ✓`);
+    selectScript(rowId); // Refresh to show updated state
+  } else {
+    toast("Failed to approve clips");
+  }
+}
+
+async function updateScriptStatus(rowId, status) {
+  toast(`Setting status: ${status}...`);
+  const result = await apiPost("update-status", { rowId, status });
+  if (result.ok) {
+    toast(`Status → ${status}`);
+    selectScript(rowId); // Refresh
+  } else {
+    toast(`Failed: ${result.error || 'unknown error'}`);
+  }
 }
 
 async function sourceClips(rowId) {
