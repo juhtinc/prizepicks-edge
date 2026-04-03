@@ -294,23 +294,36 @@ async function selectScript(rowId) {
             <div class="script-label">Hook</div>
             <div class="script-hook">${s.hookLine||'—'}</div>
           </div>
-          ${segments.map((seg, i) => {
-            const text = scriptSentences[i] || '';
-            // Calculate which clips play during this segment (2s cuts)
-            const segDur = seg.end - seg.start;
-            const cutsInSeg = Math.max(1, Math.ceil(segDur / 2));
-            const clipStartIdx = segments.slice(0, i).reduce((sum, s) => sum + Math.max(1, Math.ceil((s.end - s.start) / 2)), 0);
-            const clipEndIdx = clipStartIdx + cutsInSeg - 1;
-            return `
-            <div class="tl-segment ${i===0?'active':''}" onclick="selectSegment(${i}, ${clipStartIdx})" data-seg="${i}" data-clip-start="${clipStartIdx}" data-clip-end="${clipEndIdx}">
-              <div class="tl-seg-head">
-                <span class="tl-time">${formatTime(seg.start)}–${formatTime(seg.end)}</span>
-                <span class="tl-phase">${seg.name}</span>
-                <span style="font-size:9px;color:var(--text3);margin-left:auto">clips ${clipStartIdx+1}–${clipEndIdx+1}</span>
-              </div>
-              <div class="tl-text">${highlightText(text)}</div>
-            </div>`;
-          }).join("")}
+          ${(() => {
+            // Distribute 14 clips across segments proportionally to duration
+            const totalDur = segments.reduce((s, seg) => s + (seg.end - seg.start), 0);
+            const TOTAL_CLIPS = 14;
+            let assignedClips = 0;
+            const segClipRanges = segments.map((seg, i) => {
+              const segDur = seg.end - seg.start;
+              const proportion = segDur / totalDur;
+              let numClips = Math.max(1, Math.round(proportion * TOTAL_CLIPS));
+              // Last segment gets whatever's left
+              if (i === segments.length - 1) numClips = TOTAL_CLIPS - assignedClips;
+              const startIdx = assignedClips;
+              assignedClips += numClips;
+              return { startIdx, endIdx: startIdx + numClips - 1, numClips };
+            });
+
+            return segments.map((seg, i) => {
+              const text = scriptSentences[i] || '';
+              const range = segClipRanges[i];
+              return `
+              <div class="tl-segment ${i===0?'active':''}" onclick="selectSegment(${i}, ${range.startIdx})" data-seg="${i}" data-clip-start="${range.startIdx}" data-clip-end="${range.endIdx}">
+                <div class="tl-seg-head">
+                  <span class="tl-time">${formatTime(seg.start)}–${formatTime(seg.end)}</span>
+                  <span class="tl-phase">${seg.name}</span>
+                  <span style="font-size:9px;color:var(--text3);margin-left:auto">clips ${range.startIdx+1}–${range.endIdx+1}</span>
+                </div>
+                <div class="tl-text">${highlightText(text)}</div>
+              </div>`;
+            }).join("");
+          })()}
 
           <div class="script-section" style="margin-top:16px">
             <div class="script-label">Titles</div>
