@@ -351,7 +351,7 @@ Return JSON:
                script.storyType === "record_breaker" ? "epic" : "dramatic";
 
   // Download MORE clips than segments (for quick-cut pacing — 2 clips per segment)
-  const totalClips = Math.min(clipPlan.clips.length * 2, 14);
+  const totalClips = Math.min(clipPlan.clips.length * 4, 28);
 
   for (let i = 0; i < totalClips; i++) {
     const segIdx = Math.floor(i / 2); // 2 clips per segment

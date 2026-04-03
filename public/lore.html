@@ -259,9 +259,9 @@ async function selectScript(rowId) {
   scriptData = s;
 
   const clips = s.clipBriefs || [];
-  // Try to reconstruct clip URLs from R2 if not in clipBriefs
+  const TOTAL_CLIPS = 28; // ~2s per clip for 55s video
   const clipUrls = [];
-  for (let i = 1; i <= 14; i++) {
+  for (let i = 1; i <= TOTAL_CLIPS; i++) {
     const brief = clips.find(c => c.slot === i);
     const url = brief?.clipUrl || `${R2}/${rowId}/clip_${i}.mp4`;
     clipUrls.push({ slot: i, url, source: brief?.source || 'unknown', segmentName: brief?.segmentName || '', approved: brief?.approved, clipUrl: brief?.clipUrl });
@@ -297,7 +297,7 @@ async function selectScript(rowId) {
           ${(() => {
             // Distribute 14 clips across segments proportionally to duration
             const totalDur = segments.reduce((s, seg) => s + (seg.end - seg.start), 0);
-            const TOTAL_CLIPS = 14;
+            const TOTAL_CLIPS = 28;
             let assignedClips = 0;
             const segClipRanges = segments.map((seg, i) => {
               const segDur = seg.end - seg.start;
@@ -417,11 +417,42 @@ function selectClip(idx, clips) {
     el.style.outline = (inSameSegment && i !== idx) ? '1px solid rgba(245,166,35,0.3)' : 'none';
   });
 
-  // Update actions
+  // Show what text plays during this clip
+  const segments = getSegments(scriptData?.storyType || 'forgotten_legend');
+  const totalDur = Math.max(...segments.map(s => s.end), 55);
+  const clipTime = (idx / 28) * totalDur; // approximate time for this clip
+  const clipEndTime = clipTime + (totalDur / 28);
+
+  // Find the matching caption from the full script
+  const fullText = (scriptData?.hookLine ? scriptData.hookLine + '. ' : '') + (scriptData?.script || '');
+  const allSentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const WPM = 145;
+  const SPW = 60 / WPM;
+  let t = 0;
+  let matchingText = '';
+  for (const sentence of allSentences) {
+    const words = sentence.split(/\s+/).length;
+    const dur = words * SPW;
+    if (clipTime >= t && clipTime < t + dur) {
+      matchingText = sentence;
+      break;
+    }
+    t += dur;
+  }
+
+  // Show caption text for this clip
+  const captionDisplay = document.createElement('div');
+  const captionText = matchingText || '—';
   document.getElementById("clipActions").innerHTML = `
-    <button class="btn btn-green btn-sm" onclick="approveClip(${idx})">✓ Approve</button>
-    <button class="btn btn-red btn-sm" onclick="rejectClip(${idx})">✗ Reject</button>
-    <button class="btn btn-dim btn-sm" onclick="replaceClip(${idx})">↻ Replace</button>
+    <div style="font-size:11px;color:var(--text);background:var(--bg3);padding:8px 10px;border-radius:6px;margin-bottom:6px;line-height:1.5;border-left:3px solid var(--gold)">
+      <div style="font-size:9px;color:var(--text3);margin-bottom:3px">NARRATOR SAYS DURING THIS CLIP:</div>
+      ${highlightText(captionText)}
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-green btn-sm" onclick="approveClip(${idx})">✓ Approve</button>
+      <button class="btn btn-red btn-sm" onclick="rejectClip(${idx})">✗ Reject</button>
+      <button class="btn btn-dim btn-sm" onclick="replaceClip(${idx})">↻ Replace</button>
+    </div>
   `;
 }
 
