@@ -1,0 +1,93 @@
+{
+  "output_format": "jpg",
+  "width": 1080,
+  "height": 1920,
+  "elements": [
+    {
+      "type": "shape",
+      "name": "background",
+      "track": 1,
+      "width": "100%",
+      "height": "100%",
+      "x": "50%",
+      "y": "50%",
+      "fill_color": ["#1a1a3e", "#0a0a1a"]
+    },
+    {
+      "type": "shape",
+      "name": "accent_shape",
+      "track": 2,
+      "width": "110%",
+      "height": "45%",
+      "x": "50%",
+      "y": "82%",
+      "z_rotation": "-5°",
+      "fill_color": "#F5A623"
+    },
+    {
+      "type": "image",
+      "name": "player_image",
+      "track": 3,
+      "source": "",
+      "width": "90%",
+      "height": "55%",
+      "x": "50%",
+      "y": "38%",
+      "fit": "cover",
+      "border_radius": "2 vmin",
+      "shadow_color": "rgba(0,0,0,0.5)",
+      "shadow_blur": "4 vmin"
+    },
+    {
+      "type": "text",
+      "name": "player_name",
+      "track": 4,
+      "text": "PLAYER NAME",
+      "width": "85%",
+      "x": "50%",
+      "y": "73%",
+      "x_alignment": "50%",
+      "y_alignment": "50%",
+      "font_family": "Montserrat",
+      "font_weight": "900",
+      "font_size": "9 vmin",
+      "fill_color": "#ffffff",
+      "stroke_color": "#000000",
+      "stroke_width": "0.4 vmin",
+      "text_alignment": "center",
+      "line_height": "110%"
+    },
+    {
+      "type": "text",
+      "name": "hook_text",
+      "track": 5,
+      "text": "Hook text here",
+      "width": "80%",
+      "x": "50%",
+      "y": "86%",
+      "x_alignment": "50%",
+      "y_alignment": "50%",
+      "font_family": "Montserrat",
+      "font_weight": "700",
+      "font_size": "5 vmin",
+      "fill_color": "#FFD700",
+      "text_alignment": "center"
+    },
+    {
+      "type": "text",
+      "name": "brand",
+      "track": 6,
+      "text": "SPORTS LORE",
+      "x": "50%",
+      "y": "5%",
+      "x_alignment": "50%",
+      "y_alignment": "50%",
+      "font_family": "Montserrat",
+      "font_weight": "800",
+      "font_size": "3.5 vmin",
+      "fill_color": "rgba(255,255,255,0.75)",
+      "text_alignment": "center",
+      "letter_spacing": "8%"
+    }
+  ]
+}

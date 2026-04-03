@@ -89,28 +89,52 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .detail-sub{font-size:12px;color:var(--text2);margin-top:2px}
 .detail-actions{margin-left:auto;display:flex;gap:6px}
 
-/* ── Timeline View ── */
-.timeline{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border)}
-.timeline-left{padding:16px 20px;border-right:1px solid var(--border);max-height:600px;overflow-y:auto}
-.timeline-right{padding:16px 20px;max-height:600px;overflow-y:auto}
+/* ── Detail Layout: Editor Style ── */
+.detail-workspace{display:grid;grid-template-columns:1fr 300px;gap:0;border-top:1px solid var(--border)}
+.detail-main{padding:16px 20px;overflow-y:auto;max-height:calc(100vh - 200px)}
+.detail-sidebar{position:sticky;top:0;padding:16px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 200px);overflow-y:auto}
 
-.tl-segment{padding:10px 12px;border-radius:6px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;border:1px solid transparent}
+/* Phone preview */
+.phone-frame{width:180px;height:320px;border-radius:16px;border:2px solid var(--bg4);overflow:hidden;background:#000;margin:0 auto;position:relative}
+.phone-frame video{width:100%;height:100%;object-fit:cover}
+.phone-frame .phone-overlay{position:absolute;inset:0;background:linear-gradient(transparent 60%,rgba(0,0,0,.6));pointer-events:none}
 
-/* Unified clip-text timeline rows */
-.clip-row{display:flex;gap:10px;align-items:stretch;padding:6px 8px;border-radius:6px;margin-bottom:4px;border:1px solid transparent;transition:all 0.15s;cursor:grab;user-select:none}
+/* Sidebar actions */
+.sidebar-actions{display:flex;flex-direction:column;gap:6px}
+.sidebar-info{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);line-height:1.6}
+.narrator-box{background:var(--bg3);border-left:3px solid var(--gold);padding:8px 10px;border-radius:0 6px 6px 0;font-size:11px;color:var(--text);line-height:1.5}
+.narrator-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+
+/* Script overview (collapsible) */
+.script-overview{background:var(--bg3);border-radius:6px;padding:12px;margin-bottom:16px}
+.script-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.script-toggle:hover{color:var(--gold)}
+.script-body-text{font-size:12px;line-height:1.6;color:var(--text);margin-top:8px;display:none}
+.script-body-text.open{display:block}
+
+/* Clip timeline rows */
+.clip-row{display:flex;gap:8px;align-items:center;padding:8px;border-radius:6px;margin-bottom:3px;border:1px solid transparent;transition:all 0.12s;cursor:pointer;user-select:none}
 .clip-row:hover{background:var(--bg3);border-color:var(--border)}
 .clip-row.active{background:var(--gold-dim);border-color:var(--border2)}
-.clip-row.drag-over{border-color:var(--gold);background:rgba(245,166,35,0.08)}
-.clip-row.dragging{opacity:0.4}
-.clip-row-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.clip-row-thumb{width:40px;height:70px;border-radius:4px;background:var(--bg4);overflow:hidden;flex-shrink:0}
+.clip-row.drag-over{border-color:var(--gold);background:rgba(245,166,35,0.06)}
+.clip-row.dragging{opacity:0.3}
+.clip-row-num{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);width:18px;text-align:center;flex-shrink:0}
+.clip-row-thumb{width:36px;height:64px;border-radius:4px;background:var(--bg4);overflow:hidden;flex-shrink:0;border:1px solid var(--border)}
 .clip-row-thumb video{width:100%;height:100%;object-fit:cover}
-.clip-row-text{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
-.clip-row-caption{font-size:12px;line-height:1.4;color:var(--text)}
-.clip-row-time{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:2px}
-.clip-row-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
-.drag-handle{cursor:grab;color:var(--text3);font-size:14px;padding:0 4px}
-.tl-segment:hover{background:var(--bg3)}
+.clip-row-text{flex:1;min-width:0}
+.clip-row-caption{font-size:11px;line-height:1.4;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.clip-row-time{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3);margin-top:2px}
+.clip-row-actions{display:flex;gap:3px;align-items:center;flex-shrink:0}
+.drag-handle{cursor:grab;color:var(--text3);font-size:12px;padding:0 2px;opacity:0.5}
+.clip-row:hover .drag-handle{opacity:1}
+
+/* Clip section header */
+.clip-section-label{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;justify-content:space-between}
+
+@media(max-width:900px){
+  .detail-workspace{grid-template-columns:1fr}
+  .detail-sidebar{position:relative;border-left:none;border-top:1px solid var(--border);max-height:none;flex-direction:row;flex-wrap:wrap;justify-content:center}
+}
 .tl-segment.active{background:var(--gold-dim);border-color:var(--border2)}
 .tl-seg-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .tl-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);font-weight:500}
@@ -302,14 +326,23 @@ async function selectScript(rowId) {
       </div>
     </div>
 
-    <div class="timeline">
-      <div class="timeline-left">
-        <div class="script-panel">
-          <div class="script-section">
-            <div class="script-label">Hook</div>
-            <div class="script-hook">${s.hookLine||'—'}</div>
+    <div class="detail-workspace">
+      <div class="detail-main">
+        <div class="script-overview">
+          <div class="script-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+            <span>Script · ${(s.script||'').split(/\s+/).filter(Boolean).length} words</span>
+            <span style="font-size:14px">▾</span>
           </div>
-          ${(() => {
+          <div class="script-body-text">
+            <div style="color:var(--gold);font-style:italic;margin-bottom:6px">${s.hookLine||''}</div>
+            ${highlightText(s.script||'')}
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text3)">
+              A: ${s.titleA||'—'} · B: ${s.titleB||'—'}
+            </div>
+          </div>
+        </div>
+
+        ${(() => {
             // Distribute 14 clips across segments proportionally to duration
             const totalDur = segments.reduce((s, seg) => s + (seg.end - seg.start), 0);
             const TOTAL_CLIPS = 28;
@@ -352,19 +385,32 @@ async function selectScript(rowId) {
         </div>
       </div>
 
-      <div class="timeline-right">
-        <div style="display:flex;gap:12px;margin-bottom:12px">
-          <div style="flex:1">
-            <div class="clip-panel-title">Current Clip <span id="clipSlotLabel">#1</span></div>
-            <div class="clip-preview" id="clipPreview">
-              <video id="clipVideo" muted loop autoplay></video>
-            </div>
-            <div class="clip-actions" id="clipActions"></div>
+        <div id="clipTimeline"></div>
+      </div>
+
+      <div class="detail-sidebar">
+        <div class="phone-frame">
+          <video id="clipVideo" muted loop autoplay></video>
+          <div class="phone-overlay"></div>
+        </div>
+        <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">Clip <span id="clipSlotLabel">#1</span></div>
+        <div class="narrator-box">
+          <div class="narrator-label">Narrator says:</div>
+          <div id="clipNarratorText">Select a clip</div>
+        </div>
+        <div class="sidebar-actions">
+          <div id="clipActions" style="display:flex;gap:4px">
+            <button class="btn btn-green btn-sm" style="flex:1">✓ Approve</button>
+            <button class="btn btn-red btn-sm" style="flex:1">✗ Reject</button>
+            <button class="btn btn-dim btn-sm" style="flex:1">↻ Replace</button>
           </div>
         </div>
-
-        <div class="clip-panel-title">Clip Timeline — drag to reorder</div>
-        <div id="clipTimeline" style="max-height:400px;overflow-y:auto"></div>
+        <div class="sidebar-info">
+          Clips: ${clips.filter(c=>c.clipUrl).length}/${clips.length} sourced<br>
+          Music: ${s.musicMood||'—'}<br>
+          Voice: ${s.voiceoverUrl?'Generated':'Pending'}<br>
+          Render: ${s.renderUrl?'<a href="'+s.renderUrl+'" target="_blank" style="color:var(--gold)">View</a>':'Pending'}
+        </div>
 
         ${s.renderUrl ? `
           <div class="clip-panel-title" style="margin-top:16px">Rendered Video</div>

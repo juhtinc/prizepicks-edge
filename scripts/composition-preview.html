@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Composition Preview — Bob Pettit</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0a; color:#fff; font-family:'Segoe UI',sans-serif; padding:20px; }
+h1 { text-align:center; font-size:14px; color:#F5A623; letter-spacing:3px; margin-bottom:4px; }
+.sub { text-align:center; color:#555; font-size:11px; margin-bottom:20px; }
+.stage { display:flex; gap:30px; justify-content:center; flex-wrap:wrap; }
+
+.phone { width:270px; height:480px; border-radius:20px; border:2px solid #1a1a1a; overflow:hidden; position:relative; background:#111; flex-shrink:0; }
+.phone-layer { position:absolute; inset:0; }
+.dim-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.85); transition:opacity 0.3s; }
+.footage-bg { position:absolute; inset:0; background:linear-gradient(148deg,#1e1400,#0d0a00 45%,#1a1200); }
+.vignette { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.7) 100%); }
+.bottom-fade { position:absolute; bottom:0; left:0; right:0; height:40%; background:linear-gradient(0deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.4) 50%,transparent 100%); }
+.gold-line { position:absolute; left:24px; right:24px; height:1px; background:linear-gradient(90deg,transparent,rgba(245,166,35,.5),transparent); }
+
+.hook-stat { position:absolute; left:50%; transform:translateX(-50%); text-align:center; transition:opacity 0.3s; }
+.hook-stat .num { font-weight:900; color:#F5A623; line-height:1; text-shadow:0 0 50px rgba(245,166,35,.4); }
+.hook-stat .unit { font-size:12px; font-weight:700; color:rgba(245,166,35,.5); letter-spacing:3px; margin-top:2px; }
+
+.caption { position:absolute; left:43%; top:42%; transform:translate(-50%,-50%); width:70%; text-align:center; font-size:15px; font-weight:800; line-height:1.35; text-shadow:0 2px 8px rgba(0,0,0,1); transition:opacity 0.3s; }
+.caption.gold { color:#F5A623; }
+.caption.white { color:#fff; }
+
+.lower-third { position:absolute; left:14px; transition:opacity 0.3s; }
+.lt-eyebrow { font-size:7px; color:rgba(245,166,35,.7); letter-spacing:2px; display:flex; align-items:center; gap:4px; }
+.lt-eyebrow::before { content:''; width:10px; height:1px; background:#F5A623; }
+.lt-name { font-size:13px; font-weight:900; color:#fff; margin-top:2px; text-shadow:0 2px 6px rgba(0,0,0,1); }
+
+.logo { position:absolute; top:10px; left:10px; font-size:7px; font-weight:800; color:rgba(245,166,35,.7); letter-spacing:2px; background:rgba(0,0,0,.4); padding:2px 5px; border-radius:3px; }
+.handle { position:absolute; bottom:6px; right:8px; font-size:7px; color:rgba(255,255,255,.3); }
+.progress { position:absolute; bottom:0; left:0; right:0; height:2px; background:rgba(255,255,255,.06); }
+.progress-fill { height:100%; background:#F5A623; width:0; transition:width 0.1s linear; }
+
+.player-sub { position:absolute; left:50%; transform:translateX(-50%); font-size:10px; color:rgba(255,255,255,.3); letter-spacing:2px; }
+
+/* Timeline panel */
+.timeline { flex:1; min-width:300px; max-width:500px; }
+.tl-header { background:#141414; padding:10px 14px; border-bottom:1px solid #222; border-radius:8px 8px 0 0; display:flex; gap:8px; align-items:center; }
+.tl-header h2 { font-size:13px; }
+.tl-header .tag { font-size:9px; background:rgba(245,166,35,.15); color:#F5A623; border:1px solid rgba(245,166,35,.25); padding:2px 6px; border-radius:4px; font-weight:700; }
+.tl-body { background:#0f0f0f; border:1px solid #1a1a1a; border-radius:0 0 8px 8px; max-height:440px; overflow-y:auto; }
+.tl-item { padding:6px 12px; border-bottom:1px solid #151515; font-size:10px; transition:background 0.2s; cursor:pointer; }
+.tl-item:hover { background:#1a1410; }
+.tl-item.active { background:#1a1410; border-left:2px solid #F5A623; }
+.tl-time { color:#F5A623; font-weight:700; font-family:monospace; font-size:9px; }
+.tl-type { color:#666; font-size:8px; text-transform:uppercase; letter-spacing:1px; }
+.tl-text { color:#bbb; margin-top:2px; }
+.tl-text .gold { color:#F5A623; font-weight:700; }
+
+.controls { display:flex; gap:8px; justify-content:center; margin-top:10px; }
+.btn { padding:6px 16px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; border:none; letter-spacing:1px; font-family:inherit; }
+.btn-play { background:#F5A623; color:#000; }
+.btn-reset { background:rgba(255,255,255,.06); color:#666; border:1px solid rgba(255,255,255,.08); }
+.info { text-align:center; font-size:10px; color:#444; margin-top:6px; }
+.info span { color:#F5A623; font-weight:700; }
+.stats { text-align:center; color:#555; font-size:10px; margin-top:16px; }
+</style></head><body>
+
+<h1>COMPOSITION PREVIEW</h1>
+<p class="sub">Bob Pettit (forgotten_legend) &middot; 47 elements &middot; 55s</p>
+
+<div class="stage">
+<div>
+  <div class="phone" id="phone">
+    <div class="footage-bg"></div>
+    <div class="dim-overlay" id="dimOverlay" style="opacity:0"></div>
+    <div class="vignette"></div>
+    <div class="bottom-fade"></div>
+    <div class="gold-line" id="goldTop" style="top:25px;opacity:0"></div>
+    <div class="gold-line" id="goldBot" style="bottom:55px;opacity:0"></div>
+    <div class="hook-stat" id="stat1" style="opacity:0"></div>
+    <div class="hook-stat" id="stat2" style="opacity:0"></div>
+    <div class="player-sub" id="playerSub" style="opacity:0">BOB PETTIT</div>
+    <div class="caption" id="caption" style="opacity:0"></div>
+    <div class="lower-third" id="lt" style="bottom:62px;opacity:0">
+      <div class="lt-eyebrow">FORGOTTEN LEGEND</div>
+      <div class="lt-name">BOB PETTIT</div>
+    </div>
+    <div class="logo">SPORTS LORE</div>
+    <div class="handle">@SportsLore1</div>
+    <div class="progress"><div class="progress-fill" id="prog"></div></div>
+  </div>
+  <div class="controls">
+    <button class="btn btn-reset" onclick="reset()">Reset</button>
+    <button class="btn btn-play" id="playBtn" onclick="toggle()">Play</button>
+  </div>
+  <div class="info"><span id="timeLabel">0.0s</span> / 55s</div>
+</div>
+
+<div class="timeline">
+  <div class="tl-header">
+    <h2>Bob Pettit</h2>
+    <span class="tag">forgotten_legend</span>
+    <span class="tag">47 els</span>
+  </div>
+  <div class="tl-body" id="tlBody">
+    
+    <div class="tl-item" data-time="0.1" data-dur="2.9" data-idx="0" onclick="seekTo(0.1)">
+      <span class="tl-time">0.1s</span>
+      <span class="tl-type">gold 100px</span>
+      <div class="tl-text">26 PTS</div>
+    </div>
+    <div class="tl-item" data-time="0.1" data-dur="2.9" data-idx="1" onclick="seekTo(0.1)">
+      <span class="tl-time">0.1s</span>
+      <span class="tl-type">gold 100px</span>
+      <div class="tl-text">16 REB</div>
+    </div>
+    <div class="tl-item" data-time="0.3" data-dur="2.7" data-idx="2" onclick="seekTo(0.3)">
+      <span class="tl-time">0.3s</span>
+      <span class="tl-type">ui 20px</span>
+      <div class="tl-text">BOB PETTIT</div>
+    </div>
+    <div class="tl-item" data-time="4.17" data-dur="2.7" data-idx="3" onclick="seekTo(4.17)">
+      <span class="tl-time">4.2s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">— and nobody remembers his name.</div>
+    </div>
+    <div class="tl-item" data-time="6.67" data-dur="2.28" data-idx="4" onclick="seekTo(6.67)">
+      <span class="tl-time">6.7s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">Bob Pettit wasn't just great</div>
+    </div>
+    <div class="tl-item" data-time="8.75" data-dur="2.28" data-idx="5" onclick="seekTo(8.75)">
+      <span class="tl-time">8.8s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">— he was the blueprint.</div>
+    </div>
+    <div class="tl-item" data-time="10.83" data-dur="3.53" data-idx="6" onclick="seekTo(10.83)">
+      <span class="tl-time">10.8s</span>
+      <span class="tl-type">gold 48px</span>
+      <div class="tl-text">First player ever to score 20,000 NBA points.</div>
+    </div>
+    <div class="tl-item" data-time="14.17" data-dur="1.45" data-idx="7" onclick="seekTo(14.17)">
+      <span class="tl-time">14.2s</span>
+      <span class="tl-type">gold 48px</span>
+      <div class="tl-text">Back-to-back MVP awards.</div>
+    </div>
+    <div class="tl-item" data-time="15.42" data-dur="5.2" data-idx="8" onclick="seekTo(15.42)">
+      <span class="tl-time">15.4s</span>
+      <span class="tl-type">gold 48px</span>
+      <div class="tl-text">And in 1958, he dropped 50 points in the clinching Finals ga...</div>
+    </div>
+    <div class="tl-item" data-time="20.42" data-dur="5.2" data-idx="9" onclick="seekTo(20.42)">
+      <span class="tl-time">20.4s</span>
+      <span class="tl-type">gold 48px</span>
+      <div class="tl-text">to beat the only team Bill Russell ever lost a championship ...</div>
+    </div>
+    <div class="tl-item" data-time="25.42" data-dur="1.45" data-idx="10" onclick="seekTo(25.42)">
+      <span class="tl-time">25.4s</span>
+      <span class="tl-type">gold 48px</span>
+      <div class="tl-text">That's a legend.</div>
+    </div>
+    <div class="tl-item" data-time="26.67" data-dur="1.45" data-idx="11" onclick="seekTo(26.67)">
+      <span class="tl-time">26.7s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">But the St.</div>
+    </div>
+    <div class="tl-item" data-time="27.92" data-dur="2.7" data-idx="12" onclick="seekTo(27.92)">
+      <span class="tl-time">27.9s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">Louis Hawks moved, the footage faded,</div>
+    </div>
+    <div class="tl-item" data-time="30.42" data-dur="2.7" data-idx="13" onclick="seekTo(30.42)">
+      <span class="tl-time">30.4s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">and history quietly closed the door.</div>
+    </div>
+    <div class="tl-item" data-time="32.92" data-dur="1.03" data-idx="14" onclick="seekTo(32.92)">
+      <span class="tl-time">32.9s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">No dynasty.</div>
+    </div>
+    <div class="tl-item" data-time="33.75" data-dur="1.45" data-idx="15" onclick="seekTo(33.75)">
+      <span class="tl-time">33.8s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">No major market.</div>
+    </div>
+    <div class="tl-item" data-time="35" data-dur="3.53" data-idx="16" onclick="seekTo(35)">
+      <span class="tl-time">35.0s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">No SportsCenter era to keep his name alive.</div>
+    </div>
+    <div class="tl-item" data-time="38.33" data-dur="1.45" data-idx="17" onclick="seekTo(38.33)">
+      <span class="tl-time">38.3s</span>
+      <span class="tl-type">gold 48px</span>
+      <div class="tl-text">Eleven All-Star selections.</div>
+    </div>
+    <div class="tl-item" data-time="39.58" data-dur="1.87" data-idx="18" onclick="seekTo(39.58)">
+      <span class="tl-time">39.6s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">Zero household name status.</div>
+    </div>
+    <div class="tl-item" data-time="41.25" data-dur="2.28" data-idx="19" onclick="seekTo(41.25)">
+      <span class="tl-time">41.3s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">That's the real crime here.</div>
+    </div>
+    <div class="tl-item" data-time="43.33" data-dur="4.37" data-idx="20" onclick="seekTo(43.33)">
+      <span class="tl-time">43.3s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">Was Bob Pettit the most disrespected great of all time</div>
+    </div>
+    <div class="tl-item" data-time="47.5" data-dur="7.5" data-idx="21" onclick="seekTo(47.5)">
+      <span class="tl-time">47.5s</span>
+      <span class="tl-type">white 48px</span>
+      <div class="tl-text">— and who do YOU think got robbed worse?</div>
+    </div>
+    <div class="tl-item" data-time="3" data-dur="52" data-idx="22" onclick="seekTo(3)">
+      <span class="tl-time">3.0s</span>
+      <span class="tl-type">gold 22px</span>
+      <div class="tl-text">— FORGOTTEN LEGEND</div>
+    </div>
+    <div class="tl-item" data-time="3" data-dur="52" data-idx="23" onclick="seekTo(3)">
+      <span class="tl-time">3.0s</span>
+      <span class="tl-type">white 40px</span>
+      <div class="tl-text">BOB PETTIT</div>
+    </div>
+    <div class="tl-item" data-time="0" data-dur="55" data-idx="24" onclick="seekTo(0)">
+      <span class="tl-time">0.0s</span>
+      <span class="tl-type">ui 22px</span>
+      <div class="tl-text">SPORTS LORE</div>
+    </div>
+    <div class="tl-item" data-time="0" data-dur="55" data-idx="25" onclick="seekTo(0)">
+      <span class="tl-time">0.0s</span>
+      <span class="tl-type">ui 18px</span>
+      <div class="tl-text">@SportsLore1</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="stats">
+  Hook stats found: 26 PTS, 16 REB<br>
+  Caption groups: 19<br>
+  Lower third: YES<br>
+  Music: YES<br>
+  Last caption: "— and who do YOU think got robbed worse?"
+</div>
+
+<script>
+const duration = 55;
+const hookEnd = 3;
+const textElements = [{"time":0.1,"duration":2.9,"text":"26 PTS","color":"#F5A623","size":100},{"time":0.1,"duration":2.9,"text":"16 REB","color":"#F5A623","size":100},{"time":0.3,"duration":2.7,"text":"BOB PETTIT","color":"rgba(255,255,255,0.3)","size":20},{"time":4.17,"duration":2.7,"text":"— and nobody remembers his name.","color":"#ffffff","size":48},{"time":6.67,"duration":2.28,"text":"Bob Pettit wasn't just great","color":"#ffffff","size":48},{"time":8.75,"duration":2.28,"text":"— he was the blueprint.","color":"#ffffff","size":48},{"time":10.83,"duration":3.53,"text":"First player ever to score 20,000 NBA points.","color":"#F5A623","size":48},{"time":14.17,"duration":1.45,"text":"Back-to-back MVP awards.","color":"#F5A623","size":48},{"time":15.42,"duration":5.2,"text":"And in 1958, he dropped 50 points in the clinching Finals game","color":"#F5A623","size":48},{"time":20.42,"duration":5.2,"text":"to beat the only team Bill Russell ever lost a championship to.","color":"#F5A623","size":48},{"time":25.42,"duration":1.45,"text":"That's a legend.","color":"#F5A623","size":48},{"time":26.67,"duration":1.45,"text":"But the St.","color":"#ffffff","size":48},{"time":27.92,"duration":2.7,"text":"Louis Hawks moved, the footage faded,","color":"#ffffff","size":48},{"time":30.42,"duration":2.7,"text":"and history quietly closed the door.","color":"#ffffff","size":48},{"time":32.92,"duration":1.03,"text":"No dynasty.","color":"#ffffff","size":48},{"time":33.75,"duration":1.45,"text":"No major market.","color":"#ffffff","size":48},{"time":35,"duration":3.53,"text":"No SportsCenter era to keep his name alive.","color":"#ffffff","size":48},{"time":38.33,"duration":1.45,"text":"Eleven All-Star selections.","color":"#F5A623","size":48},{"time":39.58,"duration":1.87,"text":"Zero household name status.","color":"#ffffff","size":48},{"time":41.25,"duration":2.28,"text":"That's the real crime here.","color":"#ffffff","size":48},{"time":43.33,"duration":4.37,"text":"Was Bob Pettit the most disrespected great of all time","color":"#ffffff","size":48},{"time":47.5,"duration":7.5,"text":"— and who do YOU think got robbed worse?","color":"#ffffff","size":48},{"time":3,"duration":52,"text":"— FORGOTTEN LEGEND","color":"#F5A623","size":22},{"time":3,"duration":52,"text":"BOB PETTIT","color":"#ffffff","size":40},{"time":0,"duration":55,"text":"SPORTS LORE","color":"rgba(245,166,35,0.7)","size":22},{"time":0,"duration":55,"text":"@SportsLore1","color":"rgba(255,255,255,0.3)","size":18}];
+const hookStats = [{"text":"26 PTS","y":"36%","size":100},{"text":"16 REB","y":"48%","size":100}];
+
+let playing = false, currentTime = 0, interval = null;
+
+function render(t) {
+  document.getElementById('timeLabel').textContent = t.toFixed(1) + 's';
+  document.getElementById('prog').style.width = (t / duration * 100) + '%';
+
+  // Hook phase (0-3s)
+  const inHook = t < hookEnd;
+  document.getElementById('dimOverlay').style.opacity = inHook && hookStats.length ? 1 : 0;
+  document.getElementById('goldTop').style.opacity = inHook && hookStats.length ? 1 : 0;
+  document.getElementById('goldBot').style.opacity = inHook && hookStats.length ? 1 : 0;
+  document.getElementById('playerSub').style.opacity = inHook && hookStats.length ? 1 : 0;
+  document.getElementById('playerSub').style.bottom = hookStats.length <= 1 ? '70px' : '50px';
+
+  // Hook stats
+  hookStats.forEach((s, i) => {
+    const el = document.getElementById('stat' + (i + 1));
+    if (!el) return;
+    el.style.opacity = inHook ? 1 : 0;
+    const pct = parseFloat(s.y) || (i === 0 ? 34 : 50);
+    el.style.top = pct + '%';
+    el.innerHTML = '<div class="num" style="font-size:' + (s.size * 0.5) + 'px">' + s.text + '</div>';
+  });
+
+  // Lower third (after hook)
+  document.getElementById('lt').style.opacity = t >= hookEnd ? 1 : 0;
+
+  // Find active caption
+  const cap = document.getElementById('caption');
+  const active = textElements.find(e => e.size === 48 && t >= e.time && t < e.time + e.duration);
+  if (active) {
+    cap.style.opacity = 1;
+    cap.textContent = active.text;
+    cap.className = 'caption ' + (active.color === '#F5A623' ? 'gold' : 'white');
+  } else {
+    cap.style.opacity = inHook ? 0 : 0;
+  }
+
+  // Highlight timeline
+  document.querySelectorAll('.tl-item').forEach(el => {
+    const et = parseFloat(el.dataset.time);
+    const ed = parseFloat(el.dataset.dur);
+    el.classList.toggle('active', t >= et && t < et + ed);
+  });
+}
+
+function tick() {
+  currentTime += 0.1;
+  if (currentTime >= duration) { stop(); return; }
+  render(currentTime);
+}
+
+function toggle() {
+  if (playing) stop();
+  else { playing = true; document.getElementById('playBtn').textContent = 'Pause'; interval = setInterval(tick, 100); }
+}
+
+function stop() {
+  playing = false;
+  if (interval) clearInterval(interval);
+  interval = null;
+  document.getElementById('playBtn').textContent = 'Play';
+}
+
+function reset() {
+  stop();
+  currentTime = 0;
+  render(0);
+}
+
+function seekTo(t) {
+  currentTime = t;
+  render(t);
+}
+
+render(0);
+</script>
+</body></html>

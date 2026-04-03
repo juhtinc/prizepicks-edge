@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Hook Stats Preview</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0a; display:flex; justify-content:center; padding:40px; font-family:'Segoe UI',sans-serif; color:#fff; }
+.phone { width:270px; height:480px; border-radius:20px; border:2px solid #1a1a1a; overflow:hidden; position:relative; background:#111; }
+.footage { position:absolute; inset:0; background:linear-gradient(148deg,#1e1400,#0d0a00 45%,#1a1200); }
+.dim { position:absolute; inset:0; background:rgba(0,0,0,0.85); }
+.gold-line-top { position:absolute; top:25px; left:24px; right:24px; height:1px; background:linear-gradient(90deg,transparent,rgba(245,166,35,.5),transparent); }
+.gold-line-bot { position:absolute; bottom:55px; left:24px; right:24px; height:1px; background:linear-gradient(90deg,transparent,rgba(245,166,35,.5),transparent); }
+.stat { position:absolute; left:50%; transform:translateX(-50%); text-align:center; }
+.stat .num { font-size:60px; font-weight:900; color:#F5A623; text-shadow:0 0 50px rgba(245,166,35,.4); line-height:1; }
+.stat .unit { font-size:16px; font-weight:700; color:rgba(245,166,35,.5); letter-spacing:3px; margin-top:2px; }
+.player-sub { position:absolute; left:50%; transform:translateX(-50%); bottom:70px; font-size:10px; color:rgba(255,255,255,.3); letter-spacing:2px; }
+.label { position:absolute; top:10px; left:10px; font-size:7px; color:rgba(245,166,35,.6); border:1px solid rgba(245,166,35,.2); padding:2px 5px; border-radius:3px; letter-spacing:2px; font-weight:800; }
+h2 { color:#F5A623; text-align:center; margin-bottom:20px; font-size:14px; letter-spacing:3px; }
+.container { text-align:center; }
+p { color:#555; font-size:11px; margin-top:12px; }
+</style></head><body>
+<div class="container">
+<h2>HOOK STAT REVEAL PREVIEW</h2>
+<div class="phone">
+  <div class="footage"></div>
+  <div class="dim"></div>
+  <div class="gold-line-top"></div>
+  <div class="gold-line-bot"></div>
+  <div class="stat" style="top:30%">
+    <div class="num">26</div>
+    <div class="unit">POINTS</div>
+  </div>
+  <div class="stat" style="top:52%">
+    <div class="num">16</div>
+    <div class="unit">REBOUNDS</div>
+  </div>
+  <div class="player-sub">BOB PETTIT</div>
+  <div class="label">SPORTS LORE</div>
+</div>
+<p>This is what the hook (0-3s) should look like in the rendered video.</p>
+<p>Dark overlay (85%) + gold stat cards + decorative gold lines</p>
+</div>
+</body></html>

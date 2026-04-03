@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Lore — Wilt Chamberlain (Record Breaker)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; padding: 30px 20px 60px; }
+  h1 { text-align: center; font-size: 16px; color: #F5A623; margin-bottom: 4px; letter-spacing: 3px; text-transform: uppercase; }
+  .subtitle { text-align: center; color: #555; margin-bottom: 36px; font-size: 11px; }
+  .stage { display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .phone {
+    width: 270px; height: 480px; border-radius: 30px;
+    border: 3px solid #1a1a1a; overflow: hidden; position: relative; background: #000;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.03);
+  }
+
+  /* ── FOOTAGE ── */
+  .footage-layer { position: absolute; inset: 0; transition: filter 0.45s ease; }
+  .footage-layer.dimmed { filter: blur(8px) brightness(0.15) saturate(0.4); }
+  .clip-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; transition: opacity 0.3s; }
+  .clip-label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.55); line-height: 1.5; }
+  .clip-label small { display: block; font-size: 8px; color: rgba(245,166,35,0.5); font-weight: 400; margin-top: 4px; }
+  .clip-label .tag { display: inline-block; font-size: 7px; padding: 1px 5px; border-radius: 3px; font-weight: 700; margin-bottom: 4px; }
+  .tag.gp { background: rgba(21,101,192,0.4); color: #64B5F6; border: 1px solid rgba(21,101,192,0.4); }
+  .tag.ph { background: rgba(106,27,154,0.4); color: #CE93D8; border: 1px solid rgba(106,27,154,0.4); }
+
+  .sc-wilt    { background: linear-gradient(148deg,#1e1400 0%,#0d0a00 45%,#1a1200 100%); }
+  .sc-100     { background: linear-gradient(148deg,#1e0a00 0%,#140500 45%,#1e0800 100%); }
+  .sc-hershey { background: linear-gradient(148deg,#10001e 0%,#08000f 45%,#0e0018 100%); }
+  .sc-warriors{ background: linear-gradient(148deg,#00111e 0%,#000a14 45%,#001525 100%); }
+  .sc-celtics { background: linear-gradient(148deg,#001a0a 0%,#000f06 45%,#001a0e 100%); }
+  .sc-nba     { background: linear-gradient(148deg,#1a0a00 0%,#0f0500 45%,#1a0800 100%); }
+  .sc-legacy  { background: linear-gradient(148deg,#1a1400 0%,#0f0a00 45%,#1a1200 100%); }
+  .sc-end     { background: linear-gradient(148deg,#0a0a1e 0%,#050510 45%,#0a0a18 100%); }
+
+  .grain { position: absolute; inset: 0; pointer-events: none; opacity:.3; mix-blend-mode:overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.06'/%3E%3C/svg%3E"); }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.7) 100%); }
+  .bottom-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 40%; background: linear-gradient(0deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.4) 50%,transparent 100%); }
+
+  /* ── SAFE ZONE CAPTION ── */
+  .caption-area { position: absolute; left: 43%; top: 42%; transform: translate(-50%,-50%); width: 70%; text-align: center; z-index: 10; transition: opacity 0.3s; }
+  .caption-area.hidden { opacity: 0; }
+  .caption-text { font-size: 15px; font-weight: 800; color: #fff; line-height: 1.35; text-shadow: 0 2px 8px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.6); }
+  .caption-text .em { color: #F5A623; }
+
+  /* ── PLAYER NAME (safe zone, after hook) ── */
+  .lower-third { position: absolute; bottom: 130px; left: 0; right: 0; z-index: 10; padding: 0 14px; opacity: 0; transition: opacity 0.4s; }
+  .lower-third.show { opacity: 1; }
+  .lt-eyebrow { font-size: 6px; color: rgba(245,166,35,.65); letter-spacing: 2.5px; text-transform: uppercase; display: flex; align-items: center; gap: 4px; }
+  .lt-eyebrow::before { content:''; display:block; width:10px; height:1px; background:#F5A623; }
+  .lt-name { font-size: 12px; font-weight: 900; color: #fff; text-transform: uppercase; line-height: 1.15; margin-top: 2px; }
+
+  /* ── PLAYER PORTRAIT ── */
+  .portrait {
+    position: absolute; bottom: 155px; left: 12px; z-index: 11;
+    width: 70px; height: 85px; border-radius: 6px;
+    background: #222; border: 2px solid rgba(245,166,35,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; color: rgba(255,255,255,0.4); text-align: center;
+    overflow: hidden;
+    opacity: 0; transition: opacity 0.4s; transform: scale(1);
+    animation: kenBurns 6s ease-in-out infinite;
+  }
+  .portrait.show { opacity: 1; }
+  .portrait img { width: 100%; height: 100%; object-fit: cover; }
+  .portrait .src-label { position: absolute; bottom: 2px; left: 2px; font-size: 6px; background: rgba(0,0,0,0.7); color: rgba(245,166,35,0.7); padding: 1px 3px; border-radius: 2px; }
+  @keyframes kenBurns { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+
+  /* ── REVEAL OVERLAY ── */
+  .reveal-overlay {
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.4s;
+  }
+  .reveal-overlay.show { opacity: 1; }
+  .reveal-overlay::before, .reveal-overlay::after {
+    content: ''; position: absolute; left: 24px; right: 24px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245,166,35,.5), transparent);
+  }
+  .reveal-overlay::before { top: 50px; }
+  .reveal-overlay::after { bottom: 110px; }
+  .reveal-eyebrow {
+    font-size: 7px; color: rgba(245,166,35,.6); letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 12px;
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+  }
+  .reveal-overlay.show .reveal-eyebrow { opacity: 1; transform: translateY(0); }
+  .reveal-main {
+    text-align: center; opacity: 0; transform: scale(0.88);
+    transition: opacity 0.35s ease 0.1s, transform 0.4s cubic-bezier(.34,1.56,.64,1) 0.1s;
+  }
+  .reveal-overlay.show .reveal-main { opacity: 1; transform: scale(1); }
+  .reveal-num { font-size: 80px; font-weight: 900; color: #F5A623; line-height: 1; text-shadow: 0 0 50px rgba(245,166,35,.4); }
+  .reveal-unit { font-size: 12px; font-weight: 700; color: rgba(245,166,35,.5); text-transform: uppercase; letter-spacing: 3px; margin-top: 2px; }
+  .reveal-sublabel { font-size: 8px; color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: 2px; margin-top: 8px; }
+  .reveal-quote { font-size: 15px; font-weight: 900; color: #fff; text-align: center; line-height: 1.35; text-transform: uppercase; letter-spacing: .5px; }
+  .reveal-quote em { color: #F5A623; font-style: normal; }
+  .reveal-quote .soft { font-size: 11px; font-weight: 400; color: rgba(255,255,255,.4); font-style: italic; text-transform: none; display: block; margin-top: 6px; letter-spacing: 0; }
+  .reveal-attr {
+    font-size: 7px; color: rgba(245,166,35,.4); letter-spacing: 2.5px;
+    text-transform: uppercase; margin-top: 14px;
+    opacity: 0; transition: opacity 0.3s ease 0.3s;
+  }
+  .reveal-overlay.show .reveal-attr { opacity: 1; }
+
+  /* ── COMPARISON BARS (for vs moments) ── */
+  .compare-bars { width: 85%; margin-top: 10px; }
+  .cbar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .cbar-label { font-size: 8px; color: rgba(255,255,255,.5); width: 55px; text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
+  .cbar-track { flex: 1; height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+  .cbar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease 0.3s; }
+  .cbar-fill.gold { background: #F5A623; }
+  .cbar-fill.white { background: rgba(255,255,255,.3); }
+  .cbar-val { font-size: 9px; font-weight: 800; color: #F5A623; width: 30px; }
+
+  /* ── FIXED UI ── */
+  .logo { position: absolute; top: 14px; left: 12px; z-index: 30; font-size: 6.5px; font-weight: 800; color: rgba(245,166,35,.6); letter-spacing: 2px; text-transform: uppercase; border: 1px solid rgba(245,166,35,.18); border-radius: 3px; padding: 2px 5px; }
+  .phase-badge { position: absolute; top: 12px; right: 12px; z-index: 30; font-size: 7px; font-weight: 800; color: #000; background: #F5A623; border-radius: 3px; padding: 2px 6px; letter-spacing: 1px; text-transform: uppercase; }
+  .progress-track { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,.06); z-index: 40; }
+  .progress-fill { height: 100%; background: #F5A623; width: 0; transition: width .08s linear; }
+  .cut-flash { position: absolute; inset: 0; z-index: 100; background: #fff; opacity: 0; pointer-events: none; }
+  .music-ind { position: absolute; bottom: 100px; right: 12px; z-index: 30; display: flex; align-items: center; gap: 3px; font-size: 6px; color: rgba(255,255,255,.25); }
+  .music-bars { display: flex; align-items: flex-end; gap: 1px; height: 8px; }
+  .mbar { width: 2px; background: rgba(245,166,35,.25); border-radius: 1px; }
+  .mbar.on { animation: mB 0.5s ease-in-out infinite; background: rgba(245,166,35,.45); }
+  @keyframes mB { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(0.25)} }
+  .mbar:nth-child(1){height:3px;animation-delay:0s} .mbar:nth-child(2){height:6px;animation-delay:.08s} .mbar:nth-child(3){height:4px;animation-delay:.16s} .mbar:nth-child(4){height:7px;animation-delay:.04s}
+
+  /* ── CONTROLS ── */
+  .controls { display: flex; gap: 8px; }
+  .btn { padding: 8px 18px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; letter-spacing: 1px; text-transform: uppercase; font-family: inherit; }
+  .btn-play { background: #F5A623; color: #000; }
+  .btn-reset { background: rgba(255,255,255,.06); color: #666; border: 1px solid rgba(255,255,255,.08); }
+  .info-row { font-size: 10px; color: #444; }
+  .info-row span { color: #F5A623; font-weight: 700; }
+
+  /* ── SCRIPT PANEL ── */
+  .script-col { flex: 1; min-width: 300px; max-width: 500px; }
+  .script-panel { background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 12px; overflow: hidden; }
+  .sp-header { background: #141414; padding: 12px 14px; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 8px; }
+  .sp-header h2 { font-size: 14px; }
+  .sp-header .tag { font-size: 9px; background: rgba(245,166,35,.15); color: #F5A623; border: 1px solid rgba(245,166,35,.25); padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+  .sp-seg { padding: 8px 14px; border-bottom: 1px solid #151515; transition: background 0.2s; font-size: 11px; }
+  .sp-seg.active { background: #1a1410; border-left: 2px solid #F5A623; }
+  .seg-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .seg-time { font-size: 9px; color: #F5A623; font-weight: 700; font-family: monospace; }
+  .seg-phase { font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+  .seg-text { color: #bbb; line-height: 1.5; }
+  .seg-text .w { color: #F5A623; font-weight: 700; }
+  .ctag { display: inline-block; font-size: 8px; padding: 1px 5px; border-radius: 3px; margin-top: 4px; font-weight: 600; }
+  .ctag.gp { background: rgba(21,101,192,0.2); color: #64B5F6; }
+  .ctag.ph { background: rgba(106,27,154,0.2); color: #CE93D8; }
+  .ctag.rv { background: rgba(245,166,35,0.15); color: #F5A623; }
+  .csearch { font-size: 9px; color: #555; margin-top: 2px; }
+  .sp-hook { background: #1a1208; border-left: 2px solid #F5A623; padding: 6px 14px; }
+  .hook-lbl { font-size: 8px; color: #F5A623; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .hook-txt { font-size: 10px; color: #ccc; margin-top: 2px; font-style: italic; }
+  .sp-music { padding: 3px 14px; }
+  .sp-music span { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+  .m-s { background: rgba(245,166,35,.08); color: rgba(245,166,35,.5); }
+  .m-e { background: rgba(129,199,132,.08); color: rgba(129,199,132,.6); }
+  .m-d { background: rgba(144,202,249,.08); color: rgba(144,202,249,.6); }
+  .m-x { background: rgba(255,0,0,.08); color: rgba(255,100,100,.5); }
+</style>
+</head>
+<body>
+
+<h1>Sports Lore — Example #2</h1>
+<p class="subtitle">Wilt Chamberlain (record_breaker) · 100-point game · Epic → dramatic music arc</p>
+
+<div class="stage">
+
+<div class="phone-wrap">
+  <div class="phone" id="phone">
+    <div class="cut-flash" id="flash"></div>
+    <div class="footage-layer" id="ftLayer">
+      <div class="clip-bg sc-wilt" id="clipBg"><div class="clip-label"><span class="tag gp">gameplay</span><br>Wilt 100-point game<br><small>"Wilt Chamberlain 100 points highlights"</small></div></div>
+      <div class="grain"></div>
+      <div class="vignette"></div>
+      <div class="bottom-fade"></div>
+    </div>
+    <div class="caption-area" id="capArea"><div class="caption-text" id="capText"></div></div>
+    <div class="lower-third" id="lt">
+      <div class="lt-eyebrow">Record Breaker</div>
+      <div class="lt-name">Wilt Chamberlain</div>
+    </div>
+    <div class="portrait" id="portrait">
+      <div style="font-size:7px;color:rgba(255,255,255,.3)">Wikipedia<br>portrait</div>
+      <div class="src-label">wikipedia</div>
+    </div>
+    <div class="reveal-overlay" id="reveal">
+      <div class="reveal-eyebrow" id="revEye"></div>
+      <div class="reveal-main" id="revMain"></div>
+      <div class="reveal-attr" id="revAttr"></div>
+    </div>
+    <div class="logo">Sports Lore</div>
+    <div class="phase-badge" id="badge">Hook</div>
+    <div class="music-ind" id="mInd">
+      <div class="music-bars"><div class="mbar" id="b1"></div><div class="mbar" id="b2"></div><div class="mbar" id="b3"></div><div class="mbar" id="b4"></div></div>
+      <span id="mLbl">silent</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="prog"></div></div>
+  </div>
+  <div class="controls">
+    <button class="btn btn-reset" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-play" id="playBtn" onclick="togglePlay()">▶ Play</button>
+  </div>
+  <div class="info-row"><span id="pLbl">—</span> · <span id="tLbl">0.0s</span></div>
+</div>
+
+<div class="script-col"><div class="script-panel">
+  <div class="sp-header"><h2>Wilt Chamberlain</h2><span class="tag">record_breaker</span><span class="tag">NBA</span></div>
+
+  <div class="sp-seg" data-i="0"><div class="seg-head"><span class="seg-time">0:00</span><span class="seg-phase">Hook</span></div>
+    <div class="seg-text"><span class="w">100 points.</span> One player. One game. And nobody even has the footage.</div>
+    <span class="ctag rv">hero stat reveal</span></div>
+  <div class="sp-music"><span class="m-s">silent — voice only</span></div>
+
+  <div class="sp-seg" data-i="1"><div class="seg-head"><span class="seg-time">0:03</span><span class="seg-phase">Context</span></div>
+    <div class="seg-text">On March 2nd, <span class="w">1962</span>, Wilt Chamberlain walked into a tiny gym in <span class="w">Hershey, Pennsylvania</span>. It wasn't even a real NBA arena — it was a high school gym.</div>
+    <span class="ctag ph">photo</span> <div class="csearch">Ken Burns: "Hershey Sports Arena 1962 exterior"</div></div>
+  <div class="sp-music"><span class="m-e">epic orchestral — fades in 20%</span></div>
+
+  <div class="sp-seg" data-i="2"><div class="seg-head"><span class="seg-time">0:08</span><span class="seg-phase">Context</span></div>
+    <div class="seg-text">Only <span class="w">4,124 fans</span> showed up. No TV cameras. No livestream. Just a box score and what happened next.</div>
+    <span class="ctag ph">photo</span> <div class="csearch">"1962 NBA game crowd vintage basketball"</div></div>
+
+  <div class="sp-hook"><div class="hook-lbl">Retention Hook @ 10s</div><div class="hook-txt">"And what happened next has never been done before or since."</div></div>
+
+  <div class="sp-seg" data-i="3"><div class="seg-head"><span class="seg-time">0:12</span><span class="seg-phase">Story</span></div>
+    <div class="seg-text">Wilt was <span class="w">already averaging 50 points</span> that season — which is insane on its own. But that night, he couldn't miss. He scored <span class="w">23 in the first quarter</span>. Then 18 more in the second.</div>
+    <span class="ctag gp">gameplay</span> <div class="csearch">"Wilt Chamberlain Warriors highlights 1962 season"</div></div>
+
+  <div class="sp-seg" data-i="4"><div class="seg-head"><span class="seg-time">0:18</span><span class="seg-phase">Story</span></div>
+    <div class="seg-text">By halftime he had <span class="w">41 points</span>. His teammates started feeding him every possession. The Knicks tried <span class="w">fouling him on purpose</span> — Wilt was a career 51% free throw shooter. That night? <span class="w">28 for 32.</span></div>
+    <span class="ctag gp">gameplay</span> <div class="csearch">"Wilt Chamberlain free throw shooting highlights"</div></div>
+
+  <div class="sp-seg" data-i="5"><div class="seg-head"><span class="seg-time">0:25</span><span class="seg-phase">Reveal</span></div>
+    <div class="seg-text"><span class="w">28-for-32</span> from the line</div>
+    <span class="ctag rv">stat reveal — footage blurs</span></div>
+
+  <div class="sp-music"><span class="m-x">music drops — 1.5s silence before the record</span></div>
+
+  <div class="sp-seg" data-i="6"><div class="seg-head"><span class="seg-time">0:28</span><span class="seg-phase">Story</span></div>
+    <div class="seg-text">Fourth quarter. <span class="w">69 points</span>. The crowd started counting out loud. Every bucket, they screamed the number. 80. 90. 95.</div>
+    <span class="ctag gp">gameplay</span> <div class="csearch">"Wilt Chamberlain dunk 1960s Warriors"</div></div>
+
+  <div class="sp-hook"><div class="hook-lbl">Retention Hook @ 30s</div><div class="hook-txt">"And with 46 seconds left..."</div></div>
+
+  <div class="sp-seg" data-i="7"><div class="seg-head"><span class="seg-time">0:32</span><span class="seg-phase">Reveal</span></div>
+    <div class="seg-text"><span class="w">100</span></div>
+    <span class="ctag rv">hero stat — the number</span></div>
+
+  <div class="sp-seg" data-i="8"><div class="seg-head"><span class="seg-time">0:35</span><span class="seg-phase">Attempts</span></div>
+    <div class="seg-text">Fans <span class="w">stormed the court</span>. They had to stop the game. In 63 years since, the closest anyone has come is <span class="w">Kobe with 81</span>. That's still 19 points short.</div>
+    <span class="ctag gp">gameplay</span> <div class="csearch">"Kobe Bryant 81 points game highlights 2006"</div></div>
+
+  <div class="sp-seg" data-i="9"><div class="seg-head"><span class="seg-time">0:40</span><span class="seg-phase">Reveal</span></div>
+    <div class="seg-text">Wilt 100 vs Kobe 81 — comparison bars</div>
+    <span class="ctag rv">comparison reveal</span></div>
+
+  <div class="sp-seg" data-i="10"><div class="seg-head"><span class="seg-time">0:44</span><span class="seg-phase">Stands</span></div>
+    <div class="seg-text">And the craziest part? <span class="w">There's no video.</span> Not a single frame of footage exists. Just one famous photo of Wilt holding a piece of paper with "100" written on it.</div>
+    <span class="ctag ph">photo</span> <div class="csearch">Ken Burns: "Wilt Chamberlain holding 100 paper photo"</div></div>
+
+  <div class="sp-seg" data-i="11"><div class="seg-head"><span class="seg-time">0:52</span><span class="seg-phase">Kicker</span></div>
+    <div class="seg-text"><span class="w">Will anyone ever score 100 again?</span> Drop your answer below.</div>
+    <span class="ctag rv">closing reveal</span></div>
+
+</div></div>
+
+</div>
+
+<script>
+const ftLayer=document.getElementById('ftLayer'), clipBg=document.getElementById('clipBg');
+const capArea=document.getElementById('capArea'), capText=document.getElementById('capText');
+const lt=document.getElementById('lt'), portrait=document.getElementById('portrait');
+const reveal=document.getElementById('reveal'), revEye=document.getElementById('revEye');
+const revMain=document.getElementById('revMain'), revAttr=document.getElementById('revAttr');
+const flash=document.getElementById('flash'), badge=document.getElementById('badge');
+const prog=document.getElementById('prog'), pLbl=document.getElementById('pLbl'), tLbl=document.getElementById('tLbl');
+const playBtn=document.getElementById('playBtn'), mLbl=document.getElementById('mLbl');
+const mbars=[document.getElementById('b1'),document.getElementById('b2'),document.getElementById('b3'),document.getElementById('b4')];
+
+function setMusic(l,on){mLbl.textContent=l;mbars.forEach(b=>{if(on)b.classList.add('on');else b.classList.remove('on');})}
+function setClip(cls,label,search,type){
+  clipBg.className='clip-bg '+cls;
+  clipBg.innerHTML=`<div class="clip-label"><span class="tag ${type==='photo'?'ph':'gp'}">${type}</span><br>${label}<br><small>${search}</small></div>`;
+}
+const EM=t=>t.replace(/\*(.*?)\*/g,'<span class="em">$1</span>');
+function doFlash(){flash.style.transition='none';flash.style.opacity='.12';requestAnimationFrame(()=>{flash.style.transition='opacity 0.12s';flash.style.opacity='0';})}
+
+const S=[
+  // HOOK — hero stat reveal: "100"
+  {type:'reveal',dur:3000,clip:['sc-100','The 100-point game','',''  ],phase:'Hook',idx:0,
+    eye:'Single Game Record',main:'<div class="reveal-num">100</div><div class="reveal-unit">POINTS</div><div class="reveal-sublabel">One player. One game. No footage.</div>',
+    attr:'',music:'silent',mOn:false,lt:false,port:false},
+
+  // CONTEXT 3-8s
+  {type:'footage',dur:5000,clip:['sc-hershey','Hershey Sports Arena 1962','Ken Burns: "Hershey Sports Arena 1962"','photo'],phase:'Context',idx:1,
+    cap:'On March 2nd, *1962*, Wilt Chamberlain walked into a tiny gym in *Hershey, Pennsylvania*.',
+    music:'epic 20%',mOn:true,lt:true,port:true},
+
+  // CONTEXT 8-12s
+  {type:'footage',dur:4000,clip:['sc-warriors','1962 crowd vintage','1962 NBA game crowd vintage','photo'],phase:'Context',idx:2,
+    cap:'Only *4,124 fans* showed up. No TV cameras. No livestream.',
+    music:'epic 20%',mOn:true,lt:true,port:false},
+
+  // STORY 12-18s
+  {type:'footage',dur:6000,clip:['sc-wilt','Wilt Warriors highlights','Wilt Chamberlain Warriors 1962 highlights','gameplay'],phase:'Story',idx:3,
+    cap:'Wilt was *already averaging 50 points* that season. But that night, he couldn\'t miss. *23 in the first quarter.*',
+    music:'epic 25%',mOn:true,lt:true,port:false},
+
+  // STORY 18-25s
+  {type:'footage',dur:5000,clip:['sc-warriors','Wilt free throws','Wilt Chamberlain free throw 1960s','gameplay'],phase:'Story',idx:4,
+    cap:'The Knicks tried *fouling him on purpose*. Wilt was a 51% free throw shooter. That night? *28 for 32.*',
+    music:'epic 25%',mOn:true,lt:true,port:false},
+
+  // REVEAL: 28-for-32
+  {type:'reveal',dur:2200,clip:['sc-warriors','','',''],phase:'Reveal',idx:5,
+    eye:'Free Throw Shooting',main:'<div class="reveal-num" style="font-size:50px">28<span style="font-size:24px;color:rgba(255,255,255,.4)"> / </span>32</div><div class="reveal-unit">FROM THE LINE</div><div class="reveal-sublabel">Career average: 51%</div>',
+    attr:'The Knicks had no answer',music:'—silence—',mOn:false,lt:false,port:false},
+
+  // STORY 28-32s
+  {type:'footage',dur:4000,clip:['sc-100','Wilt dunking 1960s','Wilt Chamberlain dunk Warriors 1960s','gameplay'],phase:'Story',idx:6,
+    cap:'Fourth quarter. *69 points.* The crowd started counting. Every bucket. 80. 90. *95.*',
+    music:'dramatic 35%',mOn:true,lt:true,port:false},
+
+  // REVEAL: 100 (the moment)
+  {type:'reveal',dur:3000,clip:['sc-100','','',''],phase:'Reveal',idx:7,
+    eye:'March 2, 1962',main:'<div class="reveal-num">100</div><div class="reveal-unit">PTS</div><div class="reveal-sublabel">The crowd stormed the court.</div>',
+    attr:'Hershey, Pennsylvania',music:'dramatic 40%',mOn:true,lt:false,port:false},
+
+  // ATTEMPTS 35-40s
+  {type:'footage',dur:5000,clip:['sc-celtics','Kobe 81 points','Kobe Bryant 81 points highlights 2006','gameplay'],phase:'Attempts',idx:8,
+    cap:'In 63 years, the closest anyone has come is *Kobe with 81*. That\'s still *19 points short.*',
+    music:'dramatic 30%',mOn:true,lt:true,port:false},
+
+  // REVEAL: comparison bars
+  {type:'reveal',dur:3000,clip:['sc-nba','','',''],phase:'Reveal',idx:9,
+    eye:'Closest Attempts',
+    main:'<div class="compare-bars"><div class="cbar"><div class="cbar-label">Wilt \'62</div><div class="cbar-track"><div class="cbar-fill gold" id="bar1" style="width:0%"></div></div><div class="cbar-val">100</div></div><div class="cbar"><div class="cbar-label">Kobe \'06</div><div class="cbar-track"><div class="cbar-fill white" id="bar2" style="width:0%"></div></div><div class="cbar-val" style="color:rgba(255,255,255,.5)">81</div></div><div class="cbar"><div class="cbar-label">Booker \'17</div><div class="cbar-track"><div class="cbar-fill white" id="bar3" style="width:0%"></div></div><div class="cbar-val" style="color:rgba(255,255,255,.5)">70</div></div></div>',
+    attr:'',music:'dramatic 35%',mOn:true,lt:false,port:false,bars:true},
+
+  // STANDS 44-52s
+  {type:'footage',dur:5000,clip:['sc-legacy','Wilt holding 100 paper','Ken Burns: Wilt Chamberlain 100 paper photo','photo'],phase:'Stands',idx:10,
+    cap:'And the craziest part? *There\'s no video.* Just one famous photo of Wilt holding a piece of paper with "100" written on it.',
+    music:'dramatic 45%',mOn:true,lt:true,port:false},
+
+  // KICKER 52-55s
+  {type:'reveal',dur:3000,clip:['sc-end','','',''],phase:'Kicker',idx:11,
+    eye:'',main:'<div class="reveal-quote">Will anyone <em>ever</em> score 100 again?<span class="soft">Drop your answer below.</span></div>',
+    attr:'@SportsLore',music:'dramatic 50%',mOn:true,lt:false,port:false},
+];
+
+const totalMs=S.reduce((a,s)=>a+s.dur,0);
+let si=-1,playing=false,iv=null;
+
+function applyState(i){
+  if(i>0)doFlash();
+  const s=S[i];
+  const elapsed=S.slice(0,i).reduce((a,x)=>a+x.dur,0);
+  prog.style.width=(elapsed/totalMs*100)+'%';
+  pLbl.textContent=s.phase;tLbl.textContent=(elapsed/1000).toFixed(1)+'s';
+  badge.textContent=s.phase;
+  setMusic(s.music,s.mOn);
+
+  // Clip
+  if(s.clip[1])setClip(s.clip[0],s.clip[1],s.clip[2],s.clip[3]);
+
+  // Portrait
+  portrait.classList.toggle('show',!!s.port);
+
+  // Active segment
+  document.querySelectorAll('.sp-seg').forEach(el=>el.classList.toggle('active',parseInt(el.dataset.i)===s.idx));
+
+  if(s.type==='footage'){
+    ftLayer.classList.remove('dimmed');
+    reveal.classList.remove('show');
+    capArea.classList.remove('hidden');
+    capText.innerHTML=EM(s.cap);
+    if(s.lt)lt.classList.add('show');else lt.classList.remove('show');
+  } else {
+    ftLayer.classList.add('dimmed');
+    capArea.classList.add('hidden');
+    lt.classList.remove('show');
+    revEye.textContent=s.eye||'';
+    revMain.innerHTML=s.main;
+    revAttr.textContent=s.attr||'';
+    reveal.classList.remove('show');
+    void reveal.offsetWidth;
+    reveal.classList.add('show');
+    // Animate comparison bars
+    if(s.bars){
+      setTimeout(()=>{
+        const b1=document.getElementById('bar1');
+        const b2=document.getElementById('bar2');
+        const b3=document.getElementById('bar3');
+        if(b1)b1.style.width='100%';
+        if(b2)b2.style.width='81%';
+        if(b3)b3.style.width='70%';
+      },400);
+    }
+  }
+}
+
+function next(){
+  si++;if(si>=S.length){stop();return;}
+  applyState(si);iv=setTimeout(next,S[si].dur);
+}
+function stop(){if(iv)clearTimeout(iv);iv=null;playing=false;playBtn.textContent='▶ Play';}
+function resetAll(){
+  stop();si=-1;
+  prog.style.width='0';pLbl.textContent='—';tLbl.textContent='0.0s';
+  ftLayer.classList.remove('dimmed');reveal.classList.remove('show');
+  lt.classList.remove('show');portrait.classList.remove('show');
+  capArea.classList.remove('hidden');capText.innerHTML='';
+  badge.textContent='Hook';setClip('sc-wilt','Wilt 100-point game','"Wilt Chamberlain 100 points"','gameplay');
+  setMusic('silent',false);
+  document.querySelectorAll('.sp-seg').forEach(el=>el.classList.remove('active'));
+  // Reset bars
+  ['bar1','bar2','bar3'].forEach(id=>{const b=document.getElementById(id);if(b)b.style.width='0%';});
+}
+function togglePlay(){
+  if(playing)stop();
+  else{if(si>=S.length-1)resetAll();playing=true;playBtn.textContent='⏸ Pause';next();}
+}
+</script>
+</body>
+</html>
