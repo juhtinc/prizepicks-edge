@@ -96,9 +96,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .detail-actions{margin-left:auto;display:flex;gap:6px}
 
 /* ── Detail Layout: Editor Style ── */
-.detail-workspace{display:grid;grid-template-columns:1fr 300px;gap:0;border-top:1px solid var(--border);max-height:calc(100vh - 180px);overflow:hidden}
-.detail-main{padding:16px 20px;overflow-y:auto}
-.detail-sidebar{padding:16px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.detail-workspace{display:flex;border-top:1px solid var(--border);height:calc(100vh - 220px);min-height:400px}
+.detail-main{flex:1;min-width:0;padding:16px 20px;overflow-y:auto}
+.detail-sidebar{width:300px;flex-shrink:0;padding:16px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:12px;overflow-y:auto}
 
 /* Phone preview */
 .phone-frame{width:180px;height:320px;border-radius:16px;border:2px solid var(--bg4);overflow:hidden;background:#000;margin:0 auto;position:relative}
@@ -159,8 +159,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .reject-option:hover{background:var(--red-dim);color:var(--red)}
 
 @media(max-width:900px){
-  .detail-workspace{grid-template-columns:1fr;max-height:none}
-  .detail-sidebar{border-left:none;border-top:1px solid var(--border);flex-direction:row;flex-wrap:wrap;justify-content:center}
+  .detail-workspace{flex-direction:column;height:auto}
+  .detail-sidebar{width:100%;border-left:none;border-top:1px solid var(--border);flex-direction:row;flex-wrap:wrap;justify-content:center}
 }
 .tl-segment.active{background:var(--gold-dim);border-color:var(--border2)}
 .tl-seg-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -559,24 +559,33 @@ function renderClipTimeline(clipUrls) {
   }).join("");
 }
 
+// Store current clip list globally so selectClip works without args
+let curClipList = [];
+
 function selectClip(idx, clips) {
-  if (!clips) {
-    const rowId = curScript;
-    clips = Array.from({length:14},(_,i)=>({ slot:i+1, url:`${R2}/${rowId}/clip_${i+1}.mp4` }));
-  }
+  if (clips) curClipList = clips;
+  clips = curClipList;
+  if (!clips.length) return;
+
   curClipIdx = idx;
   const clip = clips[idx];
   if (!clip) return;
 
+  // Update sidebar video preview
   document.getElementById("clipSlotLabel").textContent = `#${clip.slot}`;
   const vid = document.getElementById("clipVideo");
-  vid.src = clip.url;
+  if (vid.src !== clip.url) {
+    vid.src = clip.url;
+  }
+  vid.currentTime = 0;
   vid.play().catch(()=>{});
 
-  // Update active clip thumb
-  document.querySelectorAll('.clip-thumb').forEach((el,i) => el.classList.toggle('active', i===idx));
+  // Update active clip row highlight
+  document.querySelectorAll('.clip-row').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.idx) === idx);
+  });
 
-  // Highlight the matching script segment on the left
+  // Highlight the matching script segment
   document.querySelectorAll('.tl-segment').forEach(el => {
     const start = parseInt(el.dataset.clipStart);
     const end = parseInt(el.dataset.clipEnd);
@@ -585,25 +594,11 @@ function selectClip(idx, clips) {
     if (isMatch) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 
-  // Also highlight which clip thumbs belong to the same segment
-  document.querySelectorAll('.clip-thumb').forEach((el, i) => {
-    // Find which segment this clip belongs to
-    let inSameSegment = false;
-    document.querySelectorAll('.tl-segment').forEach(seg => {
-      const start = parseInt(seg.dataset.clipStart);
-      const end = parseInt(seg.dataset.clipEnd);
-      if (idx >= start && idx <= end && i >= start && i <= end) inSameSegment = true;
-    });
-    el.style.outline = (inSameSegment && i !== idx) ? '1px solid rgba(245,166,35,0.3)' : 'none';
-  });
-
-  // Show what text plays during this clip
+  // Find narrator text for this clip
   const segments = getSegments(scriptData?.storyType || 'forgotten_legend');
   const totalDur = Math.max(...segments.map(s => s.end), 55);
-  const clipTime = (idx / 18) * totalDur; // approximate time for this clip
-  const clipEndTime = clipTime + (totalDur / 18);
+  const clipTime = (idx / 18) * totalDur;
 
-  // Find the matching caption from the full script
   const fullText = (scriptData?.hookLine ? scriptData.hookLine + '. ' : '') + (scriptData?.script || '');
   const allSentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
   const WPM = 145;
@@ -621,10 +616,9 @@ function selectClip(idx, clips) {
   }
 
   // Update narrator text in sidebar
-  const captionText = matchingText || '—';
-  document.getElementById("clipNarratorText").innerHTML = highlightText(captionText);
+  document.getElementById("clipNarratorText").innerHTML = highlightText(matchingText || '—');
 
-  // Update sidebar action buttons to current clip
+  // Update sidebar action buttons to current clip index
   document.getElementById("clipActions").innerHTML = `
     <button class="btn btn-green btn-sm" style="flex:1" onclick="approveClip(${idx})">✓ Approve</button>
     <button class="btn btn-red btn-sm" style="flex:1" onclick="rejectClip(${idx})">✗ Reject</button>
@@ -636,18 +630,7 @@ function selectSegment(segIdx, clipSlot) {
   // Highlight this segment
   document.querySelectorAll('.tl-segment').forEach((el,i) => el.classList.toggle('active', i===segIdx));
 
-  // Get the clip range for this segment
-  const segEl = document.querySelector(`.tl-segment[data-seg="${segIdx}"]`);
-  const clipStart = parseInt(segEl?.dataset.clipStart || 0);
-  const clipEnd = parseInt(segEl?.dataset.clipEnd || 0);
-
-  // Highlight all clips in this segment's range
-  document.querySelectorAll('.clip-thumb').forEach((el, i) => {
-    const inRange = i >= clipStart && i <= clipEnd;
-    el.style.outline = inRange ? '2px solid var(--gold)' : 'none';
-  });
-
-  // Select the first clip in the range
+  // Select the first clip in this segment's range
   selectClip(clipSlot);
 }
 
