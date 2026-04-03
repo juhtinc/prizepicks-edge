@@ -48,6 +48,11 @@ const handlers = {
   "dashboard":         () => require("../lib/lore/dashboard"),
 };
 
+// Increase body size limit for clip uploads (default is 1MB)
+module.exports.config = {
+  api: { bodyParser: { sizeLimit: "5mb" } },
+};
+
 module.exports = async function handler(req, res) {
   const route = req.query.route;
 

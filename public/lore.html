@@ -240,6 +240,9 @@ async function selectBatch(id) {
       <td><div class="clip-dots">${Array.from({length:7},(_,i)=>`<div class="clip-dot ${i<(s.clipsSourced||0)?'ok':'no'}"></div>`).join('')}</div></td>
     </tr>
   `).join("")}</tbody></table>`;
+
+  // Auto-fetch Wikipedia photos for players without one
+  fetchPlayerPhotos(scripts);
 }
 
 // ── Script Detail with Timeline ──
@@ -591,9 +594,10 @@ async function doUpload(slot) {
       reader.readAsDataURL(uploadFile);
     });
 
-    // Check size — Vercel limit is ~4.5MB for request body
-    if (base64.length > 4 * 1024 * 1024) {
-      document.getElementById('uploadStatus').textContent = 'File too large for direct upload (max ~3MB). Trim the clip shorter.';
+    // Vercel body limit is 4.5MB. Base64 adds ~33% overhead.
+    // So actual file limit is ~3.3MB
+    if (uploadFile.size > 3.3 * 1024 * 1024) {
+      document.getElementById('uploadStatus').textContent = 'File too large (' + (uploadFile.size/1024/1024).toFixed(1) + 'MB). Max ~3MB. Try a shorter or lower-res clip.';
       btn.disabled = false;
       btn.textContent = 'Upload & Replace';
       return;
