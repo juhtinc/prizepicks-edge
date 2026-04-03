@@ -301,61 +301,67 @@ Return JSON:
 
   console.log(`  ${clipPlan.clips.length} clip slots planned`);
 
-  // 3. Search YouTube for highlights
-  const searchQueries = [...new Set(clipPlan.clips.map(c => c.search_query))].slice(0, 3);
-  const allVideos = [];
+  // 3. Search YouTube for PLAYER-SPECIFIC highlights only
+  // Use the player's name in EVERY search to ensure relevance
+  const playerName = script.playerName;
+  const playerSearches = [
+    `${playerName} highlights compilation`,
+    `${playerName} best plays career`,
+    `${playerName} ${script.playerSport || "NBA"} highlights`,
+  ];
 
-  for (const query of searchQueries) {
-    console.log(`  Searching: "${query.slice(0, 50)}..."`);
+  const allVideos = [];
+  for (const query of playerSearches) {
+    console.log(`  Searching: "${query.slice(0, 60)}..."`);
     const results = await searchYouTube(query, 5);
-    const safe = results.filter(v => !isBlockedChannel(v.channelTitle));
-    allVideos.push(...safe.slice(0, 2));
+    // Filter: must have player name in title AND not blocked channel
+    const relevant = results.filter(v =>
+      !isBlockedChannel(v.channelTitle) &&
+      v.title.toLowerCase().includes(playerName.split(" ").pop().toLowerCase())
+    );
+    allVideos.push(...relevant.slice(0, 2));
+  }
+
+  // Also try Claude's specific search queries (but still require player name)
+  for (const clip of clipPlan.clips.slice(0, 2)) {
+    const results = await searchYouTube(clip.search_query, 3);
+    const relevant = results.filter(v =>
+      !isBlockedChannel(v.channelTitle) &&
+      v.title.toLowerCase().includes(playerName.split(" ").pop().toLowerCase())
+    );
+    allVideos.push(...relevant.slice(0, 1));
   }
 
   const uniqueVideos = [...new Map(allVideos.map(v => [v.videoId, v])).values()].slice(0, 5);
-  console.log(`  Found ${uniqueVideos.length} safe source videos`);
+  console.log(`  Found ${uniqueVideos.length} player-specific videos`);
+  uniqueVideos.forEach(v => console.log(`    - ${v.title.slice(0, 60)}`));
 
   if (uniqueVideos.length === 0) {
-    console.error("  No safe videos found");
+    console.error(`  No videos found specifically about ${playerName}`);
     return { rowId, status: "no_videos", clipBriefs: [] };
   }
 
-  // 4. Download a longer segment from the first video for scene detection
-  const primaryVideo = uniqueVideos[0];
-  const fullClipPath = path.join(tmpDir, "full_sample.mp4");
-  console.log(`  Downloading sample from: ${primaryVideo.title.slice(0, 50)}...`);
-
-  // Download first 3 minutes for scene detection
-  const downloaded = downloadClip(primaryVideo.videoId, 10, 180, fullClipPath);
-  let sceneTimes = [];
-
-  if (downloaded) {
-    console.log("  Running scene detection...");
-    sceneTimes = detectScenes(fullClipPath);
-    console.log(`  Found ${sceneTimes.length} scene boundaries`);
-  }
-
-  // 5. Download clips at scene boundaries (or fallback to intervals)
+  // 4. Download clips from MULTIPLE player-specific videos for variety
+  // Skip scene detection — download 2s clips at varied intervals from each video
   const clipBriefs = [];
-  const clipDuration = 2.5;
+  const clipDuration = 2; // 2s clips for quick-cut pacing
   const mood = script.storyType === "forgotten_legend" ? "nostalgic" :
                script.storyType === "record_breaker" ? "epic" : "dramatic";
 
-  for (let i = 0; i < Math.min(clipPlan.clips.length, 7); i++) {
-    const planned = clipPlan.clips[i];
-    const seg = segments[i] || segments[segments.length - 1];
+  // Download MORE clips than segments (for quick-cut pacing — 2 clips per segment)
+  const totalClips = Math.min(clipPlan.clips.length * 2, 14);
+
+  for (let i = 0; i < totalClips; i++) {
+    const segIdx = Math.floor(i / 2); // 2 clips per segment
+    const planned = clipPlan.clips[segIdx] || clipPlan.clips[clipPlan.clips.length - 1];
+    const seg = segments[segIdx] || segments[segments.length - 1];
+    // Rotate through ALL videos for variety (not just one source)
     const videoIdx = i % uniqueVideos.length;
     const video = uniqueVideos[videoIdx];
 
-    // Pick a time: use scene boundary if available, otherwise evenly space
-    let startTime;
-    if (sceneTimes.length > 0 && videoIdx === 0) {
-      // Pick from detected scenes, cycling through them
-      startTime = sceneTimes[i % sceneTimes.length] + 10; // offset from sample start
-    } else {
-      // Evenly space across the video (assume 5 min = 300s)
-      startTime = 15 + (i * 35) + Math.floor(Math.random() * 10);
-    }
+    // Spread clips across the video: start from 10s, increment by ~20s per clip
+    // Add randomness to avoid always picking the same moments
+    const startTime = 10 + (i * 18) + Math.floor(Math.random() * 15);
 
     const rawPath = path.join(tmpDir, `raw_${i}.mp4`);
     const transformedPath = path.join(tmpDir, `clip_${i}.mp4`);
