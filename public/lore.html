@@ -521,7 +521,8 @@ function renderClipTimeline(clipUrls) {
   const allWords = fullText.split(/\s+/).filter(Boolean);
   const wordsPerClip = Math.ceil(allWords.length / clipUrls.length);
 
-  const clipCaptions = clipUrls.map((c, i) => {
+  // Store captions globally so selectClip can show exact text in sidebar
+  window.clipCaptionsHtml = clipUrls.map((c, i) => {
     const startWord = i * wordsPerClip;
     const words = allWords.slice(startWord, startWord + wordsPerClip);
     return words.map(w => {
@@ -531,6 +532,7 @@ function renderClipTimeline(clipUrls) {
       return w;
     }).join(' ');
   });
+  const clipCaptions = window.clipCaptionsHtml;
 
   timeline.innerHTML = clipUrls.map((c, i) => {
     const approvalClass = c.approved ? 'approved' : (c.rejected ? 'rejected' : '');
@@ -585,38 +587,9 @@ function selectClip(idx, clips) {
     el.classList.toggle('active', parseInt(el.dataset.idx) === idx);
   });
 
-  // Highlight the matching script segment
-  document.querySelectorAll('.tl-segment').forEach(el => {
-    const start = parseInt(el.dataset.clipStart);
-    const end = parseInt(el.dataset.clipEnd);
-    const isMatch = idx >= start && idx <= end;
-    el.classList.toggle('active', isMatch);
-    if (isMatch) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
-
-  // Find narrator text for this clip
-  const segments = getSegments(scriptData?.storyType || 'forgotten_legend');
-  const totalDur = Math.max(...segments.map(s => s.end), 55);
-  const clipTime = (idx / 18) * totalDur;
-
-  const fullText = (scriptData?.hookLine ? scriptData.hookLine + '. ' : '') + (scriptData?.script || '');
-  const allSentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
-  const WPM = 145;
-  const SPW = 60 / WPM;
-  let t = 0;
-  let matchingText = '';
-  for (const sentence of allSentences) {
-    const words = sentence.split(/\s+/).length;
-    const dur = words * SPW;
-    if (clipTime >= t && clipTime < t + dur) {
-      matchingText = sentence;
-      break;
-    }
-    t += dur;
-  }
-
-  // Update narrator text in sidebar
-  document.getElementById("clipNarratorText").innerHTML = highlightText(matchingText || '—');
+  // Show exact per-clip caption text in sidebar (same words as the clip row)
+  const captionHtml = (window.clipCaptionsHtml && window.clipCaptionsHtml[idx]) || '—';
+  document.getElementById("clipNarratorText").innerHTML = captionHtml;
 
   // Update sidebar action buttons to current clip index
   document.getElementById("clipActions").innerHTML = `
