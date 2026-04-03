@@ -159,20 +159,12 @@ const COLOR_GRADES = {
 
 function transformClip(inputPath, outputPath, mood, mirror = false) {
   const colorGrade = COLOR_GRADES[mood] || COLOR_GRADES.dramatic;
-  const speedFactor = 0.93 + Math.random() * 0.14; // 0.93-1.07
-  const cropPercent = 60 + Math.floor(Math.random() * 21); // 60-80%
 
+  // Simple transform: scale to vertical 1080x1920, color grade, optional mirror
   let filters = [
-    // Crop to focus area (random offset for variety)
-    `crop=iw*${cropPercent}/100:ih*${cropPercent}/100:(iw-iw*${cropPercent}/100)/2:(ih-ih*${cropPercent}/100)/2`,
-    // Scale to vertical 1080x1920
     "scale=1080:1920:force_original_aspect_ratio=increase",
     "crop=1080:1920",
-    // Color grade
     colorGrade,
-    // Speed shift
-    `setpts=${(1 / speedFactor).toFixed(3)}*PTS`,
-    // Vignette
     "vignette=PI/4",
   ];
 
@@ -181,7 +173,7 @@ function transformClip(inputPath, outputPath, mood, mirror = false) {
   }
 
   const filterStr = filters.join(",");
-  const cmd = `ffmpeg -i "${inputPath}" -vf "${filterStr}" -c:v libx264 -preset medium -crf 18 -r 30 -an -pix_fmt yuv420p -movflags +faststart -y "${outputPath}"`;
+  const cmd = `ffmpeg -i "${inputPath}" -vf "${filterStr}" -c:v libx264 -preset fast -crf 20 -r 30 -an -pix_fmt yuv420p -movflags +faststart -y "${outputPath}"`;
 
   try {
     execSync(cmd, { timeout: 60000, stdio: "pipe" });
