@@ -295,12 +295,17 @@ async function selectScript(rowId) {
           </div>
           ${segments.map((seg, i) => {
             const text = scriptSentences[i] || '';
-            const clipSlot = Math.floor(i * clipUrls.length / segments.length);
+            // Calculate which clips play during this segment (2s cuts)
+            const segDur = seg.end - seg.start;
+            const cutsInSeg = Math.max(1, Math.ceil(segDur / 2));
+            const clipStartIdx = segments.slice(0, i).reduce((sum, s) => sum + Math.max(1, Math.ceil((s.end - s.start) / 2)), 0);
+            const clipEndIdx = clipStartIdx + cutsInSeg - 1;
             return `
-            <div class="tl-segment ${i===0?'active':''}" onclick="selectSegment(${i}, ${clipSlot})" data-seg="${i}">
+            <div class="tl-segment ${i===0?'active':''}" onclick="selectSegment(${i}, ${clipStartIdx})" data-seg="${i}" data-clip-start="${clipStartIdx}" data-clip-end="${clipEndIdx}">
               <div class="tl-seg-head">
-                <span class="tl-time">${formatTime(seg.start)}</span>
+                <span class="tl-time">${formatTime(seg.start)}–${formatTime(seg.end)}</span>
                 <span class="tl-phase">${seg.name}</span>
+                <span style="font-size:9px;color:var(--text3);margin-left:auto">clips ${clipStartIdx+1}–${clipEndIdx+1}</span>
               </div>
               <div class="tl-text">${highlightText(text)}</div>
             </div>`;
@@ -362,7 +367,6 @@ function renderClipGrid(clipUrls) {
 
 function selectClip(idx, clips) {
   if (!clips) {
-    // Reconstruct from DOM
     const rowId = curScript;
     clips = Array.from({length:14},(_,i)=>({ slot:i+1, url:`${R2}/${rowId}/clip_${i+1}.mp4` }));
   }
@@ -375,8 +379,29 @@ function selectClip(idx, clips) {
   vid.src = clip.url;
   vid.play().catch(()=>{});
 
-  // Update active states
+  // Update active clip thumb
   document.querySelectorAll('.clip-thumb').forEach((el,i) => el.classList.toggle('active', i===idx));
+
+  // Highlight the matching script segment on the left
+  document.querySelectorAll('.tl-segment').forEach(el => {
+    const start = parseInt(el.dataset.clipStart);
+    const end = parseInt(el.dataset.clipEnd);
+    const isMatch = idx >= start && idx <= end;
+    el.classList.toggle('active', isMatch);
+    if (isMatch) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  // Also highlight which clip thumbs belong to the same segment
+  document.querySelectorAll('.clip-thumb').forEach((el, i) => {
+    // Find which segment this clip belongs to
+    let inSameSegment = false;
+    document.querySelectorAll('.tl-segment').forEach(seg => {
+      const start = parseInt(seg.dataset.clipStart);
+      const end = parseInt(seg.dataset.clipEnd);
+      if (idx >= start && idx <= end && i >= start && i <= end) inSameSegment = true;
+    });
+    el.style.outline = (inSameSegment && i !== idx) ? '1px solid rgba(245,166,35,0.3)' : 'none';
+  });
 
   // Update actions
   document.getElementById("clipActions").innerHTML = `
@@ -387,7 +412,21 @@ function selectClip(idx, clips) {
 }
 
 function selectSegment(segIdx, clipSlot) {
+  // Highlight this segment
   document.querySelectorAll('.tl-segment').forEach((el,i) => el.classList.toggle('active', i===segIdx));
+
+  // Get the clip range for this segment
+  const segEl = document.querySelector(`.tl-segment[data-seg="${segIdx}"]`);
+  const clipStart = parseInt(segEl?.dataset.clipStart || 0);
+  const clipEnd = parseInt(segEl?.dataset.clipEnd || 0);
+
+  // Highlight all clips in this segment's range
+  document.querySelectorAll('.clip-thumb').forEach((el, i) => {
+    const inRange = i >= clipStart && i <= clipEnd;
+    el.style.outline = inRange ? '2px solid var(--gold)' : 'none';
+  });
+
+  // Select the first clip in the range
   selectClip(clipSlot);
 }
 
