@@ -767,22 +767,41 @@ function openVideoPreview() {
     }
   }
 
-  // Build caption groups — 4-6 words each, paced at narrator speed
+  // Build caption groups — break at natural boundaries, never mid-thought
   const WPM = 145;
   const SEC_PER_WORD = 60 / WPM;
   const captions = [];
   const fullText = (s.hookLine ? s.hookLine + '. ' : '') + (s.script || '');
-  const allWords = fullText.split(/\s+/).filter(Boolean);
-  const GROUP_SIZE = 5; // 4-6 words per caption
 
+  // Step 1: Split into sentences
+  const sentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
+
+  // Step 2: Split long sentences at commas, dashes, and clause starters
+  const phrases = [];
+  for (const sentence of sentences) {
+    const parts = sentence.split(/(?<=,)\s+|(?<=—)\s*|(?=\s+(?:but|and|because|when|where|who|that|then|so)\s)/i).filter(p => p.trim());
+    if (parts.length > 1) {
+      phrases.push(...parts.map(p => p.trim()));
+    } else if (sentence.split(/\s+/).length > 8) {
+      // Still too long — split at midpoint
+      const words = sentence.split(/\s+/);
+      const mid = Math.ceil(words.length / 2);
+      phrases.push(words.slice(0, mid).join(' '));
+      phrases.push(words.slice(mid).join(' '));
+    } else {
+      phrases.push(sentence.trim());
+    }
+  }
+
+  // Step 3: Build timed captions with per-word coloring
   let currentTime = 0;
-  for (let w = 0; w < allWords.length; w += GROUP_SIZE) {
-    const groupWords = allWords.slice(w, w + GROUP_SIZE);
-    const duration = groupWords.length * SEC_PER_WORD;
+  for (const phrase of phrases) {
+    if (!phrase) continue;
+    const words = phrase.split(/\s+/);
+    const duration = words.length * SEC_PER_WORD;
 
-    // Color individual words: numbers=gold, dramatic=red, rest=white
-    const coloredHtml = groupWords.map(word => {
-      const clean = word.replace(/[.,!?;:'"()-]/g, '');
+    const coloredHtml = words.map(word => {
+      const clean = word.replace(/[.,!?;:'"()\-—]/g, '');
       if (/^\d[\d,.]*$/.test(clean) || /^(record|mvp|championship|all-star|hall)$/i.test(clean)) {
         return `<span style="color:#F5A623">${word}</span>`;
       }
@@ -793,12 +812,12 @@ function openVideoPreview() {
     }).join(' ');
 
     captions.push({
-      text: groupWords.join(' '),
+      text: phrase,
       html: coloredHtml,
       start: currentTime,
-      duration: duration + 0.15,
+      duration: Math.max(duration, 1.0) + 0.15,
     });
-    currentTime += duration;
+    currentTime += Math.max(duration, 1.0);
   }
 
   const totalDur = Math.max(...segments.map(s => s.end), 55);
