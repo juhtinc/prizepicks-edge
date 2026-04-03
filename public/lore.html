@@ -565,39 +565,53 @@ async function doUpload(slot) {
   btn.disabled = true;
   btn.textContent = 'Uploading...';
   document.getElementById('uploadProgress').style.display = 'block';
-  document.getElementById('uploadBar').style.width = '30%';
+  document.getElementById('uploadBar').style.width = '20%';
+  document.getElementById('uploadStatus').textContent = 'Reading file...';
 
   try {
-    // Read file as base64
-    const reader = new FileReader();
-    const base64 = await new Promise((resolve, reject) => {
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(uploadFile);
-    });
+    // Step 1: Read file as ArrayBuffer
+    const buffer = await uploadFile.arrayBuffer();
+    document.getElementById('uploadBar').style.width = '40%';
+    document.getElementById('uploadStatus').textContent = 'Uploading to storage...';
 
-    document.getElementById('uploadBar').style.width = '60%';
-    document.getElementById('uploadStatus').textContent = 'Uploading to R2...';
+    // Step 2: Upload directly to R2 via a presigned-style approach
+    // For now, use the VPS as a relay (it can handle large files)
+    const formData = new FormData();
+    formData.append('clip', uploadFile);
+    formData.append('rowId', curScript);
+    formData.append('slot', slot);
+    formData.append('secret', 'sports-lore-clips-2026');
 
-    // Upload via API
-    const resp = await fetch(`${API}&action=replace-clip`, {
+    // Upload through VPS upload endpoint
+    const VPS = 'http://194.163.180.19:3456';
+    const uploadResp = await fetch(`${VPS}/upload-clip`, {
       method: 'POST',
-      headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rowId: curScript, slot, videoBase64: base64 }),
+      body: formData,
     });
-    const result = await resp.json();
 
-    document.getElementById('uploadBar').style.width = '100%';
+    document.getElementById('uploadBar').style.width = '80%';
 
-    if (result.ok) {
+    if (uploadResp.ok) {
+      const result = await uploadResp.json();
+      document.getElementById('uploadStatus').textContent = 'Updating database...';
+
+      // Step 3: Update KV with the new clip URL
+      await fetch(`${API}&action=replace-clip`, {
+        method: 'POST',
+        headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowId: curScript, slot, clipUrl: result.url }),
+      });
+
+      document.getElementById('uploadBar').style.width = '100%';
       document.getElementById('uploadStatus').textContent = 'Clip replaced!';
       toast(`Clip #${slot} replaced successfully`);
       setTimeout(() => {
         closeUploadModal();
-        selectScript(curScript); // Refresh detail view
+        selectScript(curScript);
       }, 1000);
     } else {
-      document.getElementById('uploadStatus').textContent = 'Error: ' + (result.error || 'Unknown');
+      const err = await uploadResp.text();
+      document.getElementById('uploadStatus').textContent = 'Upload failed: ' + err.slice(0, 100);
       btn.disabled = false;
       btn.textContent = 'Upload & Replace';
     }
