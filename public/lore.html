@@ -767,28 +767,36 @@ function openVideoPreview() {
     }
   }
 
-  // Build caption groups — paced at ~145 words per minute (matching ElevenLabs narrator)
+  // Build caption groups — 4-6 words each, paced at narrator speed
   const WPM = 145;
-  const SEC_PER_WORD = 60 / WPM; // ~0.41s per word
+  const SEC_PER_WORD = 60 / WPM;
   const captions = [];
   const fullText = (s.hookLine ? s.hookLine + '. ' : '') + (s.script || '');
-  // Split at natural breaks (sentences, commas, clause starters)
-  const CLAUSE_RE = /(?<=[.!?])\s+|(?<=,)\s+|(?=\b(?:but|and|because|when|where|who|that|then)\b)/gi;
-  const phrases = fullText.split(CLAUSE_RE).filter(p => p.trim().length > 0);
+  const allWords = fullText.split(/\s+/).filter(Boolean);
+  const GROUP_SIZE = 5; // 4-6 words per caption
 
   let currentTime = 0;
-  for (const phrase of phrases) {
-    const trimmed = phrase.trim();
-    if (!trimmed) continue;
-    const wordCount = trimmed.split(/\s+/).length;
-    const duration = Math.max(wordCount * SEC_PER_WORD, 1.0); // min 1s per phrase
-    const hasGold = /\d|points?|rebounds?|blocks?|mvp|championship|record|all-star/i.test(trimmed);
-    const hasRed = /never|nobody|worst|banned|fired|died|forgotten|zero/i.test(trimmed);
+  for (let w = 0; w < allWords.length; w += GROUP_SIZE) {
+    const groupWords = allWords.slice(w, w + GROUP_SIZE);
+    const duration = groupWords.length * SEC_PER_WORD;
+
+    // Color individual words: numbers=gold, dramatic=red, rest=white
+    const coloredHtml = groupWords.map(word => {
+      const clean = word.replace(/[.,!?;:'"()-]/g, '');
+      if (/^\d[\d,.]*$/.test(clean) || /^(record|mvp|championship|all-star|hall)$/i.test(clean)) {
+        return `<span style="color:#F5A623">${word}</span>`;
+      }
+      if (/^(never|nobody|worst|banned|fired|died|forgotten|zero|nothing|none)$/i.test(clean)) {
+        return `<span style="color:#FF3333">${word}</span>`;
+      }
+      return word;
+    }).join(' ');
+
     captions.push({
-      text: trimmed,
+      text: groupWords.join(' '),
+      html: coloredHtml,
       start: currentTime,
-      duration: duration + 0.15, // slight overlap
-      color: hasRed ? '#FF3333' : hasGold ? '#F5A623' : '#ffffff',
+      duration: duration + 0.15,
     });
     currentTime += duration;
   }
@@ -805,9 +813,6 @@ function openVideoPreview() {
       <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.6) 100%);pointer-events:none"></div>
       <div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.85));pointer-events:none"></div>
       <div id="pvCaption" style="position:absolute;left:43%;top:42%;transform:translate(-50%,-50%);width:70%;text-align:center;font-size:13px;font-weight:800;line-height:1.35;text-shadow:0 2px 8px rgba(0,0,0,1);transition:opacity 0.15s;font-family:'DM Sans',sans-serif"></div>
-      <div id="pvStatCard" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);opacity:0;transition:opacity 0.3s;pointer-events:none">
-        <div id="pvStatText" style="font-family:'DM Sans',sans-serif;font-weight:900;font-size:40px;color:#F5A623;text-shadow:0 0 30px rgba(245,166,35,.4)"></div>
-      </div>
       <div style="position:absolute;top:10px;left:10px;font-size:7px;font-weight:800;color:rgba(245,166,35,.7);letter-spacing:2px;background:rgba(0,0,0,.4);padding:2px 6px;border-radius:3px">SPORTS LORE</div>
       <div id="pvLowerThird" style="position:absolute;bottom:60px;left:10px;opacity:0;transition:opacity 0.3s">
         <div style="font-size:6px;color:rgba(245,166,35,.7);letter-spacing:2px;display:flex;align-items:center;gap:4px"><span style="display:block;width:8px;height:1px;background:#F5A623"></span>${(s.storyType||'').replace(/_/g,' ').toUpperCase()}</div>
@@ -909,13 +914,16 @@ function pvRender(t) {
   if (prog) prog.style.width = (t / totalDur * 100) + '%';
   if (timeLabel) timeLabel.textContent = t.toFixed(1) + 's';
 
-  // Find and play the right clip
+  // Cycle through clips — switch video source when entering a new cut
   const vid = document.getElementById('pvVideo');
   const curCut = cutClips.find(c => t >= c.start && t < c.start + c.duration);
   if (curCut && vid) {
-    const newSrc = curCut.url;
-    if (!vid.src.endsWith(newSrc.split('/').pop())) {
-      vid.src = newSrc;
+    // Track which clip index we're on to detect changes
+    const cutIdx = cutClips.indexOf(curCut);
+    if (vid.dataset.cutIdx !== String(cutIdx)) {
+      vid.dataset.cutIdx = String(cutIdx);
+      vid.src = curCut.url;
+      vid.currentTime = 0;
       vid.play().catch(()=>{});
     }
   }
@@ -924,36 +932,18 @@ function pvRender(t) {
   const lt = document.getElementById('pvLowerThird');
   if (lt) lt.style.opacity = t >= 3 ? '1' : '0';
 
-  // Show hook stat card (first 2s) — full stat text, no truncation
-  const statCard = document.getElementById('pvStatCard');
-  const statText = document.getElementById('pvStatText');
-  if (statCard && statText) {
-    if (t < 2) {
-      const hookStats = (scriptData?.hookLine || '').match(/\d[\d,.]*\s*(?:points?|rebounds?|blocks?|shots?|assists?|steals?|ppg|rpg|apg|bpg|games?|seasons?)/gi) || [];
-      if (hookStats.length > 0) {
-        statCard.style.opacity = Math.max(0, 1 - (t / 2));
-        statText.innerHTML = hookStats.map(s => {
-          const parts = s.match(/^([\d,.]+)\s*(.*)/);
-          const num = parts?.[1] || s;
-          const unit = (parts?.[2] || '').toUpperCase(); // Full unit, not truncated
-          return `<div style="margin:4px 0"><span style="font-size:48px">${num}</span> <span style="font-size:18px;color:rgba(245,166,35,0.6)">${unit}</span></div>`;
-        }).join('');
-      }
-    } else {
-      statCard.style.opacity = '0';
-    }
-  }
+  // Stat cards removed — will iterate on these later
 
-  // Show caption — always visible, paced at narrator speed
+  // Show caption — per-word coloring (numbers=gold, dramatic=red)
   const capEl = document.getElementById('pvCaption');
   const sideCapEl = document.getElementById('pvCurrentCaption');
   if (capEl) {
     const activeCap = captions.find(c => t >= c.start && t < c.start + c.duration);
     if (activeCap) {
       capEl.style.opacity = '1';
-      capEl.style.color = activeCap.color;
-      capEl.textContent = activeCap.text;
-      if (sideCapEl) sideCapEl.innerHTML = `<span style="color:${activeCap.color}">${activeCap.text}</span>`;
+      capEl.style.color = '#ffffff';
+      capEl.innerHTML = activeCap.html;
+      if (sideCapEl) sideCapEl.innerHTML = activeCap.html;
     } else {
       capEl.style.opacity = '0';
       if (sideCapEl) sideCapEl.innerHTML = '';
