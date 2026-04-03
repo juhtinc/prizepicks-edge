@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@aws-sdk/client-s3": "^3.1023.0",
     "@vercel/blob": "^2.3.2",
     "axios": "^1.7.2"
   }
