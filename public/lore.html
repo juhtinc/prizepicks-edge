@@ -148,6 +148,14 @@ body::before{content:'';position:fixed;inset:0;background:
 .narrator-box{background:var(--bg3);border-left:2px solid var(--gold);padding:10px 12px;border-radius:0 6px 6px 0;font-size:11px;color:var(--text);line-height:1.6}
 .narrator-label{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;font-weight:600}
 
+/* Inline editable fields */
+.editable{cursor:text;border:1px solid transparent;border-radius:4px;padding:4px 6px;margin:-4px -6px;transition:all 0.15s}
+.editable:hover{border-color:var(--border2);background:rgba(255,255,255,0.02)}
+.editable:focus{outline:none;border-color:var(--gold);background:var(--bg3)}
+.editable[contenteditable="true"]{white-space:pre-wrap}
+.edit-hint{font-size:8px;color:var(--text3);opacity:0;transition:opacity 0.15s;margin-top:2px;font-style:italic}
+.editable:hover ~ .edit-hint,.editable:focus ~ .edit-hint{opacity:1}
+
 /* Script overview (collapsible) */
 .script-overview{background:var(--bg3);border-radius:6px;padding:12px 14px;margin-bottom:16px;border:1px solid var(--border)}
 .script-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;transition:color 0.15s}
@@ -556,15 +564,17 @@ async function selectScript(rowId) {
       <div class="detail-main">
         <div class="script-overview">
           <div class="script-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
-            <span>Script · ${(s.script||'').split(/\s+/).filter(Boolean).length} words</span>
+            <span>Script · <span id="wordCountLabel">${(s.script||'').split(/\s+/).filter(Boolean).length}</span> words</span>
             <span style="font-size:14px">▾</span>
           </div>
           <div class="script-body-text">
-            <div style="color:var(--gold);font-style:italic;margin-bottom:6px">${s.hookLine||''}</div>
-            ${highlightText(s.script||'')}
-            <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text3)">
-              A: ${s.titleA||'—'} · B: ${s.titleB||'—'}
-            </div>
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-weight:600">Hook Line</div>
+            <div class="editable" contenteditable="true" data-field="hookLine" data-row="${rowId}" onblur="saveInlineEdit(this)" style="color:var(--gold);font-style:italic;margin-bottom:10px;font-size:13px;line-height:1.5">${s.hookLine||''}</div>
+            <div class="edit-hint">Click to edit · changes save automatically</div>
+
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;margin-top:8px;font-weight:600">Script</div>
+            <div class="editable" contenteditable="true" data-field="script" data-row="${rowId}" onblur="saveInlineEdit(this)" style="font-size:12px;line-height:1.7">${s.script||''}</div>
+            <div class="edit-hint">Click to edit · changes save automatically</div>
           </div>
         </div>
 
@@ -623,7 +633,7 @@ async function selectScript(rowId) {
           </div>
           <div class="script-section">
             <div class="script-label">Comment Bait</div>
-            <div class="script-meta">${s.commentBait||'—'}</div>
+            <div class="editable script-meta" contenteditable="true" data-field="commentBait" data-row="${rowId}" onblur="saveInlineEdit(this)">${s.commentBait||'—'}</div>
           </div>
 
           <div id="clipTimeline"></div>
@@ -945,6 +955,26 @@ async function updateScriptStatus(rowId, status) {
     selectScript(rowId); // Refresh
   } else {
     toast(`Failed: ${result.error || 'unknown error'}`);
+  }
+}
+
+// ── Inline Script Editing ──
+async function saveInlineEdit(el) {
+  const field = el.dataset.field;
+  const rowId = el.dataset.row;
+  const value = el.innerText.trim();
+  if (!field || !rowId || !value) return;
+
+  const result = await apiPost("edit-script", { rowId, field, value });
+  if (result.ok) {
+    toast(`${field === 'hookLine' ? 'Hook' : field === 'script' ? 'Script' : field} saved`);
+    // Update word count if script was edited
+    if (field === 'script' && result.wordCount != null) {
+      const label = document.getElementById('wordCountLabel');
+      if (label) label.textContent = result.wordCount;
+    }
+  } else {
+    toast(`Save failed: ${result.error || 'unknown'}`);
   }
 }
 
