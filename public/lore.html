@@ -25,7 +25,10 @@ body::before{content:'';position:fixed;inset:0;background:
   radial-gradient(ellipse 60% 60% at 90% 110%,rgba(212,146,15,0.025),transparent);
   pointer-events:none;z-index:-1}
 
-/* Film grain removed for readability */
+/* Status banner */
+.status-banner{padding:6px 28px;font-size:10px;font-family:'JetBrains Mono',monospace;display:flex;gap:16px;align-items:center;background:var(--bg2);border-bottom:1px solid var(--border);color:var(--text3);letter-spacing:0.3px;position:fixed;top:48px;left:0;right:0;z-index:99}
+.status-banner .stat{display:flex;align-items:center;gap:4px}
+.status-banner .stat .dot{width:5px;height:5px;border-radius:50%}
 
 /* ── Animations ── */
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.25}}
@@ -60,6 +63,7 @@ body::before{content:'';position:fixed;inset:0;background:
 
 /* ── Layout ── */
 .main{padding:60px 28px 28px;max-width:1440px;margin:0 auto}
+.main[style*="padding-top:80px"]{padding-top:80px!important}
 .main.detail-open .section-header,.main.detail-open .batch-row,.main.detail-open #scriptsArea{display:none}
 .main.detail-open .detail-back-row{display:flex}
 .detail-back-row{display:none;align-items:center;gap:12px;margin:4px 0 10px}
@@ -320,7 +324,8 @@ body::before{content:'';position:fixed;inset:0;background:
   <div class="nav-brand"><span class="dot"></span>SPORTS LORE</div>
   <div class="nav-tabs">
     <a href="/" class="nav-tab">Props Edge</a>
-    <a href="/lore.html" class="nav-tab active">Sports Lore</a>
+    <a class="nav-tab active" onclick="showView('production')">Production</a>
+    <a class="nav-tab" onclick="showView('analytics')">Analytics</a>
   </div>
   <div class="nav-right">
     <span class="nav-status" id="statusText"></span>
@@ -328,19 +333,30 @@ body::before{content:'';position:fixed;inset:0;background:
   </div>
 </nav>
 
-<div class="main" id="mainContainer">
+<div class="status-banner" id="statusBanner"></div>
+
+<div class="main" id="mainContainer" style="padding-top:80px">
   <div class="detail-back-row" id="detailBackRow">
     <span class="back-btn" onclick="closeDetail()">← Back</span>
     <span class="breadcrumb" id="detailBreadcrumb"></span>
   </div>
 
-  <div class="section-header"><h1 class="section-title">Batches</h1><span class="section-badge" id="batchCount">—</span></div>
+  <div class="section-header">
+    <h1 class="section-title">Batches</h1>
+    <span class="section-badge" id="batchCount">—</span>
+    <button class="btn btn-gold btn-sm" onclick="createNewBatch()" style="margin-left:auto">+ New Batch</button>
+  </div>
   <div class="batch-row" id="batchRow"><div class="loading"><div class="spinner"></div>Loading...</div></div>
 
   <div class="section-header"><h1 class="section-title">Scripts</h1><span class="section-badge" id="scriptCount">—</span></div>
   <div id="scriptsArea"><div class="empty">Select a batch</div></div>
 
   <div id="detailArea"></div>
+</div>
+
+<div class="main" id="analyticsContainer" style="display:none;padding-top:80px">
+  <div class="section-header"><h1 class="section-title">Analytics</h1></div>
+  <div id="analyticsContent"><div class="loading"><div class="spinner"></div>Loading analytics...</div></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -426,6 +442,12 @@ async function selectBatch(id) {
       <span style="color:var(--green)">${totalApproved}</span> approved
       ${totalRejected > 0 ? `<span style="margin:0 6px;opacity:0.3">|</span><span style="color:var(--red)">${totalRejected}</span> rejected` : ''}
     </div>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="btn btn-dim btn-sm" onclick="batchAction('source')">Source All Clips</button>
+    <button class="btn btn-dim btn-sm" onclick="batchAction('voice')">Generate All Voices</button>
+    <button class="btn btn-green btn-sm" onclick="batchAction('approve')">Approve All Reviewed</button>
+    <button class="btn btn-gold btn-sm" onclick="batchAction('render')">Render All Ready</button>
   </div>
   ${(() => {
     const withAnalytics = scripts.filter(s => s.viewsAt48h != null);
@@ -543,6 +565,9 @@ async function selectScript(rowId) {
         ${s.youtubeUrl?`<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim btn-sm">YouTube</a>`:''}
         <button class="btn btn-dim btn-sm" onclick="openRegenModal('${rowId}')">Regen Script${s.scriptVersions?.length ? ' ('+s.scriptVersions.length+')' : ''}</button>
         <button class="btn btn-dim btn-sm" onclick="generateVoiceover('${rowId}')">${s.voiceoverUrl?'Regen Voice':'Gen Voice'}</button>
+        ${!s.renderUrl ? `<button class="btn btn-dim btn-sm" onclick="renderVideo('${rowId}',true)">Preview Render</button>` : ''}
+        ${s.renderUrl && !s.youtubeUrl ? `<button class="btn btn-gold btn-sm" onclick="renderVideo('${rowId}',false)">Publish</button>` : ''}
+        ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="btn btn-green btn-sm">Live</a>` : ''}
         <button class="btn btn-dim btn-sm" onclick="sourceClips('${rowId}')">Re-source</button>
       </div>
     </div>
@@ -1126,6 +1151,111 @@ async function revertScript(rowId, versionIdx) {
     selectScript(rowId);
   } else {
     toast(`Failed: ${result.error || 'unknown'}`);
+  }
+}
+
+// ── New Batch Creation ──
+async function createNewBatch() {
+  const sport = prompt("Sport focus? (NBA, NFL, MLB, NHL — or leave blank for NBA)", "NBA");
+  if (sport === null) return;
+
+  const half = prompt("Batch half? (A = Mon-Wed, B = Thu-Sun)", "A");
+  if (half === null) return;
+
+  toast("Creating new batch — Claude is planning 7 stories...");
+  try {
+    const r = await fetch(`/api/lore?route=weekly-batch&phase=plan&batch=${half || 'A'}`, {
+      method: 'POST',
+      headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sport: sport || 'NBA' }),
+    });
+    const result = await r.json();
+    if (result.ok || result.batchId) {
+      toast(`Batch created: ${result.batchId || 'check batches'}`);
+      await loadBatches();
+    } else {
+      toast(`Failed: ${result.error || JSON.stringify(result).slice(0, 100)}`);
+    }
+  } catch (e) {
+    toast(`Error: ${e.message}`);
+  }
+}
+
+// ── Batch Actions ──
+async function batchAction(type) {
+  if (!curBatch) return;
+  const { scripts = [] } = await api("scripts", { batchId: curBatch });
+  if (!scripts.length) { toast('No scripts in batch'); return; }
+
+  if (type === 'source') {
+    if (!confirm(`Source clips for all ${scripts.length} scripts?`)) return;
+    const rowIds = scripts.map(s => s.rowId);
+    toast(`Triggering clip sourcing for ${rowIds.length} scripts...`);
+    await apiPost("trigger-clips", { batchId: curBatch, rowIds });
+    pollPipelineStatus();
+  } else if (type === 'voice') {
+    const need = scripts.filter(s => !s.hasVoice && s.hasScript);
+    if (!need.length) { toast('All scripts already have voiceover'); return; }
+    toast(`Generating voiceover for ${need.length} scripts...`);
+    for (const s of need) {
+      await apiPost("generate-voiceover", { rowId: s.rowId });
+      toast(`Voice generated: ${s.playerName}`);
+    }
+    toast(`Done — ${need.length} voiceovers generated`);
+    selectBatch(curBatch);
+  } else if (type === 'approve') {
+    const need = scripts.filter(s => s.hasClips && s.clipsApproved < s.clipsSourced);
+    if (!need.length) { toast('All clips already approved'); return; }
+    toast(`Approving clips for ${need.length} scripts...`);
+    for (const s of need) {
+      await apiPost("approve-all", { rowId: s.rowId });
+    }
+    toast(`Done — all clips approved`);
+    selectBatch(curBatch);
+  } else if (type === 'render') {
+    const ready = scripts.filter(s => s.hasClips && s.hasVoice && !s.hasRender);
+    if (!ready.length) { toast('No scripts ready to render'); return; }
+    if (!confirm(`Render ${ready.length} videos? This may take several minutes.`)) return;
+    toast(`Rendering ${ready.length} videos...`);
+    for (const s of ready) {
+      toast(`Rendering: ${s.playerName}...`);
+      await fetch(`/api/lore?route=video-production`, {
+        method: 'POST',
+        headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowId: s.rowId, preview: true }),
+      });
+    }
+    toast(`Done — ${ready.length} renders queued`);
+    selectBatch(curBatch);
+  }
+}
+
+// ── Render + Publish ──
+async function renderVideo(rowId, preview) {
+  const action = preview ? 'Preview render' : 'Full publish';
+  if (!preview && !confirm(`Publish ${rowId} to YouTube? This will render, upload, and make it live.`)) return;
+
+  toast(`${action} starting — this may take 1-2 minutes...`);
+  try {
+    const r = await fetch(`/api/lore?route=video-production`, {
+      method: 'POST',
+      headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowId, preview }),
+    });
+    const result = await r.json();
+    if (result.ok) {
+      if (preview && result.downloadUrl) {
+        toast('Preview render complete');
+        window.open(result.downloadUrl, '_blank');
+      } else {
+        toast('Published successfully');
+      }
+      selectScript(rowId);
+    } else {
+      toast(`Failed: ${result.error || JSON.stringify(result.log || '').slice(0, 100)}`);
+    }
+  } catch (e) {
+    toast(`Error: ${e.message}`);
   }
 }
 
@@ -1913,6 +2043,98 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ── View Switching ──
+function showView(view) {
+  document.getElementById('mainContainer').style.display = view === 'production' ? 'block' : 'none';
+  document.getElementById('analyticsContainer').style.display = view === 'analytics' ? 'block' : 'none';
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => { if (t.textContent.toLowerCase().includes(view === 'production' ? 'production' : 'analytics')) t.classList.add('active'); });
+  if (view === 'analytics') loadAnalytics();
+}
+
+async function loadAnalytics() {
+  const { weeks = [] } = await api("analytics-data");
+  const container = document.getElementById('analyticsContent');
+
+  if (!weeks.length) {
+    container.innerHTML = '<div class="empty">No analytics data yet. Data is collected weekly from YouTube.</div>';
+    return;
+  }
+
+  // Aggregate all story types across weeks
+  const typeData = {};
+  weeks.forEach(w => {
+    if (!w.byType) return;
+    Object.entries(w.byType).forEach(([type, d]) => {
+      if (!typeData[type]) typeData[type] = { views: 0, retention: 0, count: 0 };
+      typeData[type].views += d.views || d.avgViews * d.count || 0;
+      typeData[type].retention += parseFloat(d.avgRetention || d.retention / d.count || 0);
+      typeData[type].count += d.count || 0;
+    });
+  });
+
+  const types = Object.entries(typeData).sort((a, b) => b[1].views - a[1].views);
+  const maxViews = Math.max(...types.map(([, d]) => d.views), 1);
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Total Views</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold-bright)">${types.reduce((s, [, d]) => s + d.views, 0).toLocaleString()}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Videos Tracked</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text)">${types.reduce((s, [, d]) => s + d.count, 0)}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Weeks of Data</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text)">${weeks.length}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Best Type</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--green)">${types[0] ? types[0][0].replace(/_/g, ' ') : '—'}</div>
+      </div>
+    </div>
+
+    <div class="section-header"><h1 class="section-title" style="font-size:20px">Performance by Story Type</h1></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${types.map(([type, d]) => {
+        const avgViews = d.count > 0 ? Math.round(d.views / d.count) : 0;
+        const avgRet = d.count > 0 ? (d.retention / d.count).toFixed(1) : '0';
+        const pct = (d.views / maxViews * 100).toFixed(0);
+        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:16px">
+          <div style="min-width:140px">
+            <div style="font-weight:600;font-size:13px;text-transform:capitalize">${type.replace(/_/g, ' ')}</div>
+            <div style="font-size:10px;color:var(--text3)">${d.count} video${d.count !== 1 ? 's' : ''}</div>
+          </div>
+          <div style="flex:1">
+            <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--gold),var(--gold-bright));border-radius:3px;transition:width 0.5s"></div>
+            </div>
+          </div>
+          <div style="text-align:right;min-width:80px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold-bright)">${avgViews.toLocaleString()} avg</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${parseFloat(avgRet) > 50 ? 'var(--green)' : 'var(--text3)'}">${avgRet}% ret</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="section-header" style="margin-top:24px"><h1 class="section-title" style="font-size:20px">Weekly Trends</h1></div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${weeks.reverse().map(w => {
+        const totalViews = Object.values(w.byType || {}).reduce((s, d) => s + (d.views || d.avgViews * d.count || 0), 0);
+        const totalVids = Object.values(w.byType || {}).reduce((s, d) => s + (d.count || 0), 0);
+        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:10px 14px;display:flex;align-items:center;gap:12px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);min-width:90px">${w.weekOf}</div>
+          <div style="font-size:12px;color:var(--text)">${totalVids} videos</div>
+          <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${totalViews.toLocaleString()} views</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
 // ── Init ──
 async function loadAll() {
   document.getElementById("statusText").textContent = "Loading...";
@@ -1924,7 +2146,30 @@ async function loadAll() {
     fetchPlayerPhotos(scripts);
   }
   document.getElementById("statusText").textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  updateStatusBanner();
 }
+
+async function updateStatusBanner() {
+  if (!curBatch) {
+    document.getElementById('statusBanner').innerHTML = '';
+    return;
+  }
+  const { scripts = [] } = await api("scripts", { batchId: curBatch });
+  const needClips = scripts.filter(s => s.hasScript && !s.hasClips).length;
+  const needVoice = scripts.filter(s => s.hasClips && !s.hasVoice).length;
+  const needReview = scripts.filter(s => s.hasClips && s.clipsApproved < s.clipsSourced).length;
+  const needRender = scripts.filter(s => s.hasClips && s.hasVoice && !s.hasRender).length;
+  const published = scripts.filter(s => s.isPublished).length;
+
+  const parts = [];
+  if (needClips > 0) parts.push(`<span class="stat"><span class="dot" style="background:var(--blue)"></span>${needClips} need clips</span>`);
+  if (needReview > 0) parts.push(`<span class="stat"><span class="dot" style="background:var(--gold)"></span>${needReview} need review</span>`);
+  if (needVoice > 0) parts.push(`<span class="stat"><span class="dot" style="background:var(--gold)"></span>${needVoice} need voice</span>`);
+  if (needRender > 0) parts.push(`<span class="stat"><span class="dot" style="background:var(--red)"></span>${needRender} ready to render</span>`);
+  parts.push(`<span class="stat"><span class="dot" style="background:var(--green)"></span>${published}/${scripts.length} published</span>`);
+  document.getElementById('statusBanner').innerHTML = parts.join('');
+}
+
 loadAll();
 </script>
 </body>
