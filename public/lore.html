@@ -1411,15 +1411,27 @@ function splitIntoSegments(hookLine, script, segments) {
   const totalDur = segments.reduce((s,seg)=>s+(seg.end-seg.start),0);
   const results = [];
   let si = 0;
-  for (const seg of segments) {
+
+  // Reserve at least 1 sentence for the last segment
+  const reservedForLast = Math.min(1, sentences.length);
+  const availableForOthers = sentences.length - reservedForLast;
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
     const dur = seg.end - seg.start;
     const proportion = dur / totalDur;
-    let n = Math.max(1, Math.round(proportion * sentences.length));
-    n = Math.min(n, sentences.length - si);
-    results.push(sentences.slice(si, si + n).join(" "));
-    si += n;
+
+    if (i === segments.length - 1) {
+      // Last segment gets everything remaining
+      results.push(sentences.slice(si).join(" "));
+    } else {
+      let n = Math.max(1, Math.round(proportion * availableForOthers));
+      n = Math.min(n, sentences.length - si - reservedForLast);
+      n = Math.max(n, 0);
+      results.push(sentences.slice(si, si + n).join(" ") || "");
+      si += n;
+    }
   }
-  if (si < sentences.length) results[results.length-1] += " " + sentences.slice(si).join(" ");
   return results;
 }
 
@@ -1847,7 +1859,8 @@ function openVideoPreview() {
   // Build clip URLs for each 3s cut using the actual 18-slot clip list
   const cutClips = [];
   const TOTAL = 18;
-  const clipDurPv = 55 / TOTAL; // ~3.05s per clip
+  const pvTotalTime = s.voiceoverDuration || 55;
+  const clipDurPv = pvTotalTime / TOTAL;
   for (let i = 0; i < TOTAL; i++) {
     const brief = clips.find(c => c.slot === i + 1);
     cutClips.push({
@@ -1891,7 +1904,8 @@ function openVideoPreview() {
     currentTime += Math.max(duration, 0.8);
   }
 
-  const totalDur = Math.max(...segments.map(s => s.end), 55);
+  // Use actual voiceover duration if available, otherwise fall back to segment timing
+  const totalDur = s.voiceoverDuration || Math.max(...segments.map(s => s.end), 55);
 
   // Create modal
   const modal = document.createElement('div');
