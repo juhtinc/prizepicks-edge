@@ -2181,19 +2181,16 @@ function previewSFX(idx) {
 
 async function previewMusic(url) {
   if (!url) { toast('No music URL'); return; }
+  if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.remove(); previewAudioEl = null; }
   toast('Loading preview...');
+  previewAudioEl = document.createElement('audio');
+  previewAudioEl.src = proxyAudioUrl(url);
+  previewAudioEl.volume = 0.3;
+  document.body.appendChild(previewAudioEl);
   try {
-    const resp = await fetch(url);
-    const blob = await resp.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.remove(); }
-    previewAudioEl = document.createElement('audio');
-    previewAudioEl.src = blobUrl;
-    previewAudioEl.volume = 0.3;
-    document.body.appendChild(previewAudioEl);
     await previewAudioEl.play();
     toast('Playing 8s preview...');
-    setTimeout(() => { if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.remove(); URL.revokeObjectURL(blobUrl); previewAudioEl = null; } }, 8000);
+    setTimeout(() => { if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.remove(); previewAudioEl = null; } }, 8000);
   } catch (e) {
     toast('Preview error: ' + e.message);
   }
@@ -2201,35 +2198,29 @@ async function previewMusic(url) {
 
 let pvMusicAudio = null;
 
+function proxyAudioUrl(url) {
+  return `${API}&action=proxy-audio&url=${encodeURIComponent(url)}`;
+}
+
 async function togglePreviewMusic(on) {
   if (on) {
     const mood = MOOD_MAP[scriptData?.storyType] || 'cinematic';
     const url = scriptData?.musicTrack || MUSIC_LIBRARY[mood]?.[0]?.url;
     if (!url) { toast('No music track'); return; }
 
-    // Clean up previous
     if (pvMusicAudio) { pvMusicAudio.pause(); pvMusicAudio.remove(); pvMusicAudio = null; }
 
+    toast('Loading music...');
+    pvMusicAudio = document.createElement('audio');
+    pvMusicAudio.src = proxyAudioUrl(url);
+    pvMusicAudio.volume = 0.15;
+    pvMusicAudio.loop = true;
+    document.body.appendChild(pvMusicAudio);
+
+    pvMusicAudio.currentTime = window.pvTime || 0;
     try {
-      // Fetch the audio as a blob to avoid CORS/redirect issues
-      toast('Loading music...');
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const blob = await resp.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      pvMusicAudio = document.createElement('audio');
-      pvMusicAudio.src = blobUrl;
-      pvMusicAudio.volume = 0.15;
-      pvMusicAudio.loop = true;
-      document.body.appendChild(pvMusicAudio);
-
-      // Play immediately (this is a direct user click so autoplay is allowed)
-      pvMusicAudio.currentTime = window.pvTime || 0;
       await pvMusicAudio.play();
       toast('Music playing');
-
-      // If preview isn't playing, pause music but keep it loaded
       if (!window.pvPlaying) pvMusicAudio.pause();
     } catch (e) {
       toast('Music error: ' + e.message);
