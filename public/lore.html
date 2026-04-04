@@ -744,25 +744,39 @@ function dropClip(e, targetIdx) {
   e.preventDefault();
   document.querySelectorAll('.clip-row').forEach(r => { r.classList.remove('drag-over'); r.classList.remove('dragging'); });
   if (dragIdx === null || dragIdx === targetIdx) return;
+  if (!curClipList.length) return;
 
-  // Reorder the clips in the timeline
-  const timeline = document.getElementById('clipTimeline');
-  const rows = Array.from(timeline.children);
-  const draggedRow = rows[dragIdx];
+  // Swap the video clips between slots — text stays fixed to slot position
+  const a = curClipList[dragIdx];
+  const b = curClipList[targetIdx];
 
-  if (dragIdx < targetIdx) {
-    rows[targetIdx].after(draggedRow);
-  } else {
-    rows[targetIdx].before(draggedRow);
-  }
+  // Swap URLs and video-related data, keep slot numbers fixed
+  const swapFields = ['url', 'source', 'approved', 'rejected', 'rejectionReason', 'clipUrl'];
+  const tmpVals = {};
+  for (const f of swapFields) { tmpVals[f] = a[f]; a[f] = b[f]; b[f] = tmpVals[f]; }
 
-  // Update indices
-  Array.from(timeline.children).forEach((row, i) => {
-    row.querySelector('.clip-row-num').textContent = i + 1;
-    row.dataset.idx = i;
+  // Update the thumbnails in the DOM
+  const rows = document.querySelectorAll('.clip-row');
+  [dragIdx, targetIdx].forEach(idx => {
+    const row = rows[idx];
+    if (!row) return;
+    const clip = curClipList[idx];
+    // Update thumbnail video
+    const thumbVid = row.querySelector('.clip-row-thumb video');
+    if (thumbVid) thumbVid.src = clip.url;
+    // Update approval state
+    row.classList.toggle('approved', !!clip.approved);
+    row.classList.toggle('rejected', !!clip.rejected);
+    const dot = row.querySelector('.clip-status-dot');
+    if (dot) dot.className = `clip-status-dot ${clip.approved ? 'ok' : clip.rejected ? 'no' : 'pending'}`;
   });
 
-  toast(`Clip moved from #${dragIdx+1} to #${targetIdx+1}`);
+  // Update sidebar if either swapped slot is currently selected
+  if (curClipIdx === dragIdx || curClipIdx === targetIdx) {
+    selectClip(curClipIdx);
+  }
+
+  toast(`Swapped clip #${dragIdx+1} ↔ #${targetIdx+1}`);
   dragIdx = null;
 }
 
