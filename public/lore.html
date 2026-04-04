@@ -1859,9 +1859,13 @@ async function doClipFromYouTube(slot) {
 }
 
 // ── Video Preview Modal ──
-function openVideoPreview() {
-  if (!scriptData) return;
-  const s = scriptData;
+async function openVideoPreview() {
+  if (!curScript) return;
+  // Always fetch fresh data to ensure latest voiceover timestamps
+  const { script: freshScript } = await api("script-detail", { rowId: curScript });
+  if (!freshScript) { toast("Could not load script"); return; }
+  scriptData = freshScript;
+  const s = freshScript;
   const segments = getSegments(s.storyType);
   const sentences = splitIntoSegments(s.hookLine, s.script, segments);
   const clips = s.clipBriefs || [];
@@ -1869,7 +1873,7 @@ function openVideoPreview() {
   // Build clip URLs for each 3s cut using the actual 18-slot clip list
   const cutClips = [];
   const TOTAL = 18;
-  const pvTotalTime = s.voiceoverDuration || 55;
+  const pvTotalTime = s.voiceoverDuration || 60;
   const clipDurPv = pvTotalTime / TOTAL;
   for (let i = 0; i < TOTAL; i++) {
     const brief = clips.find(c => c.slot === i + 1);
