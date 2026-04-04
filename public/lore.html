@@ -1833,7 +1833,9 @@ function pvRender(t) {
 
 // ── Keyboard shortcuts ──
 document.addEventListener('keydown', (e) => {
-  // Don't capture when typing in inputs or modals open
+  // Never intercept browser shortcuts (Ctrl/Cmd+R, Ctrl+Shift+R, etc.)
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  // Don't capture when typing in inputs
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (document.getElementById('uploadModal') || document.getElementById('previewModal')) {
     // In preview modal: Space = play/pause, Escape = close
