@@ -1984,10 +1984,6 @@ async function openVideoPreview() {
       <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px">Music</div>
       <div id="pvMusicList" style="display:flex;flex-direction:column;gap:4px"></div>
 
-      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
-        <span>Sound Effects</span>
-      </div>
-      <div id="pvSfxList" style="display:flex;flex-direction:column;gap:3px"></div>
     </div>
 
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;min-width:200px">
@@ -2006,7 +2002,7 @@ async function openVideoPreview() {
         oninput="pvScrub(this.value)">
       <div style="font-size:11px;color:var(--text3)"><span id="pvTimeLabel">0.0s</span> / ${totalDur.toFixed(0)}s</div>
       <div id="pvCurrentCaption" style="font-size:12px;color:var(--text);text-align:center;max-width:200px;min-height:40px;line-height:1.4"></div>
-      <button class="btn btn-dim" onclick="document.getElementById('previewModal').remove();pvStop();" style="margin-top:8px">Close</button>
+      <button class="btn btn-dim" onclick="document.getElementById('previewModal').remove();pvStop();if(pvMusicAudio){pvMusicAudio.pause();pvMusicAudio.remove();pvMusicAudio=null;}" style="margin-top:8px">Close</button>
     </div>
   `;
   document.body.appendChild(modal);
@@ -2093,33 +2089,40 @@ function populateAudioTimeline(s) {
   const musicTrack = s.musicTrack || MUSIC_LIBRARY[mood]?.[0]?.url || '';
   const trackName = s.musicMood || mood;
 
+  // Current track
   musicList.innerHTML = `
-    <div class="audio-item" data-type="music">
-      <span class="audio-time">0:03</span>
-      <span class="audio-type music">BG</span>
-      <span class="audio-name" title="${trackName}">${trackName}</span>
-      <button class="btn btn-dim btn-sm" onclick="previewMusic('${musicTrack.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px" title="Preview">▶</button>
-      <button class="btn btn-dim btn-sm" onclick="openMusicPicker()" style="padding:2px 6px;font-size:8px;text-transform:none">Change</button>
+    <div class="audio-item" data-type="music" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="audio-type music">BG</span>
+        <span class="audio-name" style="flex:1" title="${trackName}">${trackName}</span>
+        <button class="btn btn-dim btn-sm" onclick="previewMusic('${musicTrack.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px" title="Preview">▶</button>
+        <button class="btn btn-dim btn-sm" onclick="openMusicPicker()" style="padding:2px 6px;font-size:8px;text-transform:none">Change</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:var(--text3);font-family:'JetBrains Mono',monospace">
+        <span>0:03 fade in</span>
+        <div style="flex:1;height:2px;background:linear-gradient(90deg,transparent,var(--blue),var(--blue),transparent);border-radius:1px"></div>
+        <span>fade out</span>
+      </div>
     </div>
-  `;
 
-  // SFX placements — use stored data or generate defaults from story template
-  const sfx = s.sfxPlacements || generateDefaultSFX(s);
-  window.pvSfxData = sfx;
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:8px;margin-bottom:4px;font-weight:600">Browse Tracks</div>
+    ${Object.entries(MUSIC_LIBRARY).map(([cat, tracks]) => `
+      <div style="margin-bottom:6px">
+        <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">${cat}</div>
+        ${tracks.map(t => `
+          <div class="audio-item" style="margin-bottom:2px;padding:4px 8px">
+            <span class="audio-name" style="flex:1;font-size:10px">${t.name}</span>
+            <button class="btn btn-dim btn-sm" onclick="previewMusic('${t.url.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px">▶</button>
+            <button class="btn btn-dim btn-sm" onclick="selectMusicTrack('${t.url.replace(/'/g, "\\'")}','${t.name}')" style="padding:2px 6px;font-size:8px;text-transform:none">Use</button>
+          </div>
+        `).join('')}
+      </div>
+    `).join('')}
 
-  sfxList.innerHTML = sfx.length ? sfx.map((fx, i) => `
-    <div class="audio-item" data-type="sfx" data-time="${fx.time}" data-idx="${i}">
-      <span class="audio-time">${formatTime(fx.time)}</span>
-      <span class="audio-type sfx">${(fx.type || 'sfx').replace(/_/g, ' ').slice(0, 8)}</span>
-      <span class="audio-name">${fx.note || fx.type?.replace(/_/g, ' ') || 'Effect'}</span>
-      <button class="btn btn-dim btn-sm" onclick="previewSFX(${i})" style="padding:2px 5px;font-size:8px" title="Preview">▶</button>
-      <button class="btn btn-dim btn-sm" onclick="replaceSFX(${i})" style="padding:2px 6px;font-size:8px;text-transform:none">Swap</button>
-      <button class="btn btn-red btn-sm" onclick="removeSFX(${i})" style="padding:1px 4px;font-size:8px">&times;</button>
-    </div>
-  `).join('') : '<div style="font-size:10px;color:var(--text3);padding:4px">No SFX placed</div>';
-
-  sfxList.innerHTML += `
-    <button class="btn btn-dim btn-sm" onclick="addSFX()" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">+ Add sound effect</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3);margin-top:8px;cursor:pointer">
+      <input type="checkbox" id="pvMusicToggle" onchange="togglePreviewMusic(this.checked)" style="accent-color:var(--gold)">
+      Play music during preview
+    </label>
   `;
 }
 
@@ -2174,6 +2177,29 @@ function previewMusic(url) {
   if (!url) { toast('No music URL'); return; }
   toast('Playing 8s preview...');
   playSoundUrl(url, 0.3, 8000);
+}
+
+let pvMusicAudio = null;
+
+function togglePreviewMusic(on) {
+  if (on) {
+    const mood = MOOD_MAP[scriptData?.storyType] || 'cinematic';
+    const url = scriptData?.musicTrack || MUSIC_LIBRARY[mood]?.[0]?.url;
+    if (!url) return;
+    pvMusicAudio = document.createElement('audio');
+    pvMusicAudio.crossOrigin = 'anonymous';
+    pvMusicAudio.src = url;
+    pvMusicAudio.volume = 0.15;
+    pvMusicAudio.loop = true;
+    pvMusicAudio.preload = 'auto';
+    document.body.appendChild(pvMusicAudio);
+    if (window.pvPlaying) {
+      pvMusicAudio.currentTime = window.pvTime || 0;
+      pvMusicAudio.play().catch(()=>{});
+    }
+  } else {
+    if (pvMusicAudio) { pvMusicAudio.pause(); pvMusicAudio.remove(); pvMusicAudio = null; }
+  }
 }
 
 function openMusicPicker() {
@@ -2284,6 +2310,7 @@ function pvPlay() {
   window.pvInterval = setInterval(pvTick, 100);
   const a = document.getElementById('pvAudio');
   if (a && a.src) { a.currentTime = window.pvTime || 0; a.play().catch(()=>{}); }
+  if (pvMusicAudio) { pvMusicAudio.currentTime = window.pvTime || 0; pvMusicAudio.play().catch(()=>{}); }
 }
 
 function pvStop() {
@@ -2294,6 +2321,7 @@ function pvStop() {
   if (btn) btn.textContent = '▶ Play';
   const a = document.getElementById('pvAudio');
   if (a) a.pause();
+  if (pvMusicAudio) pvMusicAudio.pause();
 }
 
 function pvReset() {
@@ -2304,6 +2332,7 @@ function pvReset() {
   if (scrub) scrub.value = 0;
   const a = document.getElementById('pvAudio');
   if (a) a.currentTime = 0;
+  if (pvMusicAudio) pvMusicAudio.currentTime = 0;
 }
 
 function pvScrub(val) {
@@ -2312,8 +2341,11 @@ function pvScrub(val) {
   const a = document.getElementById('pvAudio');
   if (a && a.src) {
     a.currentTime = window.pvTime;
-    // Resume playback if we were playing
     if (window.pvPlaying) a.play().catch(()=>{});
+  }
+  if (pvMusicAudio) {
+    pvMusicAudio.currentTime = window.pvTime;
+    if (window.pvPlaying) pvMusicAudio.play().catch(()=>{});
   }
 }
 
@@ -2355,22 +2387,6 @@ function pvRender(t) {
   const lt = document.getElementById('pvLowerThird');
   if (lt) lt.style.opacity = t >= 3 ? '1' : '0';
 
-  // Highlight active SFX + play sound during playback
-  document.querySelectorAll('.audio-item[data-type="sfx"]').forEach(el => {
-    const sfxTime = parseFloat(el.dataset.time);
-    const isActive = t >= sfxTime && t < sfxTime + 1.5;
-    const wasActive = el.classList.contains('active');
-    el.classList.toggle('active', isActive);
-    // Play SFX audio when it becomes active during playback
-    if (isActive && !wasActive && window.pvPlaying) {
-      const idx = parseInt(el.dataset.idx);
-      const fx = window.pvSfxData?.[idx];
-      const sfxUrl = fx ? getSFXUrl(fx) : null;
-      if (sfxUrl) {
-        playSoundUrl(sfxUrl, Math.min((fx.volume || 30) / 100, 0.5), (fx.duration || 1) * 1000);
-      }
-    }
-  });
 
   // Stat cards removed — will iterate on these later
 
