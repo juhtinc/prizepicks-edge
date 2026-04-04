@@ -730,12 +730,12 @@ async function selectScript(rowId) {
           const defaultTrack = MUSIC_LIBRARY[moodKey]?.[0]?.url || '';
           const activeTrack = s.musicTrack || defaultTrack;
           const trackLabel = s.musicMood || moodKey;
+          window._musicTrackUrl = activeTrack;
           return `<div>
           <div class="clip-panel-title">Background Music · ${trackLabel}</div>
           ${activeTrack ? `
             <audio id="musicPlayer" controls preload="none" style="width:100%;height:28px;border-radius:4px;opacity:0.85"></audio>
-            <button class="btn btn-dim btn-sm" onclick="loadMusicToR2(document.getElementById('musicTrackData').dataset.track)" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
-            <div id="musicTrackData" style="display:none" data-track="${activeTrack}"></div>
+            <button class="btn btn-dim btn-sm" onclick="loadMusicToR2()" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
           ` : '<div style="font-size:10px;color:var(--text3)">No track available</div>'}`;
         })()}
           <div style="display:flex;gap:4px;margin-top:4px">
@@ -2273,15 +2273,11 @@ function openMusicPicker() {
   }, 50);
 }
 
-async function loadMusicToR2(url) {
+async function loadMusicToR2() {
   const player = document.getElementById('musicPlayer');
   if (!player) { toast('No player element'); return; }
-  // Get URL from hidden data div if not passed directly
-  if (!url) {
-    const dataEl = document.getElementById('musicTrackData');
-    url = dataEl?.dataset?.track;
-  }
-  if (!url) { toast('No track URL'); return; }
+  const url = window._musicTrackUrl;
+  if (!url) { toast('No track URL set'); return; }
   toast('Caching: ' + url.slice(-30));
   try {
     // Upload to R2 via backend, get back a public R2 URL
