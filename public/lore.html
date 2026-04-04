@@ -2219,7 +2219,7 @@ async function previewMusic(url) {
 let pvMusicAudio = null;
 
 function proxyAudioUrl(url) {
-  return `${API}&action=proxy-audio&url=${encodeURIComponent(url)}`;
+  return `/api/proxy-audio?secret=${SECRET}&url=${encodeURIComponent(url)}`;
 }
 
 async function togglePreviewMusic(on) {
@@ -2280,8 +2280,8 @@ async function loadMusicPlayer(encodedUrl) {
   if (!player) return;
   toast('Loading music...');
   try {
-    const proxyUrl = `${API}&action=proxy-audio&secret=${SECRET}&url=${encodedUrl}`;
-    const resp = await fetch(proxyUrl, { headers: { 'x-secret': SECRET } });
+    const proxyUrl = `/api/proxy-audio?secret=${SECRET}&url=${encodedUrl}`;
+    const resp = await fetch(proxyUrl);
     if (!resp.ok) { toast('Proxy returned ' + resp.status); return; }
     const blob = await resp.blob();
     toast('Music loaded (' + (blob.size / 1024).toFixed(0) + 'KB)');
