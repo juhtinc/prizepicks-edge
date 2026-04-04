@@ -725,9 +725,20 @@ async function selectScript(rowId) {
           ${s.voiceoverDuration > 60 ? `<div style="font-size:9px;color:var(--red);margin-bottom:4px;font-weight:600">Exceeds 60s limit — trim the script and regenerate</div>` : ''}
           <audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>
         </div>` : ''}
+        <div>
+          <div class="clip-panel-title">Background Music · ${s.musicMood||'—'}</div>
+          <audio controls preload="none" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${API}&action=proxy-audio&url=${encodeURIComponent(s.musicTrack || '')}"></audio>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <select id="musicSelect" style="flex:1;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:10px" onchange="changeMusicFromSelect('${rowId}')">
+              <option value="">Change track...</option>
+              ${Object.entries(MUSIC_LIBRARY).map(([cat, tracks]) =>
+                tracks.map(t => `<option value="${t.url}" ${t.url === s.musicTrack ? 'selected' : ''}>${cat} — ${t.name}</option>`).join('')
+              ).join('')}
+            </select>
+          </div>
+        </div>
         <div class="sidebar-info">
           Clips: ${clips.filter(c=>c.clipUrl).length}/${clips.length} sourced<br>
-          Music: ${s.musicMood||'—'}<br>
           Voice: ${s.voiceoverUrl?'<span style="color:var(--green)">Generated</span>':'Pending'}<br>
           Render: ${s.renderUrl?'<a href="'+s.renderUrl+'" target="_blank" style="color:var(--gold)">View</a>':'Pending'}
         </div>
@@ -2253,6 +2264,17 @@ function openMusicPicker() {
     const close = (e) => { if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); } };
     document.addEventListener('click', close);
   }, 50);
+}
+
+async function changeMusicFromSelect(rowId) {
+  const sel = document.getElementById('musicSelect');
+  if (!sel || !sel.value) return;
+  const url = sel.value;
+  const name = sel.options[sel.selectedIndex].text;
+  await apiPost("edit-script", { rowId, field: "musicTrack", value: url });
+  await apiPost("edit-script", { rowId, field: "musicMood", value: name });
+  toast(`Music changed: ${name}`);
+  selectScript(rowId);
 }
 
 async function selectMusicTrack(url, name) {
