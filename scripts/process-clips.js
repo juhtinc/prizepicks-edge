@@ -362,7 +362,20 @@ Return JSON:
   // Download MORE clips than segments (for quick-cut pacing — 2 clips per segment)
   const totalClips = Math.min(clipPlan.clips.length * 3, 18);
 
+  // Preserve existing approved clips from KV
+  const existingClips = script.clipBriefs || [];
+
   for (let i = 0; i < totalClips; i++) {
+    const slot = i + 1;
+    const existing = existingClips.find(c => c.slot === slot);
+
+    // Skip approved clips — don't overwrite what the user already signed off on
+    if (existing?.approved && existing?.clipUrl) {
+      console.log(`  Clip ${slot}: already approved, keeping`);
+      clipBriefs.push(existing);
+      continue;
+    }
+
     const segIdx = Math.floor(i / 2); // 2 clips per segment
     const planned = clipPlan.clips[segIdx] || clipPlan.clips[clipPlan.clips.length - 1];
     const seg = segments[segIdx] || segments[segments.length - 1];
@@ -377,7 +390,7 @@ Return JSON:
     const rawPath = path.join(tmpDir, `raw_${i}.mp4`);
     const transformedPath = path.join(tmpDir, `clip_${i}.mp4`);
 
-    console.log(`  Clip ${i + 1}: downloading from ${video.videoId} at ${startTime}s...`);
+    console.log(`  Clip ${slot}: downloading from ${video.videoId} at ${startTime}s...`);
     const ok = await downloadClip(video.videoId, startTime, clipDuration, rawPath);
 
     if (!ok) {
