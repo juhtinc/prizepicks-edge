@@ -733,7 +733,8 @@ async function selectScript(rowId) {
           return `<div>
           <div class="clip-panel-title">Background Music · ${trackLabel}</div>
           ${activeTrack ? `
-            <audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${activeTrack}"></audio>
+            <audio id="musicPlayer" controls preload="none" style="width:100%;height:28px;border-radius:4px;opacity:0.85"></audio>
+            <button class="btn btn-dim btn-sm" onclick="loadMusicToR2('${encodeURIComponent(activeTrack)}')" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
           ` : '<div style="font-size:10px;color:var(--text3)">No track available</div>'}`;
         })()}
           <div style="display:flex;gap:4px;margin-top:4px">
@@ -2273,21 +2274,21 @@ function openMusicPicker() {
   }, 50);
 }
 
-async function loadMusicPlayer(encodedUrl) {
+async function loadMusicToR2(encodedUrl) {
   const player = document.getElementById('musicPlayer');
   if (!player) return;
   const url = decodeURIComponent(encodedUrl);
-  toast('Loading music...');
+  toast('Caching music to R2...');
   try {
-    // Fetch directly from source — archive.org has CORS headers
-    const resp = await fetch(url);
-    if (!resp.ok) { toast('Fetch returned ' + resp.status); return; }
-    const blob = await resp.blob();
-    toast('Music loaded (' + (blob.size / 1024).toFixed(0) + 'KB) — playing');
-    player.src = URL.createObjectURL(blob);
+    // Upload to R2 via backend, get back a public R2 URL
+    const result = await apiPost("cache-music", { url });
+    if (!result.ok) { toast('Cache failed: ' + (result.error || 'unknown')); return; }
+    toast('Playing from R2');
+    player.src = result.url;
+    player.load();
     player.play().catch(e => toast('Play failed: ' + e.message));
   } catch (e) {
-    toast('Load failed: ' + e.message);
+    toast('Failed: ' + e.message);
   }
 }
 
