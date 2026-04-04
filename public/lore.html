@@ -1913,8 +1913,9 @@ function openVideoPreview() {
     }
   }
 
-  // Use actual voiceover duration if available
-  const totalDur = s.voiceoverDuration || Math.max(...segments.map(s => s.end), 60);
+  // Use the longest of: voiceover duration, last caption end, segment end
+  const lastCaptionEnd = captions.length > 0 ? captions[captions.length - 1].start + captions[captions.length - 1].duration : 0;
+  const totalDur = Math.max(s.voiceoverDuration || 0, lastCaptionEnd, ...segments.map(s => s.end), 60);
 
   // Create modal
   const modal = document.createElement('div');
@@ -2027,7 +2028,13 @@ function pvScrub(val) {
 }
 
 function pvTick() {
-  window.pvTime += 0.1;
+  // Sync to audio playback position if audio is playing, otherwise increment manually
+  const a = document.getElementById('pvAudio');
+  if (a && a.src && !a.paused && a.currentTime > 0) {
+    window.pvTime = a.currentTime;
+  } else {
+    window.pvTime += 0.1;
+  }
   if (window.pvTime >= window.pvData.totalDur) { pvStop(); return; }
   pvRender(window.pvTime);
   const scrub = document.getElementById('pvScrubber');
