@@ -600,7 +600,10 @@ async function selectScript(rowId) {
           })()}
 
           <div class="script-section" style="margin-top:16px">
-            <div class="script-label">Titles — pick 2 for A/B testing</div>
+            <div class="script-label" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Titles — pick 2 for A/B testing</span>
+              <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();generateTitles('${rowId}')" style="text-transform:none;letter-spacing:0">Generate 5 titles</button>
+            </div>
             <div style="display:flex;flex-direction:column;gap:3px" id="titlePicker">
               ${(() => {
                 const allTitles = s.allTitles || [s.titleA, s.titleB].filter(Boolean);
@@ -932,6 +935,18 @@ async function updateScriptStatus(rowId, status) {
     selectScript(rowId); // Refresh
   } else {
     toast(`Failed: ${result.error || 'unknown error'}`);
+  }
+}
+
+// ── Generate 5 Titles ──
+async function generateTitles(rowId) {
+  toast('Generating 5 title options...');
+  const result = await apiPost('generate-titles', { rowId });
+  if (result.ok) {
+    toast(`${result.titles.length} titles generated`);
+    selectScript(rowId);
+  } else {
+    toast(`Failed: ${result.error || 'unknown'}`);
   }
 }
 
