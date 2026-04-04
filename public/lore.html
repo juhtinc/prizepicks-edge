@@ -723,9 +723,10 @@ function renderClipTimeline(clipUrls) {
 
   timeline.innerHTML = clipUrls.map((c, i) => {
     const approvalClass = c.approved ? 'approved' : (c.rejected ? 'rejected' : '');
-    const statusDot = c.approved ? '<div class="clip-status-dot ok"></div>' :
-                      c.rejected ? '<div class="clip-status-dot no" title="'+((c.rejectionReason||'rejected')).replace(/"/g,'')+'"></div>' :
-                      '<div class="clip-status-dot pending"></div>';
+    const reasonLabel = c.rejectionReason ? REJECTION_REASONS.find(r=>r.id===c.rejectionReason)?.label || c.rejectionReason : '';
+    const statusDot = c.approved ? '<div class="clip-status-dot ok" title="Approved"></div>' :
+                      c.rejected ? '<div class="clip-status-dot no" title="Rejected: '+reasonLabel.replace(/"/g,'')+'"></div>' :
+                      '<div class="clip-status-dot pending" title="Pending"></div>';
     return `
     <div class="clip-row ${i===curClipIdx?'active':''} ${approvalClass}" data-idx="${i}" data-slot="${c.slot}" onclick="selectClip(${i})"
          draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropClip(event,${i})" ondragend="dragEnd(event)">
@@ -736,7 +737,7 @@ function renderClipTimeline(clipUrls) {
       </div>
       <div class="clip-row-text">
         <div class="clip-row-caption">${clipCaptions[i] || '—'}</div>
-        <div class="clip-row-time">${formatTime(i * clipDur)}–${formatTime((i+1) * clipDur)}</div>
+        <div class="clip-row-time">${formatTime(i * clipDur)}–${formatTime((i+1) * clipDur)}${c.rejected && reasonLabel ? ` · <span style="color:var(--red)">${reasonLabel}</span>` : ''}</div>
       </div>
       <div class="clip-row-actions">
         <button class="btn btn-sm btn-green" onclick="event.stopPropagation();approveClip(${i})" title="Approve" style="padding:2px 5px">✓</button>
@@ -911,9 +912,18 @@ async function doRejectClip(idx, reason) {
   const dot = row?.querySelector('.clip-status-dot');
   if (dot) { dot.className = 'clip-status-dot no'; dot.title = reason; }
 
+  // Show reason text on the row
+  const timeEl = row?.querySelector('.clip-row-time');
   const label = REJECTION_REASONS.find(r => r.id === reason)?.label || reason;
+  if (timeEl && !timeEl.innerHTML.includes('color:var(--red)')) {
+    timeEl.innerHTML += ` · <span style="color:var(--red)">${label}</span>`;
+  }
+
   toast(`Clip #${slot} rejected: ${label}`);
   await apiPost("reject-clip", { rowId: curScript, slot, reason });
+
+  // Auto-open YouTube search to find replacement
+  setTimeout(() => openYouTubeSearch(slot), 300);
 }
 
 async function approveAllClips(rowId) {
