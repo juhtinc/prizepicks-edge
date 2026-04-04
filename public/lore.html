@@ -2098,6 +2098,7 @@ function populateAudioTimeline(s) {
       <span class="audio-time">0:03</span>
       <span class="audio-type music">BG</span>
       <span class="audio-name" title="${trackName}">${trackName}</span>
+      <button class="btn btn-dim btn-sm" onclick="previewMusic('${musicTrack.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px" title="Preview">▶</button>
       <button class="btn btn-dim btn-sm" onclick="openMusicPicker()" style="padding:2px 6px;font-size:8px;text-transform:none">Change</button>
     </div>
   `;
@@ -2111,6 +2112,7 @@ function populateAudioTimeline(s) {
       <span class="audio-time">${formatTime(fx.time)}</span>
       <span class="audio-type sfx">${(fx.type || 'sfx').replace(/_/g, ' ').slice(0, 8)}</span>
       <span class="audio-name">${fx.note || fx.type?.replace(/_/g, ' ') || 'Effect'}</span>
+      <button class="btn btn-dim btn-sm" onclick="previewSFX(${i})" style="padding:2px 5px;font-size:8px" title="Preview">▶</button>
       <button class="btn btn-dim btn-sm" onclick="replaceSFX(${i})" style="padding:2px 6px;font-size:8px;text-transform:none">Swap</button>
       <button class="btn btn-red btn-sm" onclick="removeSFX(${i})" style="padding:1px 4px;font-size:8px">&times;</button>
     </div>
@@ -2134,6 +2136,28 @@ function generateDefaultSFX(s) {
     }
   });
   return sfx.slice(0, 8);
+}
+
+let previewAudioEl = null;
+function previewSFX(idx) {
+  const fx = window.pvSfxData?.[idx];
+  if (!fx?.url) { toast('No audio URL'); return; }
+  if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.src = ''; }
+  previewAudioEl = new Audio(fx.url);
+  previewAudioEl.volume = 0.4;
+  previewAudioEl.play().catch(()=>{});
+  setTimeout(() => { if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.src = ''; } }, (fx.duration || 1.5) * 1000);
+}
+
+function previewMusic(url) {
+  if (!url) { toast('No music URL'); return; }
+  if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.src = ''; }
+  previewAudioEl = new Audio(url);
+  previewAudioEl.volume = 0.3;
+  previewAudioEl.play().catch(()=>{});
+  // Play 8 seconds of preview
+  setTimeout(() => { if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.src = ''; } }, 8000);
+  toast('Playing 8s preview...');
 }
 
 function openMusicPicker() {
@@ -2315,10 +2339,23 @@ function pvRender(t) {
   const lt = document.getElementById('pvLowerThird');
   if (lt) lt.style.opacity = t >= 3 ? '1' : '0';
 
-  // Highlight active SFX in audio panel
+  // Highlight active SFX + play sound during playback
   document.querySelectorAll('.audio-item[data-type="sfx"]').forEach(el => {
     const sfxTime = parseFloat(el.dataset.time);
-    el.classList.toggle('active', t >= sfxTime && t < sfxTime + 1.5);
+    const isActive = t >= sfxTime && t < sfxTime + 1.5;
+    const wasActive = el.classList.contains('active');
+    el.classList.toggle('active', isActive);
+    // Play SFX audio when it becomes active during playback
+    if (isActive && !wasActive && window.pvPlaying) {
+      const idx = parseInt(el.dataset.idx);
+      const fx = window.pvSfxData?.[idx];
+      if (fx?.url) {
+        const sfxAudio = new Audio(fx.url);
+        sfxAudio.volume = Math.min((fx.volume || 30) / 100, 0.5);
+        sfxAudio.play().catch(()=>{});
+        setTimeout(() => { sfxAudio.pause(); sfxAudio.src = ''; }, (fx.duration || 1) * 1000);
+      }
+    }
   });
 
   // Stat cards removed — will iterate on these later
