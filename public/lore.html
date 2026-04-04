@@ -1885,13 +1885,19 @@ function openVideoPreview() {
 
   if (wordTs && wordTs.length > 0) {
     // Use real word timestamps — group into chunks of MAX_WORDS
+    const groups = [];
     for (let i = 0; i < wordTs.length; i += MAX_WORDS) {
       const chunk = wordTs.slice(i, i + MAX_WORDS);
       const start = chunk[0].start;
       const end = chunk[chunk.length - 1].end;
       const text = chunk.map(w => w.word).join(' ');
       const html = chunk.map(w => colorWord(w.word)).join(' ');
-      captions.push({ text, html, start, duration: end - start });
+      groups.push({ text, html, start, end });
+    }
+    // Extend each caption to fill the gap until the next one starts (no flicker during pauses)
+    for (let i = 0; i < groups.length; i++) {
+      const nextStart = i < groups.length - 1 ? groups[i + 1].start : groups[i].end + 0.5;
+      captions.push({ text: groups[i].text, html: groups[i].html, start: groups[i].start, duration: nextStart - groups[i].start });
     }
   } else {
     // Fallback: estimate from WPM
@@ -2024,7 +2030,11 @@ function pvScrub(val) {
   window.pvTime = val / 10;
   pvRender(window.pvTime);
   const a = document.getElementById('pvAudio');
-  if (a && a.src) a.currentTime = window.pvTime;
+  if (a && a.src) {
+    a.currentTime = window.pvTime;
+    // Resume playback if we were playing
+    if (window.pvPlaying) a.play().catch(()=>{});
+  }
 }
 
 function pvTick() {
