@@ -769,7 +769,7 @@ function renderClipTimeline(clipUrls) {
   // Build caption chunks matched to each clip's timestamp
   const s = scriptData;
   const fullText = (s?.hookLine ? s.hookLine + '. ' : '') + (s?.script || '');
-  const totalDur = 55;
+  const totalDur = scriptData?.voiceoverDuration || 60;
   const clipDur = totalDur / clipUrls.length;
 
   // Split text into chunks, one per clip
@@ -1386,20 +1386,20 @@ function formatTime(s) { return `${Math.floor(s/60)}:${String(Math.floor(s%60)).
 function getSegments(type) {
   const templates = {
     forgotten_legend: [
-      {name:"hook",start:0,end:3},{name:"greatness",start:3,end:12},{name:"context",start:12,end:20},
-      {name:"turn",start:20,end:32},{name:"forgotten",start:32,end:45},{name:"legacy",start:45,end:52},{name:"kicker",start:52,end:55}
+      {name:"hook",start:0,end:3},{name:"greatness",start:3,end:13},{name:"context",start:13,end:22},
+      {name:"turn",start:22,end:35},{name:"forgotten",start:35,end:48},{name:"legacy",start:48,end:56},{name:"kicker",start:56,end:60}
     ],
     record_breaker: [
-      {name:"hook",start:0,end:3},{name:"context",start:3,end:10},{name:"build",start:10,end:22},
-      {name:"record",start:22,end:35},{name:"attempts",start:35,end:45},{name:"stands",start:45,end:52},{name:"kicker",start:52,end:55}
+      {name:"hook",start:0,end:3},{name:"context",start:3,end:11},{name:"build",start:11,end:24},
+      {name:"record",start:24,end:38},{name:"attempts",start:38,end:48},{name:"stands",start:48,end:56},{name:"kicker",start:56,end:60}
     ],
     what_if: [
-      {name:"hook",start:0,end:3},{name:"who",start:3,end:10},{name:"event",start:10,end:22},
-      {name:"alternate",start:22,end:35},{name:"ripple",start:35,end:45},{name:"verdict",start:45,end:52},{name:"kicker",start:52,end:55}
+      {name:"hook",start:0,end:3},{name:"who",start:3,end:11},{name:"event",start:11,end:24},
+      {name:"alternate",start:24,end:38},{name:"ripple",start:38,end:48},{name:"verdict",start:48,end:56},{name:"kicker",start:56,end:60}
     ],
     scandal: [
-      {name:"hook",start:0,end:3},{name:"rise",start:3,end:12},{name:"tension",start:12,end:22},
-      {name:"unravel",start:22,end:35},{name:"fallout",start:35,end:45},{name:"legacy",start:45,end:52},{name:"kicker",start:52,end:55}
+      {name:"hook",start:0,end:3},{name:"rise",start:3,end:13},{name:"tension",start:13,end:24},
+      {name:"unravel",start:24,end:38},{name:"fallout",start:38,end:48},{name:"legacy",start:48,end:56},{name:"kicker",start:56,end:60}
     ],
   };
   return templates[type] || templates.forgotten_legend;
@@ -1871,41 +1871,50 @@ function openVideoPreview() {
     });
   }
 
-  // Build short captions — max 5 words each for fast-paced Shorts
-  const MAX_WORDS = 5;
-  const WPM = 145;
-  const SEC_PER_WORD = 60 / WPM;
+  // Build captions from ElevenLabs word timestamps if available, else WPM estimate
+  const MAX_WORDS = 4;
   const captions = [];
-  const fullText = (s.hookLine ? s.hookLine + '. ' : '') + (s.script || '');
-  const allPvWords = fullText.split(/\s+/).filter(Boolean);
+  const wordTs = s.voiceoverTimestamps; // [{word, start, end}, ...]
 
-  let currentTime = 0;
-  for (let i = 0; i < allPvWords.length; i += MAX_WORDS) {
-    const chunk = allPvWords.slice(i, i + MAX_WORDS);
-    const duration = chunk.length * SEC_PER_WORD;
-
-    const coloredHtml = chunk.map(word => {
-      const clean = word.replace(/[.,!?;:'"()\-—]/g, '');
-      if (/^\d[\d,.]*$/.test(clean) || /^(record|mvp|championship|all-star|hall)$/i.test(clean)) {
-        return `<span style="color:#F5A623">${word}</span>`;
-      }
-      if (/^(never|nobody|worst|banned|fired|died|forgotten|zero|nothing|none)$/i.test(clean)) {
-        return `<span style="color:#FF3333">${word}</span>`;
-      }
-      return word;
-    }).join(' ');
-
-    captions.push({
-      text: chunk.join(' '),
-      html: coloredHtml,
-      start: currentTime,
-      duration: Math.max(duration, 0.8),
-    });
-    currentTime += Math.max(duration, 0.8);
+  function colorWord(word) {
+    const clean = word.replace(/[.,!?;:'"()\-—]/g, '');
+    if (/^\d[\d,.]*$/.test(clean) || /^(record|mvp|championship|all-star|hall)$/i.test(clean)) return `<span style="color:#F5A623">${word}</span>`;
+    if (/^(never|nobody|worst|banned|fired|died|forgotten|zero|nothing|none)$/i.test(clean)) return `<span style="color:#FF3333">${word}</span>`;
+    return word;
   }
 
-  // Use actual voiceover duration if available, otherwise fall back to segment timing
-  const totalDur = s.voiceoverDuration || Math.max(...segments.map(s => s.end), 55);
+  if (wordTs && wordTs.length > 0) {
+    // Use real word timestamps — group into chunks of MAX_WORDS
+    for (let i = 0; i < wordTs.length; i += MAX_WORDS) {
+      const chunk = wordTs.slice(i, i + MAX_WORDS);
+      const start = chunk[0].start;
+      const end = chunk[chunk.length - 1].end;
+      const text = chunk.map(w => w.word).join(' ');
+      const html = chunk.map(w => colorWord(w.word)).join(' ');
+      captions.push({ text, html, start, duration: end - start });
+    }
+  } else {
+    // Fallback: estimate from WPM
+    const WPM = 145;
+    const SEC_PER_WORD = 60 / WPM;
+    const fullText = (s.hookLine ? s.hookLine + '. ' : '') + (s.script || '');
+    const allPvWords = fullText.split(/\s+/).filter(Boolean);
+    let currentTime = 0;
+    for (let i = 0; i < allPvWords.length; i += MAX_WORDS) {
+      const chunk = allPvWords.slice(i, i + MAX_WORDS);
+      const duration = chunk.length * SEC_PER_WORD;
+      captions.push({
+        text: chunk.join(' '),
+        html: chunk.map(w => colorWord(w)).join(' '),
+        start: currentTime,
+        duration: Math.max(duration, 0.8),
+      });
+      currentTime += Math.max(duration, 0.8);
+    }
+  }
+
+  // Use actual voiceover duration if available
+  const totalDur = s.voiceoverDuration || Math.max(...segments.map(s => s.end), 60);
 
   // Create modal
   const modal = document.createElement('div');
