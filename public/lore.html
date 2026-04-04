@@ -2139,11 +2139,18 @@ function generateDefaultSFX(s) {
 }
 
 let previewAudioEl = null;
+function getSFXUrl(fx) {
+  if (fx.url) return fx.url;
+  const match = SFX_LIBRARY.find(s => s.type === fx.type);
+  return match?.url || null;
+}
+
 function previewSFX(idx) {
   const fx = window.pvSfxData?.[idx];
-  if (!fx?.url) { toast('No audio URL'); return; }
+  const url = fx ? getSFXUrl(fx) : null;
+  if (!url) { toast('No audio for this effect'); return; }
   if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.src = ''; }
-  previewAudioEl = new Audio(fx.url);
+  previewAudioEl = new Audio(url);
   previewAudioEl.volume = 0.4;
   previewAudioEl.play().catch(()=>{});
   setTimeout(() => { if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.src = ''; } }, (fx.duration || 1.5) * 1000);
@@ -2327,11 +2334,11 @@ function pvRender(t) {
   // Cycle through clips — swap visibility of preloaded videos (no load delay)
   const curCut = cutClips.find(c => t >= c.start && t < c.start + c.duration);
   if (curCut && window.pvVideos && curCut.url !== window.pvActiveUrl) {
-    // Hide previous, show new
+    // Start next clip FIRST (behind), then hide previous (no gap)
     const prev = window.pvVideos[window.pvActiveUrl];
     const next = window.pvVideos[curCut.url];
-    if (prev) { prev.style.display = 'none'; prev.pause(); }
     if (next) { next.style.display = 'block'; next.currentTime = 0; next.play().catch(()=>{}); }
+    if (prev) { prev.style.display = 'none'; prev.pause(); prev.currentTime = 0; }
     window.pvActiveUrl = curCut.url;
   }
 
@@ -2349,8 +2356,9 @@ function pvRender(t) {
     if (isActive && !wasActive && window.pvPlaying) {
       const idx = parseInt(el.dataset.idx);
       const fx = window.pvSfxData?.[idx];
-      if (fx?.url) {
-        const sfxAudio = new Audio(fx.url);
+      const sfxUrl = fx ? getSFXUrl(fx) : null;
+      if (sfxUrl) {
+        const sfxAudio = new Audio(sfxUrl);
         sfxAudio.volume = Math.min((fx.volume || 30) / 100, 0.5);
         sfxAudio.play().catch(()=>{});
         setTimeout(() => { sfxAudio.pause(); sfxAudio.src = ''; }, (fx.duration || 1) * 1000);
