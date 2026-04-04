@@ -2185,20 +2185,31 @@ function togglePreviewMusic(on) {
   if (on) {
     const mood = MOOD_MAP[scriptData?.storyType] || 'cinematic';
     const url = scriptData?.musicTrack || MUSIC_LIBRARY[mood]?.[0]?.url;
-    if (!url) return;
+    if (!url) { toast('No music track available'); return; }
+
+    toast('Loading music...');
+    // Clean up previous
+    if (pvMusicAudio) { pvMusicAudio.pause(); pvMusicAudio.remove(); }
+
     pvMusicAudio = document.createElement('audio');
     pvMusicAudio.crossOrigin = 'anonymous';
-    pvMusicAudio.src = url;
+    pvMusicAudio.preload = 'auto';
     pvMusicAudio.volume = 0.15;
     pvMusicAudio.loop = true;
-    pvMusicAudio.preload = 'auto';
     document.body.appendChild(pvMusicAudio);
-    if (window.pvPlaying) {
-      pvMusicAudio.currentTime = window.pvTime || 0;
-      pvMusicAudio.play().catch(()=>{});
-    }
+
+    pvMusicAudio.oncanplaythrough = () => {
+      toast('Music ready');
+      if (window.pvPlaying) {
+        pvMusicAudio.currentTime = window.pvTime || 0;
+        pvMusicAudio.play().catch(e => toast('Music blocked: ' + e.message));
+      }
+    };
+    pvMusicAudio.onerror = () => toast('Music failed to load');
+    pvMusicAudio.src = url;
   } else {
     if (pvMusicAudio) { pvMusicAudio.pause(); pvMusicAudio.remove(); pvMusicAudio = null; }
+    toast('Music off');
   }
 }
 
