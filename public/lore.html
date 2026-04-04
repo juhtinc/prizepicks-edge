@@ -723,9 +723,12 @@ async function selectScript(rowId) {
         </div>
 
         <div class="clip-panel-title" style="margin-top:16px">Thumbnail</div>
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
-          ${s.thumbnailUrl ? `<img src="${s.thumbnailUrl}" style="width:80px;border-radius:4px;border:1px solid var(--border)">` : '<span class="script-meta">None set</span>'}
-          <button class="btn btn-dim btn-sm" onclick="uploadThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0">Upload</button>
+        <div style="margin-bottom:8px">
+          ${s.thumbnailUrl ? `<img src="${s.thumbnailUrl}" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-bottom:6px">` : ''}
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-dim btn-sm" onclick="generateThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">${s.thumbnailUrl ? 'Regen' : 'Generate'}</button>
+            <button class="btn btn-dim btn-sm" onclick="uploadThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">Upload</button>
+          </div>
         </div>
         <input type="file" id="thumbFileInput" accept="image/png,image/jpeg" style="display:none">
 
@@ -2099,7 +2102,32 @@ async function saveSchedule(rowId) {
   selectScript(rowId);
 }
 
-// ── Thumbnail Upload ──
+// ── Thumbnail ──
+async function generateThumbnail(rowId) {
+  toast('Generating thumbnail via Creatomate...');
+  try {
+    const r = await fetch(`/api/lore?route=generate-thumbnail`, {
+      method: 'POST',
+      headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowId }),
+    });
+    const result = await r.json();
+    if (result.ok) {
+      toast('Thumbnail generated');
+      await logCost("Creatomate", 0.10, `Thumbnail: ${scriptData?.playerName || rowId}`);
+      selectScript(rowId);
+    } else {
+      toast(`Failed: ${result.error || result.message || 'unknown'}`);
+    }
+  } catch (e) {
+    toast(`Error: ${e.message}`);
+  }
+}
+
+async function logCost(service, amount, description) {
+  await apiPost("log-cost", { service, amount, description });
+}
+
 function uploadThumbnail(rowId) {
   const input = document.getElementById('thumbFileInput');
   input.onchange = async (e) => {
