@@ -733,8 +733,7 @@ async function selectScript(rowId) {
           return `<div>
           <div class="clip-panel-title">Background Music · ${trackLabel}</div>
           ${activeTrack ? `
-            <audio id="musicPlayer" controls preload="none" style="width:100%;height:28px;border-radius:4px;opacity:0.85"></audio>
-            <button class="btn btn-dim btn-sm" onclick="loadMusicPlayer('${encodeURIComponent(activeTrack)}')" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
+            <audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${activeTrack}"></audio>
           ` : '<div style="font-size:10px;color:var(--text3)">No track available</div>'}`;
         })()}
           <div style="display:flex;gap:4px;margin-top:4px">
