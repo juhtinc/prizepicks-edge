@@ -25,9 +25,7 @@ body::before{content:'';position:fixed;inset:0;background:
   radial-gradient(ellipse 60% 60% at 90% 110%,rgba(212,146,15,0.025),transparent);
   pointer-events:none;z-index:-1}
 
-/* Film grain overlay */
-body::after{content:'';position:fixed;inset:0;opacity:0.03;pointer-events:none;z-index:9999;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* Film grain removed for readability */
 
 /* ── Animations ── */
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.25}}
@@ -176,14 +174,18 @@ body::after{content:'';position:fixed;inset:0;opacity:0.03;pointer-events:none;z
 .clip-row:hover .drag-handle{opacity:0.8}
 
 /* Pipeline stage indicators */
-.pipeline-stages{display:flex;gap:2px;align-items:center}
-.pipeline-dot{width:8px;height:8px;border-radius:50%;background:var(--bg5);position:relative;transition:all 0.2s}
+.pipeline-stages{display:flex;gap:0;align-items:center}
+.pipeline-stage{display:flex;align-items:center;gap:0}
+.pipeline-step{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:32px}
+.pipeline-dot{width:7px;height:7px;border-radius:50%;background:var(--bg5);transition:all 0.2s}
 .pipeline-dot.done{background:var(--green);box-shadow:0 0 4px rgba(52,214,122,0.3)}
 .pipeline-dot.active{background:var(--gold);box-shadow:0 0 6px rgba(212,146,15,0.4);animation:glowPulse 2s infinite}
 .pipeline-dot.fail{background:var(--red)}
-.pipeline-connector{width:6px;height:1px;background:var(--bg5)}
+.pipeline-label{font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.pipeline-step.done .pipeline-label{color:var(--green)}
+.pipeline-step.active .pipeline-label{color:var(--gold)}
+.pipeline-connector{width:8px;height:1px;background:var(--bg5);flex-shrink:0}
 .pipeline-connector.done{background:var(--green)}
-.pipeline-dot[title]{cursor:help}
 
 /* Script regen modal */
 .regen-modal{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:300;display:flex;align-items:center;justify-content:center}
@@ -459,8 +461,14 @@ async function selectBatch(id) {
         <div><div class="player-name">${s.playerName||'?'}</div><div class="player-sport">${s.playerSport||''} · <span class="tag" style="display:inline">${(s.storyType||'').replace(/_/g,' ')}</span></div></div>
       </div></td>
       <td><div class="pipeline-stages">
-        ${stages.map((st, si) => `${si>0?'<div class="pipeline-connector'+(si<=activeIdx||activeIdx===-1?' done':'')+'"></div>':''}
-        <div class="pipeline-dot ${st.done?'done':si===activeIdx?'active':''}" title="${st.name}${st.done?' ✓':''}"></div>`).join('')}
+        ${stages.map((st, si) => {
+          const cls = st.done ? 'done' : si===activeIdx ? 'active' : '';
+          return `${si>0?'<div class="pipeline-connector'+(si<=activeIdx||activeIdx===-1?' done':'')+'"></div>':''}
+          <div class="pipeline-step ${cls}">
+            <div class="pipeline-dot ${cls}"></div>
+            <div class="pipeline-label">${st.name}</div>
+          </div>`;
+        }).join('')}
       </div></td>
       <td><div class="clip-dots" title="${sourced} sourced">${Array.from({length:Math.min(s.clipBriefCount||7, 18)},(_,i)=>`<div class="clip-dot ${i<sourced?'ok':'no'}"></div>`).join('')}</div></td>
       <td style="font-family:'JetBrains Mono';font-size:10px;color:${pct===100?'var(--green)':pct>0?'var(--text2)':'var(--text3)'}">${approved}/${sourced} ${pct===100?'✓':''}</td>
@@ -513,7 +521,7 @@ async function selectScript(rowId) {
   document.getElementById("detailArea").innerHTML = `
   <div class="detail">
     <div class="detail-head">
-      <div class="detail-photo">${s.playerPhotoUrl?`<img src="${s.playerPhotoUrl}">`:''}</div>
+      <div class="detail-photo" id="detailPhoto">${s.playerPhotoUrl||photoCache[s.playerName]?`<img src="${s.playerPhotoUrl||photoCache[s.playerName]}">`:''}</div>
       <div>
         <div class="detail-title">${s.playerName||'?'}</div>
         <div class="detail-sub">${(s.storyType||'').replace(/_/g,' ').toUpperCase()} · ${s.playerSport||'NBA'} · ${rowId}</div>
@@ -591,16 +599,22 @@ async function selectScript(rowId) {
           })()}
 
           <div class="script-section" style="margin-top:16px">
-            <div class="script-label">Titles — click to select</div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <div class="script-meta" style="cursor:pointer;padding:6px 8px;border-radius:4px;border:1px solid ${s.titleUsed==='A'?'var(--gold)':'var(--border)'};background:${s.titleUsed==='A'?'var(--gold-dim)':'transparent'}" onclick="selectTitle('${rowId}','A')">
-                <span style="color:var(--gold);font-weight:700;margin-right:4px">A${s.titleUsed==='A'?' ✓':''}</span> ${s.titleA||'—'}
-                ${s.viewsAt48h!=null&&s.titleUsed==='A'?`<span style="float:right;color:var(--green)">${s.viewsAt48h} views</span>`:''}
-              </div>
-              <div class="script-meta" style="cursor:pointer;padding:6px 8px;border-radius:4px;border:1px solid ${s.titleUsed==='B'?'var(--gold)':'var(--border)'};background:${s.titleUsed==='B'?'var(--gold-dim)':'transparent'}" onclick="selectTitle('${rowId}','B')">
-                <span style="color:var(--gold);font-weight:700;margin-right:4px">B${s.titleUsed==='B'?' ✓':''}</span> ${s.titleB||'—'}
-                ${s.viewsAt48h!=null&&s.titleUsed==='B'?`<span style="float:right;color:var(--green)">${s.viewsAt48h} views</span>`:''}
-              </div>
+            <div class="script-label">Titles — pick 2 for A/B testing</div>
+            <div style="display:flex;flex-direction:column;gap:3px" id="titlePicker">
+              ${(() => {
+                const allTitles = s.allTitles || [s.titleA, s.titleB].filter(Boolean);
+                const uniqueTitles = [...new Set(allTitles)];
+                return uniqueTitles.map((t, i) => {
+                  const isA = t === s.titleA;
+                  const isB = t === s.titleB;
+                  const isSelected = isA || isB;
+                  const label = isA ? 'A' : isB ? 'B' : '';
+                  return `<div class="script-meta" style="cursor:pointer;padding:6px 8px;border-radius:4px;border:1px solid ${isSelected?'var(--gold)':'var(--border)'};background:${isSelected?'var(--gold-dim)':'transparent'};display:flex;align-items:center;gap:6px" onclick="pickTitleForAB('${rowId}',${i})">
+                    ${isSelected?`<span style="color:var(--gold);font-weight:700;font-size:10px;min-width:12px">${label}</span>`:'<span style="min-width:12px;font-size:10px;color:var(--text3)">·</span>'}
+                    <span style="flex:1">${t}</span>
+                  </div>`;
+                }).join('');
+              })()}
             </div>
           </div>
           <div class="script-section">
@@ -663,6 +677,17 @@ async function selectScript(rowId) {
   // Render clip grid
   renderClipTimeline(clipUrls);
   selectClip(0, clipUrls);
+
+  // Auto-fetch photo if missing
+  if (!s.playerPhotoUrl && !photoCache[s.playerName]) {
+    api("player-photo", { name: s.playerName }).then(({ url }) => {
+      if (url) {
+        photoCache[s.playerName] = url;
+        const el = document.getElementById('detailPhoto');
+        if (el) el.innerHTML = `<img src="${url}">`;
+      }
+    }).catch(() => {});
+  }
 }
 
 function renderClipTimeline(clipUrls) {
@@ -910,10 +935,32 @@ async function updateScriptStatus(rowId, status) {
 }
 
 // ── Title A/B Selection ──
-async function selectTitle(rowId, choice) {
-  toast(`Title ${choice} selected`);
-  await apiPost("update-title", { rowId, titleUsed: choice });
-  selectScript(rowId); // Refresh
+async function pickTitleForAB(rowId, titleIdx) {
+  const s = scriptData;
+  if (!s) return;
+  const allTitles = s.allTitles || [s.titleA, s.titleB].filter(Boolean);
+  const picked = allTitles[titleIdx];
+  if (!picked) return;
+
+  // If this title is already A or B, deselect it
+  if (picked === s.titleA) {
+    // Move B to A, clear B
+    await apiPost("update-title", { rowId, titleA: s.titleB || '', titleB: '' });
+  } else if (picked === s.titleB) {
+    // Clear B
+    await apiPost("update-title", { rowId, titleB: '' });
+  } else if (!s.titleA) {
+    // Set as A
+    await apiPost("update-title", { rowId, titleA: picked });
+  } else if (!s.titleB) {
+    // Set as B
+    await apiPost("update-title", { rowId, titleB: picked });
+  } else {
+    // Both A and B set — replace B with new pick
+    await apiPost("update-title", { rowId, titleB: picked });
+  }
+  toast(`Updated A/B titles`);
+  selectScript(rowId);
 }
 
 // ── Script Regeneration ──
@@ -944,6 +991,7 @@ function openRegenModal(rowId) {
 
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Your suggestion</div>
         <textarea class="regen-textarea" id="regenSuggestion" placeholder="e.g. Make the hook more shocking, focus on his defensive stats, add more drama to the ending..."></textarea>
+        <div style="font-size:9px;color:var(--text3);margin-top:4px">Claude will regenerate the script + 5 title options. Pick your top 2 for A/B testing.</div>
 
         ${versions.length > 0 ? `
         <div style="margin-top:14px">
