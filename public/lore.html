@@ -455,6 +455,7 @@ async function selectBatch(id) {
     <button class="btn btn-dim btn-sm" onclick="batchAction('voice')">Generate All Voices</button>
     <button class="btn btn-green btn-sm" onclick="batchAction('approve')">Approve All Reviewed</button>
     <button class="btn btn-gold btn-sm" onclick="batchAction('render')">Render All Ready</button>
+    <button class="btn btn-gold btn-sm" onclick="batchAction('publish')">Publish All Rendered</button>
   </div>
   ${(() => {
     const withAnalytics = scripts.filter(s => s.viewsAt48h != null);
@@ -666,6 +667,16 @@ async function selectScript(rowId) {
           <div class="script-section">
             <div class="script-label">Comment Bait</div>
             <div class="editable script-meta" contenteditable="true" data-field="commentBait" data-row="${rowId}" onblur="saveInlineEdit(this)">${s.commentBait||'—'}</div>
+          </div>
+
+          <div class="script-section">
+            <div class="script-label">Schedule</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="date" id="schedDate" value="${s.scheduledDate||''}" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+              <input type="time" id="schedTime" value="${s.scheduledPostTime||'19:00'}" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+              <button class="btn btn-dim btn-sm" onclick="saveSchedule('${rowId}')" style="text-transform:none;letter-spacing:0">Save</button>
+            </div>
+            ${s.scheduledDate ? `<div class="script-meta" style="margin-top:4px">Scheduled: ${s.scheduledDate} at ${s.scheduledPostTime || '19:00'}</div>` : ''}
           </div>
 
           <div id="clipTimeline"></div>
@@ -1245,6 +1256,21 @@ async function batchAction(type) {
       });
     }
     toast(`Done — ${ready.length} renders queued`);
+    selectBatch(curBatch);
+  } else if (type === 'publish') {
+    const ready = scripts.filter(s => s.hasRender && !s.isPublished);
+    if (!ready.length) { toast('No rendered videos to publish'); return; }
+    if (!confirm(`Publish ${ready.length} videos to YouTube?`)) return;
+    toast(`Publishing ${ready.length} videos...`);
+    for (const s of ready) {
+      toast(`Publishing: ${s.playerName}...`);
+      await fetch(`/api/lore?route=video-production`, {
+        method: 'POST',
+        headers: { 'x-secret': SECRET, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowId: s.rowId, preview: false }),
+      });
+    }
+    toast(`Done — ${ready.length} videos published`);
     selectBatch(curBatch);
   }
 }
@@ -2061,6 +2087,17 @@ document.addEventListener('keydown', (e) => {
       break;
   }
 });
+
+// ── Schedule ──
+async function saveSchedule(rowId) {
+  const date = document.getElementById('schedDate').value;
+  const time = document.getElementById('schedTime').value;
+  if (!date) { toast('Pick a date'); return; }
+  const result = await apiPost("edit-script", { rowId, field: "scheduledDate", value: date });
+  await apiPost("edit-script", { rowId, field: "scheduledPostTime", value: time || "19:00" });
+  toast(`Scheduled for ${date} at ${time || '19:00'}`);
+  selectScript(rowId);
+}
 
 // ── Thumbnail Upload ──
 function uploadThumbnail(rowId) {
