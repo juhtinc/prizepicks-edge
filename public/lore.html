@@ -199,6 +199,28 @@ body::after{content:'';position:fixed;inset:0;opacity:0.03;pointer-events:none;z
 .reject-option{display:block;width:100%;text-align:left;padding:7px 12px;font-size:11px;color:var(--text);background:none;border:none;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.1s}
 .reject-option:hover{background:var(--red-dim);color:var(--red)}
 
+/* YouTube search modal */
+.yt-modal{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:300;display:flex;align-items:center;justify-content:center}
+.yt-panel{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:720px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;animation:fadeUp 0.2s ease-out both;box-shadow:0 16px 48px rgba(0,0,0,0.5)}
+.yt-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.yt-header h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--text)}
+.yt-search-row{display:flex;gap:8px;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.yt-search-input{flex:1;padding:8px 12px;font-size:13px;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none}
+.yt-search-input:focus{border-color:var(--gold)}
+.yt-results{flex:1;overflow-y:auto;padding:12px 20px}
+.yt-result{display:flex;gap:12px;padding:10px;border-radius:6px;cursor:pointer;transition:all 0.12s;border:1px solid transparent;margin-bottom:6px}
+.yt-result:hover{background:var(--bg3);border-color:var(--border)}
+.yt-result.selected{background:var(--gold-dim);border-color:var(--border2)}
+.yt-thumb{width:120px;height:68px;border-radius:4px;overflow:hidden;flex-shrink:0;background:var(--bg4)}
+.yt-thumb img{width:100%;height:100%;object-fit:cover}
+.yt-info{flex:1;min-width:0}
+.yt-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.yt-channel{font-size:10px;color:var(--text3)}
+.yt-clip-controls{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:12px;align-items:center;background:var(--bg3)}
+.yt-clip-controls label{font-size:11px;color:var(--text2);white-space:nowrap}
+.yt-clip-controls input[type="number"]{width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace}
+.yt-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+
 @media(max-width:900px){
   .detail-workspace{flex-direction:column;height:auto}
   .detail-sidebar{width:100%;border-left:none;border-top:1px solid var(--border);flex-direction:row;flex-wrap:wrap;justify-content:center;background:transparent}
@@ -1170,9 +1192,141 @@ function trimVideoInBrowser(file, startTime, duration) {
   });
 }
 
-// Override the replaceClip function to open the upload modal
+// Replace clip — show choice: upload or YouTube search
 async function replaceClip(idx) {
-  openUploadModal(idx + 1); // slots are 1-indexed
+  const slot = idx + 1;
+  // Show a quick picker
+  const picker = document.createElement('div');
+  picker.className = 'reject-picker';
+  const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+  const rect = row?.getBoundingClientRect() || { top: 200, right: 400 };
+  picker.style.cssText = `position:fixed;z-index:500;top:${rect.top}px;left:${Math.min(rect.right + 8, window.innerWidth - 200)}px`;
+  picker.innerHTML = `
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Replace with...</div>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openYouTubeSearch(${slot})" style="color:var(--text)">Search YouTube</button>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload file</button>
+  `;
+  document.body.appendChild(picker);
+  setTimeout(() => {
+    const close = (e) => { if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 50);
+}
+
+// ── YouTube Search & Clip Modal ──
+let ytSelectedVideo = null;
+
+function openYouTubeSearch(slot) {
+  ytSelectedVideo = null;
+  const playerName = scriptData?.playerName || '';
+
+  const modal = document.createElement('div');
+  modal.className = 'yt-modal';
+  modal.id = 'ytModal';
+  modal.innerHTML = `
+    <div class="yt-panel">
+      <div class="yt-header">
+        <h3>Search YouTube</h3>
+        <span style="font-size:11px;color:var(--text3);margin-left:auto">Clip #${slot}</span>
+        <button onclick="document.getElementById('ytModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
+      </div>
+      <div class="yt-search-row">
+        <input class="yt-search-input" id="ytSearchInput" placeholder="Search for highlights..." value="${playerName} highlights" autofocus>
+        <button class="btn btn-gold" onclick="doYouTubeSearch()">Search</button>
+      </div>
+      <div class="yt-results" id="ytResults">
+        <div class="empty">Press Search or Enter to find videos</div>
+      </div>
+      <div class="yt-clip-controls" id="ytClipControls" style="display:none">
+        <div style="flex:1;min-width:0">
+          <div id="ytSelectedTitle" style="font-size:11px;color:var(--text);font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"></div>
+        </div>
+        <label>Start (s):</label>
+        <input type="number" id="ytStartTime" value="10" min="0" step="1">
+        <label>Duration:</label>
+        <input type="number" id="ytDuration" value="3" min="1" max="5" step="0.5">
+      </div>
+      <div class="yt-footer">
+        <button class="btn btn-dim" onclick="document.getElementById('ytModal').remove()">Cancel</button>
+        <button class="btn btn-gold" id="ytClipBtn" onclick="doClipFromYouTube(${slot})" disabled>Clip & Replace</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Enter to search
+  document.getElementById('ytSearchInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doYouTubeSearch();
+  });
+}
+
+async function doYouTubeSearch() {
+  const query = document.getElementById('ytSearchInput').value.trim();
+  if (!query) return;
+
+  document.getElementById('ytResults').innerHTML = '<div class="loading"><div class="spinner"></div>Searching...</div>';
+
+  const { results = [] } = await api("youtube-search", { q: query });
+
+  if (!results.length) {
+    document.getElementById('ytResults').innerHTML = '<div class="empty">No results found</div>';
+    return;
+  }
+
+  document.getElementById('ytResults').innerHTML = results.map((v, i) => `
+    <div class="yt-result" data-idx="${i}" onclick="selectYouTubeResult(${i})">
+      <div class="yt-thumb"><img src="${v.thumbnail}" alt="" loading="lazy"></div>
+      <div class="yt-info">
+        <div class="yt-title">${v.title}</div>
+        <div class="yt-channel">${v.channel}</div>
+      </div>
+    </div>
+  `).join('');
+
+  window.ytSearchResults = results;
+}
+
+function selectYouTubeResult(idx) {
+  const video = window.ytSearchResults[idx];
+  if (!video) return;
+  ytSelectedVideo = video;
+
+  // Highlight selected
+  document.querySelectorAll('.yt-result').forEach((el, i) => el.classList.toggle('selected', i === idx));
+
+  // Show clip controls
+  document.getElementById('ytClipControls').style.display = 'flex';
+  document.getElementById('ytSelectedTitle').textContent = video.title;
+  document.getElementById('ytClipBtn').disabled = false;
+}
+
+async function doClipFromYouTube(slot) {
+  if (!ytSelectedVideo || !curScript) return;
+
+  const btn = document.getElementById('ytClipBtn');
+  btn.disabled = true;
+  btn.textContent = 'Clipping...';
+
+  const startTime = parseFloat(document.getElementById('ytStartTime').value) || 0;
+  const duration = parseFloat(document.getElementById('ytDuration').value) || 3;
+
+  const result = await apiPost("clip-from-youtube", {
+    rowId: curScript,
+    slot,
+    videoId: ytSelectedVideo.videoId,
+    startTime,
+    duration,
+  });
+
+  if (result.ok) {
+    toast(`Clip #${slot} replaced from YouTube`);
+    document.getElementById('ytModal').remove();
+    selectScript(curScript); // Refresh
+  } else {
+    toast(`Failed: ${result.error || 'unknown'}`);
+    btn.disabled = false;
+    btn.textContent = 'Clip & Replace';
+  }
 }
 
 // ── Video Preview Modal ──
@@ -1183,60 +1337,34 @@ function openVideoPreview() {
   const sentences = splitIntoSegments(s.hookLine, s.script, segments);
   const clips = s.clipBriefs || [];
 
-  // Build clip URLs for each 2s cut
+  // Build clip URLs for each 3s cut using the actual 18-slot clip list
   const cutClips = [];
-  let clipIdx = 0;
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    const dur = seg.end - seg.start;
-    const numCuts = Math.max(1, Math.ceil(dur / 2));
-    const cutDur = dur / numCuts;
-    for (let c = 0; c < numCuts; c++) {
-      const brief = clips[clipIdx] || clips[clipIdx % Math.max(clips.length, 1)];
-      cutClips.push({
-        start: seg.start + c * cutDur,
-        duration: cutDur,
-        url: brief?.clipUrl || `${R2}/${s.rowId}/clip_${clipIdx + 1}.mp4`,
-        segIdx: i,
-      });
-      clipIdx++;
-    }
+  const TOTAL = 18;
+  const clipDurPv = 55 / TOTAL; // ~3.05s per clip
+  for (let i = 0; i < TOTAL; i++) {
+    const brief = clips.find(c => c.slot === i + 1);
+    cutClips.push({
+      start: i * clipDurPv,
+      duration: clipDurPv,
+      url: brief?.clipUrl || `${R2}/${s.rowId}/clip_${i + 1}.mp4`,
+      slot: i + 1,
+    });
   }
 
-  // Build caption groups — break at natural boundaries, never mid-thought
+  // Build short captions — max 5 words each for fast-paced Shorts
+  const MAX_WORDS = 5;
   const WPM = 145;
   const SEC_PER_WORD = 60 / WPM;
   const captions = [];
   const fullText = (s.hookLine ? s.hookLine + '. ' : '') + (s.script || '');
+  const allPvWords = fullText.split(/\s+/).filter(Boolean);
 
-  // Step 1: Split into sentences
-  const captionSentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
-
-  // Step 2: Split long sentences at commas, dashes, and clause starters
-  const phrases = [];
-  for (const sentence of captionSentences) {
-    const parts = sentence.split(/(?<=,)\s+|(?<=—)\s*|(?=\s+(?:but|and|because|when|where|who|that|then|so)\s)/i).filter(p => p.trim());
-    if (parts.length > 1) {
-      phrases.push(...parts.map(p => p.trim()));
-    } else if (sentence.split(/\s+/).length > 8) {
-      // Still too long — split at midpoint
-      const words = sentence.split(/\s+/);
-      const mid = Math.ceil(words.length / 2);
-      phrases.push(words.slice(0, mid).join(' '));
-      phrases.push(words.slice(mid).join(' '));
-    } else {
-      phrases.push(sentence.trim());
-    }
-  }
-
-  // Step 3: Build timed captions with per-word coloring
   let currentTime = 0;
-  for (const phrase of phrases) {
-    if (!phrase) continue;
-    const words = phrase.split(/\s+/);
-    const duration = words.length * SEC_PER_WORD;
+  for (let i = 0; i < allPvWords.length; i += MAX_WORDS) {
+    const chunk = allPvWords.slice(i, i + MAX_WORDS);
+    const duration = chunk.length * SEC_PER_WORD;
 
-    const coloredHtml = words.map(word => {
+    const coloredHtml = chunk.map(word => {
       const clean = word.replace(/[.,!?;:'"()\-—]/g, '');
       if (/^\d[\d,.]*$/.test(clean) || /^(record|mvp|championship|all-star|hall)$/i.test(clean)) {
         return `<span style="color:#F5A623">${word}</span>`;
@@ -1248,12 +1376,12 @@ function openVideoPreview() {
     }).join(' ');
 
     captions.push({
-      text: phrase,
+      text: chunk.join(' '),
       html: coloredHtml,
       start: currentTime,
-      duration: Math.max(duration, 1.0) + 0.15,
+      duration: Math.max(duration, 0.8),
     });
-    currentTime += Math.max(duration, 1.0);
+    currentTime += Math.max(duration, 0.8);
   }
 
   const totalDur = Math.max(...segments.map(s => s.end), 55);
