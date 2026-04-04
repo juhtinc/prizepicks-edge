@@ -740,10 +740,14 @@ async function selectScript(rowId) {
           <div style="display:flex;gap:4px;margin-top:4px">
             <select id="musicSelect" style="flex:1;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:10px" onchange="changeMusicFromSelect('${rowId}')">
               <option value="">Change track...</option>
+              <optgroup label="Presets" id="presetOptions"></optgroup>
               ${Object.entries(MUSIC_LIBRARY).map(([cat, tracks]) =>
-                tracks.map(t => `<option value="${t.url}" ${t.url === (s.musicTrack || '') ? 'selected' : ''}>${cat} — ${t.name}</option>`).join('')
+                `<optgroup label="${cat}">${tracks.map(t => `<option value="${t.url}" ${t.url === (s.musicTrack || '') ? 'selected' : ''}>${t.name}</option>`).join('')}</optgroup>`
               ).join('')}
             </select>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <button class="btn btn-dim btn-sm" onclick="saveAsPreset()" style="flex:1;text-transform:none;letter-spacing:0">Save as Preset</button>
           </div>
         </div>
         <div class="sidebar-info">
@@ -790,6 +794,8 @@ async function selectScript(rowId) {
   // Set music track URL for the player
   const _moodKey = MOOD_MAP[s.storyType] || 'cinematic';
   window._musicTrackUrl = s.musicTrack || MUSIC_LIBRARY[_moodKey]?.[0]?.url || '';
+  window._musicR2Url = null;
+  loadMusicPresets();
 
   // Render clip grid
   renderClipTimeline(clipUrls);
@@ -2081,21 +2087,26 @@ async function openVideoPreview() {
 
 // Music mood → track library (mirrors lib/lore/lib/music.js)
 const MUSIC_LIBRARY = {
-  melancholic: [
-    { name: 'End Of All Things', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/06/AtTheEndOfAllThings.mp3' },
-    { name: 'Phase Shift', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/10/PhaseShift.mp3' },
-  ],
   cinematic: [
     { name: 'Shoulders Of Giants', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/09/ShouldersOfGiants.mp3' },
     { name: 'Amberlight', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2025/03/Amberlight.mp3' },
+    { name: 'Legions', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/03/Legions.mp3' },
+    { name: 'Undertow', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/06/Undertow.mp3' },
+  ],
+  melancholic: [
+    { name: 'End Of All Things', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/06/AtTheEndOfAllThings.mp3' },
+    { name: 'Filaments', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2022/04/Filaments.mp3' },
+    { name: 'Hiraeth', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2022/11/Hiraeth.mp3' },
   ],
   dark: [
     { name: 'Phase Shift', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/10/PhaseShift.mp3' },
-    { name: 'End Of All Things', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/06/AtTheEndOfAllThings.mp3' },
+    { name: 'Recollection', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2022/03/Recollection.mp3' },
+    { name: 'Machinations', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/03/Machinations.mp3' },
   ],
   hopeful: [
-    { name: 'Amberlight', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2025/03/Amberlight.mp3' },
-    { name: 'Shoulders Of Giants', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/09/ShouldersOfGiants.mp3' },
+    { name: 'Solace', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/09/Solace.mp3' },
+    { name: 'Meridian', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2022/06/Meridian.mp3' },
+    { name: 'Dawn', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/01/Dawn.mp3' },
   ],
 };
 
@@ -2283,15 +2294,42 @@ async function loadMusicToR2() {
   if (!url) { toast('No track URL set'); return; }
   toast('Caching: ' + url.slice(-30));
   try {
-    // Upload to R2 via backend, get back a public R2 URL
     const result = await apiPost("cache-music", { url });
     if (!result.ok) { toast('Cache failed: ' + (result.error || 'unknown')); return; }
-    toast('Playing from R2');
+    toast('Cached! Loading audio...');
+    // Store the R2 URL for the preview modal too
+    window._musicR2Url = result.url;
     player.src = result.url;
+    player.oncanplay = () => {
+      toast('Playing');
+      player.play().catch(e => toast('Play blocked: ' + e.message));
+    };
+    player.onerror = () => toast('Audio element error — check console F12');
     player.load();
-    player.play().catch(e => toast('Play failed: ' + e.message));
   } catch (e) {
     toast('Failed: ' + e.message);
+  }
+}
+
+async function saveAsPreset() {
+  const url = window._musicTrackUrl;
+  if (!url) { toast('No track selected'); return; }
+  const name = prompt('Preset name:', 'Preset 1');
+  if (!name) return;
+  const result = await apiPost("save-music-preset", { name, url, r2Url: window._musicR2Url || '' });
+  if (result.ok) {
+    toast(`Saved preset: ${name}`);
+    loadMusicPresets();
+  } else {
+    toast('Save failed');
+  }
+}
+
+async function loadMusicPresets() {
+  const { presets = [] } = await api("music-presets");
+  const optgroup = document.getElementById('presetOptions');
+  if (optgroup) {
+    optgroup.innerHTML = presets.map(p => `<option value="${p.url}">${p.name}</option>`).join('');
   }
 }
 
