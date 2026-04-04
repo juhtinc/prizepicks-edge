@@ -1900,6 +1900,7 @@ function openVideoPreview() {
   modal.innerHTML = `
     <div style="position:relative;width:270px;height:480px;border-radius:24px;border:3px solid #1a1a1a;overflow:hidden;background:#000;flex-shrink:0">
       <video id="pvVideo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" muted></video>
+      <audio id="pvAudio" preload="auto"></audio>
       <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.6) 100%);pointer-events:none"></div>
       <div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.85));pointer-events:none"></div>
       <div id="pvCaption" style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:80%;text-align:center;font-size:16px;font-weight:900;line-height:1.3;letter-spacing:0.5px;transition:opacity 0.15s;font-family:'DM Sans',sans-serif;-webkit-text-stroke:1.5px #000;paint-order:stroke fill;text-shadow:0 1px 3px rgba(0,0,0,1),0 2px 6px rgba(0,0,0,0.8),0 0 12px rgba(0,0,0,0.6)"></div>
@@ -1953,6 +1954,13 @@ function openVideoPreview() {
   // Preload first clip
   const vid = document.getElementById('pvVideo');
   if (cutClips[0]?.url) vid.src = cutClips[0].url;
+
+  // Load voiceover audio if available
+  const pvAudio = document.getElementById('pvAudio');
+  if (s.voiceoverUrl && pvAudio) {
+    pvAudio.src = s.voiceoverUrl;
+    pvAudio.load();
+  }
 }
 
 function pvToggle() {
@@ -1964,6 +1972,8 @@ function pvPlay() {
   window.pvPlaying = true;
   document.getElementById('pvPlayBtn').textContent = '⏸ Pause';
   window.pvInterval = setInterval(pvTick, 100);
+  const a = document.getElementById('pvAudio');
+  if (a && a.src) { a.currentTime = window.pvTime || 0; a.play().catch(()=>{}); }
 }
 
 function pvStop() {
@@ -1972,6 +1982,8 @@ function pvStop() {
   window.pvInterval = null;
   const btn = document.getElementById('pvPlayBtn');
   if (btn) btn.textContent = '▶ Play';
+  const a = document.getElementById('pvAudio');
+  if (a) a.pause();
 }
 
 function pvReset() {
@@ -1980,11 +1992,15 @@ function pvReset() {
   pvRender(0);
   const scrub = document.getElementById('pvScrubber');
   if (scrub) scrub.value = 0;
+  const a = document.getElementById('pvAudio');
+  if (a) a.currentTime = 0;
 }
 
 function pvScrub(val) {
   window.pvTime = val / 10;
   pvRender(window.pvTime);
+  const a = document.getElementById('pvAudio');
+  if (a && a.src) a.currentTime = window.pvTime;
 }
 
 function pvTick() {
