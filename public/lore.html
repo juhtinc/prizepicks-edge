@@ -234,6 +234,16 @@ body::before{content:'';position:fixed;inset:0;background:
 .reject-option{display:block;width:100%;text-align:left;padding:7px 12px;font-size:11px;color:var(--text);background:none;border:none;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.1s}
 .reject-option:hover{background:var(--red-dim);color:var(--red)}
 
+/* Audio timeline items */
+.audio-item{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg3);border-radius:5px;border:1px solid var(--border);font-size:10px;transition:all 0.12s;cursor:default}
+.audio-item:hover{border-color:var(--border2)}
+.audio-item .audio-time{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold);min-width:36px;flex-shrink:0}
+.audio-item .audio-name{flex:1;color:var(--text);min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.audio-item .audio-type{font-size:8px;padding:2px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;flex-shrink:0}
+.audio-item .audio-type.music{color:var(--blue);background:var(--blue-dim)}
+.audio-item .audio-type.sfx{color:var(--gold);background:var(--gold-dim)}
+.audio-item.active{border-color:var(--gold);background:var(--gold-dim)}
+
 /* YouTube search modal */
 .yt-modal{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:300;display:flex;align-items:center;justify-content:center}
 .yt-panel{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:900px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;animation:fadeUp 0.2s ease-out both;box-shadow:0 16px 48px rgba(0,0,0,0.5)}
@@ -1968,6 +1978,18 @@ async function openVideoPreview() {
       </div>
       <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.1)"><div id="pvProgress" style="height:100%;background:#F5A623;width:0;transition:width 0.1s"></div></div>
     </div>
+    <div style="display:flex;flex-direction:column;gap:8px;min-width:280px;max-width:320px;max-height:480px;overflow-y:auto" id="pvAudioPanel">
+      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border)">Audio Timeline</div>
+
+      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px">Music</div>
+      <div id="pvMusicList" style="display:flex;flex-direction:column;gap:4px"></div>
+
+      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <span>Sound Effects</span>
+      </div>
+      <div id="pvSfxList" style="display:flex;flex-direction:column;gap:3px"></div>
+    </div>
+
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;min-width:200px">
       <div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--gold)">${s.playerName}</div>
       <div style="font-size:11px;color:var(--text2)">${totalDur.toFixed(0)}s · ${cutClips.length} clips · ${captions.length} captions</div>
@@ -2016,12 +2038,199 @@ async function openVideoPreview() {
   if (firstVid) firstVid.style.display = 'block';
   window.pvActiveUrl = cutClips[0]?.url;
 
+  // Populate audio timeline panel
+  populateAudioTimeline(s);
+
   // Load voiceover audio if available
   const pvAudio = document.getElementById('pvAudio');
   if (s.voiceoverUrl && pvAudio) {
     pvAudio.src = s.voiceoverUrl;
     pvAudio.load();
   }
+}
+
+// Music mood → track library (mirrors lib/lore/lib/music.js)
+const MUSIC_LIBRARY = {
+  melancholic: [
+    { name: 'Melancholy', url: 'https://archive.org/download/melancholy-ashamaluevmusic/05.%20Melancholy%20-%20AShamaluevMusic.mp3' },
+    { name: 'Memories', url: 'https://archive.org/download/memories-ashamaluevmusic/07.%20Memories%20-%20AShamaluevMusic.mp3' },
+    { name: 'Far Light', url: 'https://archive.org/download/sadpiano_202007/Far%20Light.mp3' },
+  ],
+  cinematic: [
+    { name: 'Cinematic Documentary', url: 'https://archive.org/download/soundcloud-436304418/Cinematic_Documentary_-_No_Copyright_Emotional_Background_Music_For_Videos_Films-436304418.mp3' },
+    { name: 'End Of All Things', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/06/AtTheEndOfAllThings.mp3' },
+    { name: 'Shoulders Of Giants', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/09/ShouldersOfGiants.mp3' },
+  ],
+  dark: [
+    { name: 'Drama', url: 'https://archive.org/download/drama-ashamaluevmusic/01.%20Drama%20-%20AShamaluevMusic.mp3' },
+    { name: 'Phase Shift', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/10/PhaseShift.mp3' },
+  ],
+  hopeful: [
+    { name: 'Serious Documentary', url: 'https://archive.org/download/soundcloud-475163286/Serious_Documentary_-_No_Copyright_Emotional_and_Cinematic_Background_Music_For_Videos-475163286.mp3' },
+    { name: 'Amberlight', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2025/03/Amberlight.mp3' },
+  ],
+};
+
+const SFX_LIBRARY = [
+  { type: 'whoosh', name: 'Whoosh', url: 'https://archive.org/download/whoosh/whoosh-%20%2814%29.mp3' },
+  { type: 'bass_boom', name: 'Bass Boom', url: 'https://archive.org/download/vine-boom-sound-effect-longer-verison-for-real/Vine%20Boom%20Sound%20Effect%20%28longer%20verison%29%20for%20real.mp3' },
+  { type: 'crowd_roar', name: 'Crowd Roar', url: 'https://archive.org/download/Red_Library_Crowds_Applause/R02-08-Applause%20and%20Cheering.mp3' },
+  { type: 'dramatic_hit', name: 'Dramatic Hit', url: 'https://archive.org/download/dramatic-impact-3/Dramatic%20Impact%203.mp3' },
+];
+
+const MOOD_MAP = {
+  forgotten_legend: 'melancholic', record_breaker: 'cinematic', what_if: 'dark',
+  scandal: 'dark', comeback: 'hopeful', rivalry: 'dark', default: 'cinematic',
+};
+
+function populateAudioTimeline(s) {
+  const musicList = document.getElementById('pvMusicList');
+  const sfxList = document.getElementById('pvSfxList');
+  if (!musicList || !sfxList) return;
+
+  // Music tracks
+  const mood = MOOD_MAP[s.storyType] || 'cinematic';
+  const musicTrack = s.musicTrack || MUSIC_LIBRARY[mood]?.[0]?.url || '';
+  const trackName = s.musicMood || mood;
+
+  musicList.innerHTML = `
+    <div class="audio-item" data-type="music">
+      <span class="audio-time">0:03</span>
+      <span class="audio-type music">BG</span>
+      <span class="audio-name" title="${trackName}">${trackName}</span>
+      <button class="btn btn-dim btn-sm" onclick="openMusicPicker()" style="padding:2px 6px;font-size:8px;text-transform:none">Change</button>
+    </div>
+  `;
+
+  // SFX placements — use stored data or generate defaults from story template
+  const sfx = s.sfxPlacements || generateDefaultSFX(s);
+  window.pvSfxData = sfx;
+
+  sfxList.innerHTML = sfx.length ? sfx.map((fx, i) => `
+    <div class="audio-item" data-type="sfx" data-time="${fx.time}" data-idx="${i}">
+      <span class="audio-time">${formatTime(fx.time)}</span>
+      <span class="audio-type sfx">${(fx.type || 'sfx').replace(/_/g, ' ').slice(0, 8)}</span>
+      <span class="audio-name">${fx.note || fx.type?.replace(/_/g, ' ') || 'Effect'}</span>
+      <button class="btn btn-dim btn-sm" onclick="replaceSFX(${i})" style="padding:2px 6px;font-size:8px;text-transform:none">Swap</button>
+      <button class="btn btn-red btn-sm" onclick="removeSFX(${i})" style="padding:1px 4px;font-size:8px">&times;</button>
+    </div>
+  `).join('') : '<div style="font-size:10px;color:var(--text3);padding:4px">No SFX placed</div>';
+
+  sfxList.innerHTML += `
+    <button class="btn btn-dim btn-sm" onclick="addSFX()" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">+ Add sound effect</button>
+  `;
+}
+
+function generateDefaultSFX(s) {
+  // Generate sensible SFX based on story segments
+  const segments = getSegments(s.storyType);
+  const sfx = [];
+  segments.forEach((seg, i) => {
+    if (i > 0 && i < segments.length - 1) {
+      sfx.push({ type: 'whoosh', time: seg.start, volume: 30, duration: 0.5, note: `${seg.name} transition` });
+    }
+    if (seg.name === 'turn' || seg.name === 'unravel' || seg.name === 'record') {
+      sfx.push({ type: 'dramatic_hit', time: seg.start + 1, volume: 35, duration: 0.8, note: `${seg.name} impact` });
+    }
+  });
+  return sfx.slice(0, 8);
+}
+
+function openMusicPicker() {
+  const mood = MOOD_MAP[scriptData?.storyType] || 'cinematic';
+  const allTracks = Object.entries(MUSIC_LIBRARY).flatMap(([cat, tracks]) =>
+    tracks.map(t => ({ ...t, category: cat }))
+  );
+
+  const picker = document.createElement('div');
+  picker.className = 'reject-picker';
+  picker.style.cssText = 'position:fixed;z-index:500;top:50%;left:50%;transform:translate(-50%,-50%);min-width:280px;max-height:400px;overflow-y:auto';
+  picker.innerHTML = `
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Select Music Track</div>
+    ${allTracks.map((t, i) => `
+      <button class="reject-option" onclick="selectMusicTrack('${t.url}','${t.name}');this.closest('.reject-picker').remove()" style="color:var(--text);display:flex;align-items:center;gap:6px">
+        <span style="font-size:8px;padding:1px 4px;border-radius:2px;background:var(--blue-dim);color:var(--blue)">${t.category}</span>
+        ${t.name}
+      </button>
+    `).join('')}
+  `;
+  document.body.appendChild(picker);
+  setTimeout(() => {
+    const close = (e) => { if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 50);
+}
+
+async function selectMusicTrack(url, name) {
+  if (!curScript) return;
+  await apiPost("edit-script", { rowId: curScript, field: "musicTrack", value: url });
+  await apiPost("edit-script", { rowId: curScript, field: "musicMood", value: name });
+  toast(`Music: ${name}`);
+  const musicList = document.getElementById('pvMusicList');
+  if (musicList) {
+    musicList.querySelector('.audio-name').textContent = name;
+  }
+}
+
+function replaceSFX(idx) {
+  const picker = document.createElement('div');
+  picker.className = 'reject-picker';
+  picker.style.cssText = 'position:fixed;z-index:500;top:50%;left:50%;transform:translate(-50%,-50%);min-width:220px';
+  picker.innerHTML = `
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Replace Sound</div>
+    ${SFX_LIBRARY.map(fx => `
+      <button class="reject-option" onclick="swapSFX(${idx},'${fx.type}','${fx.name}','${fx.url}');this.closest('.reject-picker').remove()" style="color:var(--text)">${fx.name}</button>
+    `).join('')}
+  `;
+  document.body.appendChild(picker);
+  setTimeout(() => {
+    const close = (e) => { if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 50);
+}
+
+function swapSFX(idx, type, name, url) {
+  if (!window.pvSfxData || !window.pvSfxData[idx]) return;
+  window.pvSfxData[idx].type = type;
+  window.pvSfxData[idx].url = url;
+  window.pvSfxData[idx].note = name;
+  populateAudioTimeline(scriptData);
+  toast(`SFX #${idx + 1} → ${name}`);
+}
+
+function removeSFX(idx) {
+  if (!window.pvSfxData) return;
+  window.pvSfxData.splice(idx, 1);
+  populateAudioTimeline(scriptData);
+  toast('SFX removed');
+}
+
+function addSFX() {
+  const time = prompt('Timestamp (seconds):', '10');
+  if (time === null) return;
+
+  const picker = document.createElement('div');
+  picker.className = 'reject-picker';
+  picker.style.cssText = 'position:fixed;z-index:500;top:50%;left:50%;transform:translate(-50%,-50%);min-width:220px';
+  picker.innerHTML = `
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Add at ${time}s</div>
+    ${SFX_LIBRARY.map(fx => `
+      <button class="reject-option" onclick="doAddSFX(${parseFloat(time)},'${fx.type}','${fx.name}','${fx.url}');this.closest('.reject-picker').remove()" style="color:var(--text)">${fx.name}</button>
+    `).join('')}
+  `;
+  document.body.appendChild(picker);
+  setTimeout(() => {
+    const close = (e) => { if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 50);
+}
+
+function doAddSFX(time, type, name, url) {
+  if (!window.pvSfxData) window.pvSfxData = [];
+  window.pvSfxData.push({ type, url, time, volume: 30, duration: 0.8, note: name });
+  window.pvSfxData.sort((a, b) => a.time - b.time);
+  populateAudioTimeline(scriptData);
+  toast(`Added ${name} at ${formatTime(time)}`);
 }
 
 function pvToggle() {
@@ -2105,6 +2314,12 @@ function pvRender(t) {
   // Show/hide lower third (after hook, 3s+)
   const lt = document.getElementById('pvLowerThird');
   if (lt) lt.style.opacity = t >= 3 ? '1' : '0';
+
+  // Highlight active SFX in audio panel
+  document.querySelectorAll('.audio-item[data-type="sfx"]').forEach(el => {
+    const sfxTime = parseFloat(el.dataset.time);
+    el.classList.toggle('active', t >= sfxTime && t < sfxTime + 1.5);
+  });
 
   // Stat cards removed — will iterate on these later
 
