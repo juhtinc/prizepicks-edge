@@ -730,7 +730,6 @@ async function selectScript(rowId) {
           const defaultTrack = MUSIC_LIBRARY[moodKey]?.[0]?.url || '';
           const activeTrack = s.musicTrack || defaultTrack;
           const trackLabel = s.musicMood || moodKey;
-          window._musicTrackUrl = activeTrack;
           return `<div>
           <div class="clip-panel-title">Background Music · ${trackLabel}</div>
           ${activeTrack ? `
@@ -787,6 +786,10 @@ async function selectScript(rowId) {
       </div>
     </div>
   </div>`;
+
+  // Set music track URL for the player
+  const _moodKey = MOOD_MAP[s.storyType] || 'cinematic';
+  window._musicTrackUrl = s.musicTrack || MUSIC_LIBRARY[_moodKey]?.[0]?.url || '';
 
   // Render clip grid
   renderClipTimeline(clipUrls);
