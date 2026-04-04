@@ -2218,9 +2218,8 @@ async function previewMusic(url) {
 
 let pvMusicAudio = null;
 
-function proxyAudioUrl(url) {
-  return `/api/proxy-audio?secret=${SECRET}&url=${encodeURIComponent(url)}`;
-}
+// Direct URL — archive.org serves with Access-Control-Allow-Origin: *
+function proxyAudioUrl(url) { return url; }
 
 async function togglePreviewMusic(on) {
   if (on) {
@@ -2278,13 +2277,14 @@ function openMusicPicker() {
 async function loadMusicPlayer(encodedUrl) {
   const player = document.getElementById('musicPlayer');
   if (!player) return;
+  const url = decodeURIComponent(encodedUrl);
   toast('Loading music...');
   try {
-    const proxyUrl = `/api/proxy-audio?secret=${SECRET}&url=${encodedUrl}`;
-    const resp = await fetch(proxyUrl);
-    if (!resp.ok) { toast('Proxy returned ' + resp.status); return; }
+    // Fetch directly from source — archive.org has CORS headers
+    const resp = await fetch(url);
+    if (!resp.ok) { toast('Fetch returned ' + resp.status); return; }
     const blob = await resp.blob();
-    toast('Music loaded (' + (blob.size / 1024).toFixed(0) + 'KB)');
+    toast('Music loaded (' + (blob.size / 1024).toFixed(0) + 'KB) — playing');
     player.src = URL.createObjectURL(blob);
     player.play().catch(e => toast('Play failed: ' + e.message));
   } catch (e) {
