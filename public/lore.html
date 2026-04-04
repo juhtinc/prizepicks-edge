@@ -521,7 +521,8 @@ async function selectScript(rowId) {
   document.getElementById("detailArea").innerHTML = `
   <div class="detail">
     <div class="detail-head">
-      <div class="detail-photo" id="detailPhoto">${s.playerPhotoUrl||photoCache[s.playerName]?`<img src="${s.playerPhotoUrl||photoCache[s.playerName]}">`:''}</div>
+      <div class="detail-photo" id="detailPhoto" onclick="uploadPlayerPhoto('${rowId}')" style="cursor:pointer" title="Click to upload photo">${s.playerPhotoUrl||photoCache[s.playerName]?`<img src="${s.playerPhotoUrl||photoCache[s.playerName]}">`:''}</div>
+      <input type="file" id="photoFileInput" accept="image/png,image/jpeg,image/webp" style="display:none">
       <div>
         <div class="detail-title">${s.playerName||'?'}</div>
         <div class="detail-sub">${(s.storyType||'').replace(/_/g,' ').toUpperCase()} · ${s.playerSport||'NBA'} · ${rowId}</div>
@@ -932,6 +933,34 @@ async function updateScriptStatus(rowId, status) {
   } else {
     toast(`Failed: ${result.error || 'unknown error'}`);
   }
+}
+
+// ── Player Photo Upload ──
+function uploadPlayerPhoto(rowId) {
+  const input = document.getElementById('photoFileInput');
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast('Image too large (max 5MB)'); return; }
+
+    toast('Uploading photo...');
+    const reader = new FileReader();
+    const base64 = await new Promise((resolve) => {
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(file);
+    });
+
+    const result = await apiPost('upload-photo', { rowId, imageBase64: base64 });
+    if (result.ok) {
+      toast('Photo uploaded');
+      photoCache[scriptData?.playerName] = result.url;
+      document.getElementById('detailPhoto').innerHTML = `<img src="${result.url}">`;
+    } else {
+      toast(`Failed: ${result.error || 'unknown'}`);
+    }
+    input.value = '';
+  };
+  input.click();
 }
 
 // ── Title A/B Selection ──
