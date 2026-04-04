@@ -1979,9 +1979,13 @@ async function openVideoPreview() {
       <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.1)"><div id="pvProgress" style="height:100%;background:#F5A623;width:0;transition:width 0.1s"></div></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;min-width:280px;max-width:320px;max-height:480px;overflow-y:auto" id="pvAudioPanel">
-      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--border)">Audio Timeline</div>
-
-      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px">Music</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--border)">
+        <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Music</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--text3);cursor:pointer">
+          <input type="checkbox" id="pvMusicToggle" onchange="togglePreviewMusic(this.checked)" style="accent-color:var(--gold)">
+          Play during preview
+        </label>
+      </div>
       <div id="pvMusicList" style="display:flex;flex-direction:column;gap:4px"></div>
 
     </div>
@@ -2119,10 +2123,6 @@ function populateAudioTimeline(s) {
       </div>
     `).join('')}
 
-    <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3);margin-top:8px;cursor:pointer">
-      <input type="checkbox" id="pvMusicToggle" onchange="togglePreviewMusic(this.checked)" style="accent-color:var(--gold)">
-      Play music during preview
-    </label>
   `;
 }
 
