@@ -596,10 +596,14 @@ async function selectScript(rowId) {
     <div class="detail-workspace">
       <div class="detail-main">
         <div class="script-overview">
-          <div class="script-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
-            <span>Script · <span id="wordCountLabel">${(s.script||'').split(/\s+/).filter(Boolean).length}</span> words</span>
-            <span style="font-size:14px">▾</span>
-          </div>
+          ${(() => {
+            const wc = (s.script||'').split(/\s+/).filter(Boolean).length + (s.hookLine||'').split(/\s+/).filter(Boolean).length;
+            const overLimit = wc > 125;
+            return `<div class="script-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+              <span>Script · <span id="wordCountLabel" style="${overLimit?'color:var(--red)':''}">${wc}</span>/${125} words ${overLimit?'<span style="color:var(--red);font-size:9px">— too long for 60s</span>':''}</span>
+              <span style="font-size:14px">▾</span>
+            </div>`;
+          })()}
           <div class="script-body-text open">
             <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-weight:600">Hook Line</div>
             <div class="editable" contenteditable="true" data-field="hookLine" data-row="${rowId}" onblur="saveInlineEdit(this)" style="color:var(--gold);font-style:italic;margin-bottom:10px;font-size:13px;line-height:1.5">${s.hookLine||''}</div>
@@ -701,7 +705,8 @@ async function selectScript(rowId) {
         </div>
         ${s.voiceoverUrl ? `
         <div>
-          <div class="clip-panel-title">Voiceover</div>
+          <div class="clip-panel-title">Voiceover${s.voiceoverDuration ? ` · ${s.voiceoverDuration.toFixed(1)}s` : ''}</div>
+          ${s.voiceoverDuration > 60 ? `<div style="font-size:9px;color:var(--red);margin-bottom:4px;font-weight:600">Exceeds 60s limit — trim the script and regenerate</div>` : ''}
           <audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>
         </div>` : ''}
         <div class="sidebar-info">
@@ -1311,8 +1316,13 @@ async function generateVoiceover(rowId) {
   toast("Generating voiceover...");
   const result = await apiPost("generate-voiceover", { rowId });
   if (result.ok) {
-    toast(`Voiceover generated (${result.duration?.toFixed(1) || '?'}s)`);
-    selectScript(rowId); // Refresh to show audio player
+    const dur = result.duration?.toFixed(1) || '?';
+    if (parseFloat(dur) > 60) {
+      toast(`Warning: voiceover is ${dur}s — exceeds 60s Shorts limit! Trim the script.`);
+    } else {
+      toast(`Voiceover generated (${dur}s)`);
+    }
+    selectScript(rowId);
   } else {
     toast(`Failed: ${result.error || 'unknown'}`);
   }
