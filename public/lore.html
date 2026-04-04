@@ -567,7 +567,7 @@ async function selectScript(rowId) {
             <span>Script · <span id="wordCountLabel">${(s.script||'').split(/\s+/).filter(Boolean).length}</span> words</span>
             <span style="font-size:14px">▾</span>
           </div>
-          <div class="script-body-text">
+          <div class="script-body-text open">
             <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-weight:600">Hook Line</div>
             <div class="editable" contenteditable="true" data-field="hookLine" data-row="${rowId}" onblur="saveInlineEdit(this)" style="color:var(--gold);font-style:italic;margin-bottom:10px;font-size:13px;line-height:1.5">${s.hookLine||''}</div>
             <div class="edit-hint">Click to edit · changes save automatically</div>
