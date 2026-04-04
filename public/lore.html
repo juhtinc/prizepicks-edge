@@ -357,9 +357,48 @@ async function selectBatch(id) {
   document.getElementById("scriptCount").textContent = scripts.length;
   if (!scripts.length) { document.getElementById("scriptsArea").innerHTML = '<div class="empty">No scripts</div>'; return; }
 
-  document.getElementById("scriptsArea").innerHTML = `<table class="script-table"><thead><tr>
-    <th>Player</th><th>Type</th><th>Words</th><th>Status</th><th>Clips</th>
-  </tr></thead><tbody>${scripts.map(s => `
+  // Batch summary stats
+  const totalSourced = scripts.reduce((s,x) => s + (x.clipsSourced||0), 0);
+  const totalApproved = scripts.reduce((s,x) => s + (x.clipsApproved||0), 0);
+  const totalRejected = scripts.reduce((s,x) => s + (x.clipsRejected||0), 0);
+  const totalClipSlots = scripts.length * 18;
+
+  document.getElementById("scriptsArea").innerHTML = `
+  <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;letter-spacing:0.3px">
+      <span style="color:var(--text2)">${scripts.length}</span> scripts
+      <span style="margin:0 6px;opacity:0.3">|</span>
+      <span style="color:var(--text2)">${totalSourced}</span>/<span style="color:var(--text3)">${totalClipSlots}</span> sourced
+      <span style="margin:0 6px;opacity:0.3">|</span>
+      <span style="color:var(--green)">${totalApproved}</span> approved
+      ${totalRejected > 0 ? `<span style="margin:0 6px;opacity:0.3">|</span><span style="color:var(--red)">${totalRejected}</span> rejected` : ''}
+    </div>
+  </div>
+  ${(() => {
+    const withAnalytics = scripts.filter(s => s.viewsAt48h != null);
+    if (!withAnalytics.length) return '';
+    const avgViews = Math.round(withAnalytics.reduce((s,x) => s + x.viewsAt48h, 0) / withAnalytics.length);
+    const avgRetention = (withAnalytics.reduce((s,x) => s + (x.retentionAt48h||0), 0) / withAnalytics.length).toFixed(1);
+    const best = withAnalytics.sort((a,b) => (b.viewsAt48h||0) - (a.viewsAt48h||0))[0];
+    return `<div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;letter-spacing:0.3px">
+        <span style="color:var(--text2)">ANALYTICS</span>
+        <span style="margin:0 6px;opacity:0.3">|</span>
+        avg <span style="color:var(--gold-bright)">${avgViews.toLocaleString()}</span> views
+        <span style="margin:0 6px;opacity:0.3">|</span>
+        avg <span style="color:${parseFloat(avgRetention) > 50 ? 'var(--green)' : 'var(--text2)'}">${avgRetention}%</span> retention
+        <span style="margin:0 6px;opacity:0.3">|</span>
+        top: ${best.playerName} (${best.viewsAt48h?.toLocaleString()})
+      </div>
+    </div>`;
+  })()}
+  <table class="script-table"><thead><tr>
+    <th>Player</th><th>Type</th><th>Words</th><th>Status</th><th>Clips</th><th>Review</th>
+  </tr></thead><tbody>${scripts.map(s => {
+    const approved = s.clipsApproved||0;
+    const sourced = s.clipsSourced||0;
+    const pct = sourced > 0 ? Math.round((approved / sourced) * 100) : 0;
+    return `
     <tr onclick="selectScript('${s.rowId}')" class="${curScript===s.rowId?'selected':''}">
       <td><div class="player-cell">
         <div class="avatar" id="avatar-${s.rowId}">${s.playerPhotoUrl?`<img src="${s.playerPhotoUrl}">`:''}</div>
@@ -368,9 +407,10 @@ async function selectBatch(id) {
       <td><span class="tag">${(s.storyType||'').replace(/_/g,' ')}</span></td>
       <td style="font-family:'JetBrains Mono';font-size:11px;color:var(--text2)">${s.wordCount}</td>
       <td><span class="status-pill ${(s.status||'').toLowerCase()}">${s.status||'—'}</span></td>
-      <td><div class="clip-dots" title="${s.clipsSourced||0} sourced">${Array.from({length:Math.min(s.clipBriefCount||7, 18)},(_,i)=>`<div class="clip-dot ${i<(s.clipsSourced||0)?'ok':'no'}"></div>`).join('')}</div></td>
-    </tr>
-  `).join("")}</tbody></table>`;
+      <td><div class="clip-dots" title="${sourced} sourced">${Array.from({length:Math.min(s.clipBriefCount||7, 18)},(_,i)=>`<div class="clip-dot ${i<sourced?'ok':'no'}"></div>`).join('')}</div></td>
+      <td style="font-family:'JetBrains Mono';font-size:10px;color:${pct===100?'var(--green)':pct>0?'var(--text2)':'var(--text3)'}">${approved}/${sourced} ${pct===100?'✓':''}</td>
+    </tr>`;
+  }).join("")}</tbody></table>`;
 
   // Auto-fetch Wikipedia photos for players without one
   fetchPlayerPhotos(scripts);
@@ -429,6 +469,7 @@ async function selectScript(rowId) {
         <button class="btn btn-dim btn-sm" onclick="updateScriptStatus('${rowId}','Ready')">Mark Ready</button>
         ${s.renderUrl?`<a href="${s.renderUrl}" target="_blank" class="btn btn-dim btn-sm">Rendered</a>`:''}
         ${s.youtubeUrl?`<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim btn-sm">YouTube</a>`:''}
+        <button class="btn btn-dim btn-sm" onclick="generateVoiceover('${rowId}')">${s.voiceoverUrl?'Regen Voice':'Gen Voice'}</button>
         <button class="btn btn-dim btn-sm" onclick="sourceClips('${rowId}')">Re-source</button>
       </div>
     </div>
@@ -523,10 +564,15 @@ async function selectScript(rowId) {
             <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(curClipIdx)">↻ Replace</button>
           </div>
         </div>
+        ${s.voiceoverUrl ? `
+        <div>
+          <div class="clip-panel-title">Voiceover</div>
+          <audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>
+        </div>` : ''}
         <div class="sidebar-info">
           Clips: ${clips.filter(c=>c.clipUrl).length}/${clips.length} sourced<br>
           Music: ${s.musicMood||'—'}<br>
-          Voice: ${s.voiceoverUrl?'Generated':'Pending'}<br>
+          Voice: ${s.voiceoverUrl?'<span style="color:var(--green)">Generated</span>':'Pending'}<br>
           Render: ${s.renderUrl?'<a href="'+s.renderUrl+'" target="_blank" style="color:var(--gold)">View</a>':'Pending'}
         </div>
 
@@ -534,6 +580,12 @@ async function selectScript(rowId) {
           <div class="clip-panel-title" style="margin-top:16px">Rendered Video</div>
           <div class="render-player"><video src="${s.renderUrl}" controls preload="metadata"></video></div>
         ` : '<div class="render-placeholder">Not yet rendered</div>'}
+
+        <div style="font-size:8px;color:var(--text3);font-family:'JetBrains Mono',monospace;line-height:2;padding:8px;background:var(--bg3);border-radius:4px;letter-spacing:0.3px">
+          <span style="color:var(--text2)">KEYS</span><br>
+          ↑↓ navigate · A approve · R reject<br>
+          Space play/pause · P preview · Esc back
+        </div>
 
         <div class="clip-panel-title" style="margin-top:16px">Status</div>
         <div class="script-meta">Clips: ${s.clipSourceStatus||'—'} (${clips.filter(c=>c.clipUrl).length}/${clips.length})</div>
@@ -700,13 +752,17 @@ function dragEnd(e) {
 async function approveClip(idx) {
   const slot = idx + 1;
   const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
-  if (row) { row.classList.add('approved'); row.classList.remove('rejected'); }
+  const wasApproved = row?.classList.contains('approved');
 
-  // Update status dot
+  if (row) {
+    row.classList.toggle('approved', !wasApproved);
+    row.classList.remove('rejected');
+  }
+
   const dot = row?.querySelector('.clip-status-dot');
-  if (dot) { dot.className = 'clip-status-dot ok'; }
+  if (dot) { dot.className = wasApproved ? 'clip-status-dot pending' : 'clip-status-dot ok'; }
 
-  toast(`Clip #${slot} approved ✓`);
+  toast(wasApproved ? `Clip #${slot} unapproved` : `Clip #${slot} approved ✓`);
   await apiPost("approve-clip", { rowId: curScript, slot });
 }
 
@@ -771,8 +827,77 @@ async function updateScriptStatus(rowId, status) {
   }
 }
 
+async function generateVoiceover(rowId) {
+  toast("Generating voiceover...");
+  const result = await apiPost("generate-voiceover", { rowId });
+  if (result.ok) {
+    toast(`Voiceover generated (${result.duration?.toFixed(1) || '?'}s)`);
+    selectScript(rowId); // Refresh to show audio player
+  } else {
+    toast(`Failed: ${result.error || 'unknown'}`);
+  }
+}
+
 async function sourceClips(rowId) {
-  toast("Triggering clip sourcing via GitHub Actions...");
+  if (!confirm(`Trigger clip sourcing for ${rowId}?\n\nThis will run the GitHub Actions pipeline to source new clips for unapproved slots.`)) return;
+
+  toast("Triggering GitHub Actions pipeline...");
+  const batchId = scriptData?.batchId || curBatch;
+  const result = await apiPost("trigger-clips", { batchId, rowIds: [rowId] });
+
+  if (result.ok) {
+    toast("Pipeline triggered — check status in a few minutes");
+    // Start polling for status
+    pollPipelineStatus();
+  } else {
+    toast(`Failed: ${result.error || 'unknown error'}`);
+  }
+}
+
+async function sourceBatchClips() {
+  if (!curBatch) return;
+  if (!confirm(`Trigger clip sourcing for ALL scripts in ${curBatch}?`)) return;
+
+  toast("Triggering batch pipeline...");
+  const { scripts = [] } = await api("scripts", { batchId: curBatch });
+  const rowIds = scripts.map(s => s.rowId);
+  const result = await apiPost("trigger-clips", { batchId: curBatch, rowIds });
+
+  if (result.ok) {
+    toast(`Pipeline triggered for ${rowIds.length} scripts`);
+    pollPipelineStatus();
+  } else {
+    toast(`Failed: ${result.error || 'unknown'}`);
+  }
+}
+
+let pipelinePollTimer = null;
+async function pollPipelineStatus() {
+  if (pipelinePollTimer) clearInterval(pipelinePollTimer);
+
+  const update = async () => {
+    const { runs = [] } = await api("pipeline-status");
+    const latest = runs[0];
+    if (!latest) return;
+
+    const statusEl = document.getElementById("statusText");
+    if (latest.status === "in_progress" || latest.status === "queued") {
+      statusEl.innerHTML = `<span style="color:var(--blue)">Pipeline running...</span>`;
+    } else if (latest.conclusion === "success") {
+      statusEl.innerHTML = `<span style="color:var(--green)">Pipeline done ✓</span>`;
+      clearInterval(pipelinePollTimer);
+      pipelinePollTimer = null;
+      // Refresh current view
+      if (curScript) selectScript(curScript);
+    } else if (latest.conclusion === "failure") {
+      statusEl.innerHTML = `<span style="color:var(--red)">Pipeline failed</span>`;
+      clearInterval(pipelinePollTimer);
+      pipelinePollTimer = null;
+    }
+  };
+
+  await update();
+  pipelinePollTimer = setInterval(update, 15000); // poll every 15s
 }
 
 // ── Helpers ──
@@ -1280,6 +1405,54 @@ function pvRender(t) {
     }
   }
 }
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', (e) => {
+  // Don't capture when typing in inputs or modals open
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (document.getElementById('uploadModal') || document.getElementById('previewModal')) {
+    // In preview modal: Space = play/pause, Escape = close
+    if (e.key === ' ' && document.getElementById('previewModal')) { e.preventDefault(); pvToggle(); }
+    if (e.key === 'Escape') {
+      document.getElementById('previewModal')?.remove(); pvStop?.();
+      document.getElementById('uploadModal')?.remove();
+    }
+    return;
+  }
+
+  if (!curScript || !curClipList.length) return;
+
+  switch (e.key) {
+    case 'ArrowDown': case 'j':
+      e.preventDefault();
+      if (curClipIdx < curClipList.length - 1) selectClip(curClipIdx + 1);
+      break;
+    case 'ArrowUp': case 'k':
+      e.preventDefault();
+      if (curClipIdx > 0) selectClip(curClipIdx - 1);
+      break;
+    case 'a':
+      e.preventDefault();
+      approveClip(curClipIdx);
+      break;
+    case 'r':
+      e.preventDefault();
+      rejectClip(curClipIdx);
+      break;
+    case ' ':
+      e.preventDefault();
+      const vid = document.getElementById('clipVideo');
+      if (vid) vid.paused ? vid.play() : vid.pause();
+      break;
+    case 'p':
+      e.preventDefault();
+      openVideoPreview();
+      break;
+    case 'Escape':
+      if (curScript) closeDetail();
+      break;
+  }
+});
 
 // ── Init ──
 async function loadAll() {
