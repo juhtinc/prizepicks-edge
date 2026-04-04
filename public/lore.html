@@ -383,8 +383,10 @@ const API = "/api/lore?route=dashboard";
 const SECRET = "picks25";
 const R2 = "https://pub-86aa1c96eda04a8099526017d95dbb8f.r2.dev";
 
-let curBatch = null, curScript = null, curClipIdx = 0;
-let scriptData = null; // full script detail
+let curBatch = sessionStorage.getItem('lore_batch') || null;
+let curScript = sessionStorage.getItem('lore_script') || null;
+let curClipIdx = 0;
+let scriptData = null;
 
 async function api(action, params = {}) {
   const qs = new URLSearchParams({ action, ...params }).toString();
@@ -435,6 +437,8 @@ async function loadBatches() {
 // ── Scripts ──
 async function selectBatch(id) {
   curBatch = id; curScript = null;
+  sessionStorage.setItem('lore_batch', id);
+  sessionStorage.removeItem('lore_script');
   loadBatches();
   document.getElementById("scriptsArea").innerHTML = '<div class="loading"><div class="spinner"></div>Loading scripts...</div>';
   document.getElementById("detailArea").innerHTML = "";
@@ -531,12 +535,14 @@ async function selectBatch(id) {
 function closeDetail() {
   curScript = null;
   scriptData = null;
+  sessionStorage.removeItem('lore_script');
   document.getElementById("mainContainer").classList.remove("detail-open");
   document.getElementById("detailArea").innerHTML = "";
 }
 
 async function selectScript(rowId) {
   curScript = rowId; curClipIdx = 0;
+  sessionStorage.setItem('lore_script', rowId);
   // Collapse batches/scripts, show back button
   document.getElementById("mainContainer").classList.add("detail-open");
   document.getElementById("detailBreadcrumb").textContent = `${curBatch} / ${rowId}`;
@@ -2567,6 +2573,7 @@ async function loadComments(rowId) {
 
 // ── View Switching ──
 function showView(view) {
+  sessionStorage.setItem('lore_view', view);
   document.getElementById('mainContainer').style.display = view === 'production' ? 'block' : 'none';
   document.getElementById('analyticsContainer').style.display = view === 'analytics' ? 'block' : 'none';
   document.getElementById('costsContainer').style.display = view === 'costs' ? 'block' : 'none';
@@ -2575,6 +2582,9 @@ function showView(view) {
   if (view === 'analytics') loadAnalytics();
   if (view === 'costs') loadCosts();
 }
+
+// Restore saved view on load
+{ const sv = sessionStorage.getItem('lore_view'); if (sv && sv !== 'production') showView(sv); }
 
 async function loadAnalytics() {
   const { weeks = [] } = await api("analytics-data");
@@ -2739,9 +2749,13 @@ async function loadAll() {
   await loadBatches();
   if (curBatch) {
     await selectBatch(curBatch);
-    // Fetch photos after table renders
     const { scripts = [] } = await api("scripts", { batchId: curBatch });
     fetchPlayerPhotos(scripts);
+    // Restore script detail if we were viewing one
+    const savedScript = sessionStorage.getItem('lore_script');
+    if (savedScript) {
+      await selectScript(savedScript);
+    }
   }
   document.getElementById("statusText").textContent = `Updated ${new Date().toLocaleTimeString()}`;
   updateStatusBanner();
