@@ -2173,43 +2173,63 @@ function previewSFX(idx) {
   playSoundUrl(url, 0.4, (fx.duration || 1.5) * 1000);
 }
 
-function previewMusic(url) {
+async function previewMusic(url) {
   if (!url) { toast('No music URL'); return; }
-  toast('Playing 8s preview...');
-  playSoundUrl(url, 0.3, 8000);
+  toast('Loading preview...');
+  try {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.remove(); }
+    previewAudioEl = document.createElement('audio');
+    previewAudioEl.src = blobUrl;
+    previewAudioEl.volume = 0.3;
+    document.body.appendChild(previewAudioEl);
+    await previewAudioEl.play();
+    toast('Playing 8s preview...');
+    setTimeout(() => { if (previewAudioEl) { previewAudioEl.pause(); previewAudioEl.remove(); URL.revokeObjectURL(blobUrl); previewAudioEl = null; } }, 8000);
+  } catch (e) {
+    toast('Preview error: ' + e.message);
+  }
 }
 
 let pvMusicAudio = null;
 
-function togglePreviewMusic(on) {
+async function togglePreviewMusic(on) {
   if (on) {
     const mood = MOOD_MAP[scriptData?.storyType] || 'cinematic';
     const url = scriptData?.musicTrack || MUSIC_LIBRARY[mood]?.[0]?.url;
-    if (!url) { toast('No music track available'); return; }
+    if (!url) { toast('No music track'); return; }
 
-    toast('Loading music...');
     // Clean up previous
-    if (pvMusicAudio) { pvMusicAudio.pause(); pvMusicAudio.remove(); }
+    if (pvMusicAudio) { pvMusicAudio.pause(); pvMusicAudio.remove(); pvMusicAudio = null; }
 
-    pvMusicAudio = document.createElement('audio');
-    pvMusicAudio.crossOrigin = 'anonymous';
-    pvMusicAudio.preload = 'auto';
-    pvMusicAudio.volume = 0.15;
-    pvMusicAudio.loop = true;
-    document.body.appendChild(pvMusicAudio);
+    try {
+      // Fetch the audio as a blob to avoid CORS/redirect issues
+      toast('Loading music...');
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
 
-    pvMusicAudio.oncanplaythrough = () => {
-      toast('Music ready');
-      if (window.pvPlaying) {
-        pvMusicAudio.currentTime = window.pvTime || 0;
-        pvMusicAudio.play().catch(e => toast('Music blocked: ' + e.message));
-      }
-    };
-    pvMusicAudio.onerror = () => toast('Music failed to load');
-    pvMusicAudio.src = url;
+      pvMusicAudio = document.createElement('audio');
+      pvMusicAudio.src = blobUrl;
+      pvMusicAudio.volume = 0.15;
+      pvMusicAudio.loop = true;
+      document.body.appendChild(pvMusicAudio);
+
+      // Play immediately (this is a direct user click so autoplay is allowed)
+      pvMusicAudio.currentTime = window.pvTime || 0;
+      await pvMusicAudio.play();
+      toast('Music playing');
+
+      // If preview isn't playing, pause music but keep it loaded
+      if (!window.pvPlaying) pvMusicAudio.pause();
+    } catch (e) {
+      toast('Music error: ' + e.message);
+    }
   } else {
     if (pvMusicAudio) { pvMusicAudio.pause(); pvMusicAudio.remove(); pvMusicAudio = null; }
-    toast('Music off');
   }
 }
 
