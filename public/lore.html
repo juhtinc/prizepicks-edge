@@ -734,7 +734,7 @@ async function selectScript(rowId) {
           <div class="clip-panel-title">Background Music · ${trackLabel}</div>
           ${activeTrack ? `
             <audio id="musicPlayer" controls preload="none" style="width:100%;height:28px;border-radius:4px;opacity:0.85"></audio>
-            <button class="btn btn-dim btn-sm" onclick="loadMusicToR2('${encodeURIComponent(activeTrack)}')" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
+            <button class="btn btn-dim btn-sm" onclick="loadMusicToR2(this.dataset.url)" data-url="${activeTrack}" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
           ` : '<div style="font-size:10px;color:var(--text3)">No track available</div>'}`;
         })()}
           <div style="display:flex;gap:4px;margin-top:4px">
@@ -2078,22 +2078,20 @@ async function openVideoPreview() {
 // Music mood → track library (mirrors lib/lore/lib/music.js)
 const MUSIC_LIBRARY = {
   melancholic: [
-    { name: 'Melancholy', url: 'https://archive.org/download/melancholy-ashamaluevmusic/05.%20Melancholy%20-%20AShamaluevMusic.mp3' },
-    { name: 'Memories', url: 'https://archive.org/download/memories-ashamaluevmusic/07.%20Memories%20-%20AShamaluevMusic.mp3' },
-    { name: 'Far Light', url: 'https://archive.org/download/sadpiano_202007/Far%20Light.mp3' },
-  ],
-  cinematic: [
-    { name: 'Cinematic Documentary', url: 'https://archive.org/download/soundcloud-436304418/Cinematic_Documentary_-_No_Copyright_Emotional_Background_Music_For_Videos_Films-436304418.mp3' },
     { name: 'End Of All Things', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/06/AtTheEndOfAllThings.mp3' },
-    { name: 'Shoulders Of Giants', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/09/ShouldersOfGiants.mp3' },
-  ],
-  dark: [
-    { name: 'Drama', url: 'https://archive.org/download/drama-ashamaluevmusic/01.%20Drama%20-%20AShamaluevMusic.mp3' },
     { name: 'Phase Shift', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/10/PhaseShift.mp3' },
   ],
-  hopeful: [
-    { name: 'Serious Documentary', url: 'https://archive.org/download/soundcloud-475163286/Serious_Documentary_-_No_Copyright_Emotional_and_Cinematic_Background_Music_For_Videos-475163286.mp3' },
+  cinematic: [
+    { name: 'Shoulders Of Giants', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/09/ShouldersOfGiants.mp3' },
     { name: 'Amberlight', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2025/03/Amberlight.mp3' },
+  ],
+  dark: [
+    { name: 'Phase Shift', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2023/10/PhaseShift.mp3' },
+    { name: 'End Of All Things', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/06/AtTheEndOfAllThings.mp3' },
+  ],
+  hopeful: [
+    { name: 'Amberlight', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2025/03/Amberlight.mp3' },
+    { name: 'Shoulders Of Giants', url: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2024/09/ShouldersOfGiants.mp3' },
   ],
 };
 
@@ -2274,10 +2272,9 @@ function openMusicPicker() {
   }, 50);
 }
 
-async function loadMusicToR2(encodedUrl) {
+async function loadMusicToR2(url) {
   const player = document.getElementById('musicPlayer');
-  if (!player) return;
-  const url = decodeURIComponent(encodedUrl);
+  if (!player || !url) return;
   toast('Caching music to R2...');
   try {
     // Upload to R2 via backend, get back a public R2 URL
