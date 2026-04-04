@@ -1490,7 +1490,7 @@ function openYouTubeSearch(slot) {
         </div>
         <div id="ytPlayerPanel" style="display:none;width:320px;flex-shrink:0;border-left:1px solid var(--border);padding:12px;flex-direction:column;gap:10px;overflow-y:auto">
           <div id="ytPlayerWrap" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:6px;overflow:hidden">
-            <iframe id="ytPlayerFrame" width="100%" height="100%" frameborder="0" allowfullscreen allow="autoplay"></iframe>
+            <div id="ytPlayerDiv"></div>
           </div>
           <div id="ytSelectedTitle" style="font-size:11px;color:var(--text);font-weight:600;line-height:1.3"></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1556,45 +1556,47 @@ function selectYouTubeResult(idx) {
   if (!video) return;
   ytSelectedVideo = video;
 
-  // Highlight selected
   document.querySelectorAll('.yt-result').forEach((el, i) => el.classList.toggle('selected', i === idx));
 
-  // Show player panel with embedded YouTube video
   const panel = document.getElementById('ytPlayerPanel');
   panel.style.display = 'flex';
   document.getElementById('ytSelectedTitle').textContent = video.title;
   document.getElementById('ytClipBtn').disabled = false;
 
-  // Load YouTube iframe player with JS API enabled
-  const frame = document.getElementById('ytPlayerFrame');
-  frame.src = `https://www.youtube.com/embed/${video.videoId}?enablejsapi=1&origin=${location.origin}`;
+  // Load YouTube IFrame Player API if not already loaded
+  if (!window.YT) {
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = () => createYTPlayer(video.videoId);
+  } else {
+    createYTPlayer(video.videoId);
+  }
+}
+
+function createYTPlayer(videoId) {
+  // Destroy previous player if exists
+  if (window.ytPlayer && window.ytPlayer.destroy) {
+    try { window.ytPlayer.destroy(); } catch {}
+  }
+  document.getElementById('ytPlayerWrap').innerHTML = '<div id="ytPlayerDiv"></div>';
+
+  window.ytPlayer = new YT.Player('ytPlayerDiv', {
+    width: '100%',
+    height: '100%',
+    videoId: videoId,
+    playerVars: { autoplay: 0, modestbranding: 1, rel: 0 },
+  });
 }
 
 function grabCurrentTime() {
-  // Use YouTube iframe API to get current playback time
-  const frame = document.getElementById('ytPlayerFrame');
-  if (!frame || !frame.contentWindow) return;
-
-  // Post message to iframe to get current time
-  frame.contentWindow.postMessage('{"event":"command","func":"getCurrentTime","args":""}', '*');
-
-  // Listen for response
-  const handler = (e) => {
-    try {
-      const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-      if (data.event === 'infoDelivery' && data.info?.currentTime != null) {
-        document.getElementById('ytStartTime').value = Math.floor(data.info.currentTime);
-        toast(`Start time set to ${Math.floor(data.info.currentTime)}s`);
-        window.removeEventListener('message', handler);
-      }
-    } catch {}
-  };
-  window.addEventListener('message', handler);
-
-  // Fallback: prompt user to type it if iframe API doesn't respond
-  setTimeout(() => {
-    window.removeEventListener('message', handler);
-  }, 2000);
+  if (!window.ytPlayer || !window.ytPlayer.getCurrentTime) {
+    toast('Player not ready — try again');
+    return;
+  }
+  const t = Math.floor(window.ytPlayer.getCurrentTime());
+  document.getElementById('ytStartTime').value = t;
+  toast(`Start time set to ${t}s`);
 }
 
 async function doClipFromYouTube(slot) {
