@@ -496,6 +496,9 @@ Return JSON:
         clipUrl,
         source: "youtube_transformed",
         transforms: { mood, mirrored: shouldMirror, clipDuration },
+        approved: false,
+        rejected: false,
+        rejectionReason: null,
       });
     } catch (e) {
       console.error(`  Clip ${i + 1}: R2 upload failed: ${e.message}`);
