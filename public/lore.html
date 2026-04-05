@@ -745,12 +745,15 @@ async function selectScript(rowId) {
             <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(curClipIdx)">↻ Replace</button>
           </div>
         </div>
-        ${s.voiceoverUrl ? `
         <div>
-          <div class="clip-panel-title">Voiceover${s.voiceoverDuration ? ` · ${s.voiceoverDuration.toFixed(1)}s` : ''}</div>
+          <div class="clip-panel-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Voiceover${s.voiceoverDuration ? ` · ${s.voiceoverDuration.toFixed(1)}s` : ''}</span>
+            <button class="btn btn-dim btn-sm" onclick="uploadVoiceover('${rowId}')" style="text-transform:none;letter-spacing:0;font-size:8px">Upload</button>
+          </div>
           ${s.voiceoverDuration > 60 ? `<div style="font-size:9px;color:var(--red);margin-bottom:4px;font-weight:600">Exceeds 60s limit — trim the script and regenerate</div>` : ''}
-          <audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>
-        </div>` : ''}
+          ${s.voiceoverUrl ? `<audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>` : '<div style="font-size:10px;color:var(--text3)">No voiceover yet</div>'}
+          <input type="file" id="voiceFileInput" accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a" style="display:none">
+        </div>
         ${(() => {
           const moodKey = MOOD_MAP[s.storyType] || 'cinematic';
           const defaultTrack = MUSIC_LIBRARY[moodKey]?.[0]?.url || '';
@@ -1385,6 +1388,30 @@ async function renderVideo(rowId, preview) {
   } catch (e) {
     toast(`Error: ${e.message}`);
   }
+}
+
+// ── Upload Voiceover ──
+function uploadVoiceover(rowId) {
+  const input = document.getElementById('voiceFileInput');
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB)'); return; }
+
+    toast('Uploading voiceover...');
+    const reader = new FileReader();
+    const base64 = await new Promise(r => { reader.onload = () => r(reader.result.split(',')[1]); reader.readAsDataURL(file); });
+
+    const result = await apiPost('upload-voiceover', { rowId, audioBase64: base64, fileName: file.name });
+    if (result.ok) {
+      toast(`Voiceover uploaded (${result.duration ? result.duration.toFixed(1) + 's' : 'done'})`);
+      selectScript(rowId);
+    } else {
+      toast(`Failed: ${result.error || 'unknown'}`);
+    }
+    input.value = '';
+  };
+  input.click();
 }
 
 async function generateVoiceover(rowId) {
