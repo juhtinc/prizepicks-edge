@@ -133,6 +133,31 @@
           background-position: -200% 0;
         }
       }
+      @keyframes kenBurnsIn {
+        0% {
+          transform: scaleX(-1) scale(1);
+        }
+        100% {
+          transform: scaleX(-1) scale(1.15);
+        }
+      }
+      @keyframes kenBurnsOut {
+        0% {
+          transform: scaleX(-1) scale(1.15);
+        }
+        100% {
+          transform: scaleX(-1) scale(1);
+        }
+      }
+      .clip-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        animation: kenBurnsIn 3.5s ease-in-out forwards;
+      }
+      .clip-photo.zoom-out {
+        animation: kenBurnsOut 3.5s ease-in-out forwards;
+      }
       @keyframes glowPulse {
         0%,
         100% {
@@ -2306,7 +2331,7 @@
       ${statusDot}
       <div class="clip-row-num">${i + 1}</div>
       <div class="clip-row-thumb">
-        <video src="${c.url}" muted preload="metadata" onerror="this.style.display='none'"></video>
+        ${c.source === "photo" ? `<img src="${c.url}" class="clip-photo ${i % 2 === 0 ? "" : "zoom-out"}" style="animation:none">` : `<video src="${c.url}" muted preload="metadata" onerror="this.style.display='none'"></video>`}
       </div>
       <div class="clip-row-text">
         <div class="clip-row-caption">${clipCaptions[i] || "—"}</div>
@@ -3437,7 +3462,8 @@
     <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Options</div>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();openYouTubeSearch(${slot})" style="color:var(--text)">Search YouTube</button>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();openClipLibrary(${slot})" style="color:var(--text)">From Library</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload File</button>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload Video</button>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();uploadPhotoAsClip(${slot})" style="color:var(--text)">Upload Photo (Ken Burns)</button>
     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${slot - 1})" style="color:var(--gold)">Save to Library</button>
   `;
@@ -3700,6 +3726,42 @@
         }
       }
 
+      // ── Upload Photo as Clip (Ken Burns) ──
+      function uploadPhotoAsClip(slot) {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/png,image/jpeg,image/webp";
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          if (file.size > 5 * 1024 * 1024) {
+            toast("Image too large (max 5MB)");
+            return;
+          }
+          toast("Uploading photo...");
+          const reader = new FileReader();
+          const base64 = await new Promise((r) => {
+            reader.onload = () => r(reader.result.split(",")[1]);
+            reader.readAsDataURL(file);
+          });
+
+          // Upload to R2 as an image
+          const result = await apiPost("upload-clip-photo", {
+            rowId: curScript,
+            slot,
+            imageBase64: base64,
+            fileName: file.name,
+          });
+          if (result.ok) {
+            toast("Photo uploaded — will zoom during playback");
+            selectScript(curScript);
+          } else {
+            toast("Failed: " + (result.error || "unknown"));
+          }
+        };
+        input.click();
+      }
+
       // ── Clip Library ──
       async function saveClipToLibrary(idx) {
         if (!curScript || !scriptData) return;
@@ -3834,6 +3896,7 @@
             duration: clipDurPv,
             url: brief?.clipUrl || `${R2}/${s.rowId}/clip_${i + 1}.mp4`,
             slot: i + 1,
+            isPhoto: brief?.source === "photo",
           });
         }
 
@@ -3985,19 +4048,31 @@
         window.pvPlaying = false;
         window.pvInterval = null;
 
-        // Preload ALL clips into hidden video elements for instant switching
+        // Preload ALL clips (videos + photos) for instant switching
         const container = document.getElementById("pvVideoContainer");
         const uniqueUrls = [...new Set(cutClips.map((c) => c.url))];
         window.pvVideos = {};
         uniqueUrls.forEach((url, i) => {
-          const v = document.createElement("video");
-          v.src = url;
-          v.muted = true;
-          v.loop = false;
-          v.preload = "auto";
-          v.playsInline = true;
-          v.style.cssText =
-            "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none";
+          const clip = cutClips.find((c) => c.url === url);
+          const isPhoto = clip?.isPhoto;
+
+          let v;
+          if (isPhoto) {
+            v = document.createElement("img");
+            v.src = url;
+            v.className = "clip-photo";
+            v.style.cssText =
+              "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none";
+          } else {
+            v = document.createElement("video");
+            v.src = url;
+            v.muted = true;
+            v.loop = false;
+            v.preload = "auto";
+            v.playsInline = true;
+            v.style.cssText =
+              "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none";
+          }
           container.appendChild(v);
           window.pvVideos[url] = v;
           v.load();
@@ -4631,13 +4706,20 @@
           (c) => t >= c.start && t < c.start + c.duration,
         );
         if (curCut && window.pvVideos && curCut.url !== window.pvActiveUrl) {
-          // Start next clip FIRST (behind), then hide previous (no gap)
           const prev = window.pvVideos[window.pvActiveUrl];
           const next = window.pvVideos[curCut.url];
           if (next) {
             next.style.display = "block";
-            next.currentTime = 0;
-            next.play().catch(() => {});
+            if (next.tagName === "VIDEO") {
+              next.currentTime = 0;
+              next.play().catch(() => {});
+            } else if (next.tagName === "IMG") {
+              // Restart Ken Burns animation — alternate zoom in/out by slot
+              const zoomOut = curCut.slot % 2 === 0;
+              next.style.animation = "none";
+              next.offsetHeight; // force reflow
+              next.style.animation = `${zoomOut ? "kenBurnsOut" : "kenBurnsIn"} 3.5s ease-in-out forwards`;
+            }
           }
           if (prev) {
             prev.style.display = "none";
