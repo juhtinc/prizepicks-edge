@@ -170,20 +170,22 @@ const COLOR_GRADES = {
   inspiring: "eq=contrast=1.15:brightness=0.02:saturation=1.1",
 };
 
-function transformClip(inputPath, outputPath, mood, mirror = false) {
+function transformClip(inputPath, outputPath, mood, mirror = true) {
   const colorGrade = COLOR_GRADES[mood] || COLOR_GRADES.dramatic;
 
-  // Simple transform: scale to vertical 1080x1920, color grade, optional mirror
+  // Random slight speed variation (0.93x-1.07x) to avoid Content ID matching
+  const speedFactor = (0.93 + Math.random() * 0.14).toFixed(2);
+  const speedFilter = `setpts=${(1 / speedFactor).toFixed(3)}*PTS`;
+
+  // Transform: scale, crop, color grade, vignette, always mirror, speed variation
   let filters = [
     "scale=1080:1920:force_original_aspect_ratio=increase",
     "crop=1080:1920",
     colorGrade,
     "vignette=PI/4",
+    "hflip", // always mirror for copyright safety
+    speedFilter, // slight speed change
   ];
-
-  if (mirror) {
-    filters.push("hflip");
-  }
 
   const filterStr = filters.join(",");
   const cmd = `ffmpeg -i "${inputPath}" -vf "${filterStr}" -c:v libx264 -preset fast -crf 20 -r 30 -an -pix_fmt yuv420p -movflags +faststart -y "${outputPath}"`;
@@ -451,7 +453,7 @@ Return JSON:
     }
 
     // 6. Transform
-    const shouldMirror = Math.random() > 0.5;
+    const shouldMirror = true; // always mirror for copyright safety
     console.log(
       `  Clip ${i + 1}: transforming (mood=${mood}, mirror=${shouldMirror})...`,
     );
