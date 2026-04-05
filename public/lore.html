@@ -3991,6 +3991,10 @@
           v.src = url;
           v.muted = true;
           v.loop = false;
+          v.onended = () => {
+            v.currentTime = 0;
+            v.play().catch(() => {});
+          };
           v.preload = "auto";
           v.playsInline = true;
           v.style.cssText =
