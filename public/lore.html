@@ -3662,16 +3662,36 @@
         );
         if (!name) return;
 
-        // Save a reference with the YouTube URL + timestamp
-        const clipRef = `https://youtube.com/watch?v=${ytSelectedVideo.videoId}&t=${Math.floor(startTime)}`;
+        // Download the clip segment first, then save R2 URL to library
+        toast("Downloading clip...");
+        const libRowId = `library/${Date.now()}`;
+        const clipResult = await apiPost("clip-from-youtube", {
+          rowId: libRowId,
+          slot: 1,
+          videoId: ytSelectedVideo.videoId,
+          startTime,
+          duration,
+        });
+
+        const clipUrl = clipResult.ok ? clipResult.url : null;
+        if (!clipUrl) {
+          toast(
+            `Download failed: ${clipResult.error || "unknown"} — saving reference only`,
+          );
+        }
+
         const result = await apiPost("save-clip-library", {
           name,
           playerName: scriptData?.playerName || "",
-          url: clipRef,
+          url:
+            clipUrl ||
+            `https://youtube.com/watch?v=${ytSelectedVideo.videoId}&t=${Math.floor(startTime)}`,
           source: `youtube:${ytSelectedVideo.videoId}@${startTime}s+${duration}s`,
         });
         if (result.ok) {
-          toast(`Saved to library: ${name}`);
+          toast(
+            `Saved to library: ${name}${clipUrl ? "" : " (reference only)"}`,
+          );
         } else {
           toast(`Failed: ${result.error || "unknown"}`);
         }
