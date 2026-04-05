@@ -614,9 +614,9 @@ async function selectScript(rowId) {
         <div class="script-overview">
           ${(() => {
             const wc = (s.script||'').split(/\s+/).filter(Boolean).length + (s.hookLine||'').split(/\s+/).filter(Boolean).length;
-            const overLimit = wc > 125;
+            const overLimit = wc > 100;
             return `<div class="script-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
-              <span>Script · <span id="wordCountLabel" style="${overLimit?'color:var(--red)':''}">${wc}</span>/${125} words ${overLimit?'<span style="color:var(--red);font-size:9px">— too long for 60s</span>':''}</span>
+              <span>Script · <span id="wordCountLabel" style="${overLimit?'color:var(--red)':''}">${wc}</span>/${100} words ${overLimit?'<span style="color:var(--red);font-size:9px">— too long for 59s</span>':''}</span>
               <span style="font-size:14px">▾</span>
             </div>`;
           })()}
@@ -688,6 +688,13 @@ async function selectScript(rowId) {
             <div class="script-label">Comment Bait</div>
             <div class="editable script-meta" contenteditable="true" data-field="commentBait" data-row="${rowId}" onblur="saveInlineEdit(this)">${s.commentBait||'—'}</div>
           </div>
+
+          ${s.loopExplanation || s.foreshadowLine ? `
+          <div class="script-section">
+            <div class="script-label">Quality Notes</div>
+            ${s.loopExplanation ? `<div class="script-meta" style="margin-bottom:4px"><span style="color:var(--gold)">Loop:</span> ${s.loopExplanation}</div>` : ''}
+            ${s.foreshadowLine ? `<div class="script-meta"><span style="color:var(--gold)">Foreshadow:</span> ${s.foreshadowLine}</div>` : ''}
+          </div>` : ''}
 
           <div class="script-section">
             <div class="script-label">Schedule</div>
