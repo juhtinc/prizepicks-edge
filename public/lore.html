@@ -2538,7 +2538,7 @@
         await apiPost("reject-clip", { rowId: curScript, slot, reason });
 
         // Auto-open YouTube search to find replacement
-        setTimeout(() => openYouTubeSearch(slot), 300);
+        // Removed auto-open YouTube search — user can replace manually via ↻ or ⋯
       }
 
       async function approveAllClips(rowId) {
