@@ -387,7 +387,7 @@ Return JSON:
   // 4. Download clips from MULTIPLE player-specific videos for variety
   // Skip scene detection — download 2s clips at varied intervals from each video
   const clipBriefs = [];
-  const clipDuration = 3; // 3s clips
+  const clipDuration = 4; // 4s clips (fills 3.3s slots with buffer, no gaps)
   const mood =
     script.storyType === "forgotten_legend"
       ? "nostalgic"
