@@ -32,7 +32,11 @@ async function kvGet(key) {
   });
   const data = await resp.json();
   if (data.result === null) return null;
-  try { return JSON.parse(data.result); } catch { return data.result; }
+  try {
+    return JSON.parse(data.result);
+  } catch {
+    return data.result;
+  }
 }
 
 async function kvSet(key, value, ttl = 86400 * 30) {
@@ -76,9 +80,11 @@ async function searchYouTube(query, maxResults = 5) {
     videoDuration: "medium", // 4-20 minutes
     key: process.env.YOUTUBE_API_KEY,
   });
-  const resp = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`);
+  const resp = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?${params}`,
+  );
   const data = await resp.json();
-  return (data.items || []).map(item => ({
+  return (data.items || []).map((item) => ({
     videoId: item.id.videoId,
     title: item.snippet.title,
     channelTitle: item.snippet.channelTitle,
@@ -87,13 +93,18 @@ async function searchYouTube(query, maxResults = 5) {
 
 // ── Blocklist for DMCA safety ──
 const BLOCKED_CHANNELS = [
-  "NBA", "ESPN", "TNT Sports", "Bleacher Report",
-  "House of Highlights", "NBA on ESPN", "NBA on TNT",
+  "NBA",
+  "ESPN",
+  "TNT Sports",
+  "Bleacher Report",
+  "House of Highlights",
+  "NBA on ESPN",
+  "NBA on TNT",
 ];
 
 function isBlockedChannel(channelTitle) {
-  return BLOCKED_CHANNELS.some(b =>
-    channelTitle.toLowerCase().includes(b.toLowerCase())
+  return BLOCKED_CHANNELS.some((b) =>
+    channelTitle.toLowerCase().includes(b.toLowerCase()),
   );
 }
 
@@ -103,7 +114,9 @@ async function downloadClip(videoId, startTime, duration, outputPath) {
   const apiUrl = process.env.CLIP_API_URL || "http://194.163.180.19:3456";
   const apiSecret = process.env.CLIP_API_SECRET || "sports-lore-clips-2026";
 
-  console.log(`    Requesting clip from VPS: ${videoId} @ ${startTime}s +${duration}s`);
+  console.log(
+    `    Requesting clip from VPS: ${videoId} @ ${startTime}s +${duration}s`,
+  );
 
   try {
     const resp = await fetch(`${apiUrl}/download-clip`, {
@@ -148,13 +161,13 @@ function detectScenes(videoPath) {
 
 // ── FFmpeg transform ──
 const COLOR_GRADES = {
-  nostalgic:  "eq=contrast=1.1:brightness=-0.02:saturation=0.85",
+  nostalgic: "eq=contrast=1.1:brightness=-0.02:saturation=0.85",
   melancholy: "eq=contrast=1.15:brightness=-0.05:saturation=0.7",
-  epic:       "eq=contrast=1.2:brightness=0.02:saturation=1.15",
-  hype:       "eq=contrast=1.25:brightness=0.03:saturation=1.2",
-  dramatic:   "eq=contrast=1.2:brightness=-0.02:saturation=0.95",
-  dark:       "eq=contrast=1.3:brightness=-0.05:saturation=0.8",
-  inspiring:  "eq=contrast=1.15:brightness=0.02:saturation=1.1",
+  epic: "eq=contrast=1.2:brightness=0.02:saturation=1.15",
+  hype: "eq=contrast=1.25:brightness=0.03:saturation=1.2",
+  dramatic: "eq=contrast=1.2:brightness=-0.02:saturation=0.95",
+  dark: "eq=contrast=1.3:brightness=-0.05:saturation=0.8",
+  inspiring: "eq=contrast=1.15:brightness=0.02:saturation=1.1",
 };
 
 function transformClip(inputPath, outputPath, mood, mirror = false) {
@@ -198,16 +211,20 @@ async function uploadToR2(filePath, key) {
   });
 
   const body = fs.readFileSync(filePath);
-  await client.send(new PutObjectCommand({
-    Bucket: process.env.R2_BUCKET_NAME,
-    Key: key,
-    Body: body,
-    ContentType: "video/mp4",
-  }));
+  await client.send(
+    new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: key,
+      Body: body,
+      ContentType: "video/mp4",
+    }),
+  );
 
   // Public URL via R2 public development URL
   // Use explicit public URL (the pub-xxx hash differs from account ID)
-  const publicBase = process.env.R2_PUBLIC_URL || "https://pub-86aa1c96eda04a8099526017d95dbb8f.r2.dev";
+  const publicBase =
+    process.env.R2_PUBLIC_URL ||
+    "https://pub-86aa1c96eda04a8099526017d95dbb8f.r2.dev";
   return `${publicBase}/${key}`;
 }
 
@@ -228,7 +245,9 @@ async function getPlayerImage(playerName, sport) {
   try {
     const sportMap = { NBA: "nba", NFL: "nfl", MLB: "mlb", NHL: "nhl" };
     const espnSport = sportMap[(sport || "").toUpperCase()] || "nba";
-    const searchResp = await fetch(`https://site.api.espn.com/apis/common/v3/search?query=${encodeURIComponent(playerName)}&limit=1&type=player`);
+    const searchResp = await fetch(
+      `https://site.api.espn.com/apis/common/v3/search?query=${encodeURIComponent(playerName)}&limit=1&type=player`,
+    );
     const searchData = await searchResp.json();
     const playerId = searchData.items?.[0]?.id;
     if (playerId) {
@@ -282,7 +301,8 @@ async function processScript(rowId) {
 
   // 2. Claude plans clip slots — each search matches what the narrator says
   console.log("  Asking Claude for clip plan...");
-  const clipPlan = await askClaude(`You are sourcing video clips for a YouTube Short about ${script.playerName} (${script.playerSport}).
+  const clipPlan = await askClaude(
+    `You are sourcing video clips for a YouTube Short about ${script.playerName} (${script.playerSport}).
 
 THE FULL SCRIPT (what the narrator says):
 "${script.hookLine || ""}"
@@ -303,7 +323,9 @@ RULES:
 - Prefer highlight compilations (4-20 min videos) over short clips
 
 Return JSON:
-{"clips":[{"slot":1,"search_query":"${script.playerName} specific play","visual_match":"what narrator says here"},...],"searches":["query1","query2","query3"]}`, 2000);
+{"clips":[{"slot":1,"search_query":"${script.playerName} specific play","visual_match":"what narrator says here"},...],"searches":["query1","query2","query3"]}`,
+    2000,
+  );
 
   if (!clipPlan || !clipPlan.clips) {
     console.error("  Claude clip plan failed");
@@ -326,9 +348,12 @@ Return JSON:
     console.log(`  Searching: "${query.slice(0, 60)}..."`);
     const results = await searchYouTube(query, 5);
     // Filter: must have player name in title AND not blocked channel
-    const relevant = results.filter(v =>
-      !isBlockedChannel(v.channelTitle) &&
-      v.title.toLowerCase().includes(playerName.split(" ").pop().toLowerCase())
+    const relevant = results.filter(
+      (v) =>
+        !isBlockedChannel(v.channelTitle) &&
+        v.title
+          .toLowerCase()
+          .includes(playerName.split(" ").pop().toLowerCase()),
     );
     allVideos.push(...relevant.slice(0, 2));
   }
@@ -336,16 +361,21 @@ Return JSON:
   // Also try Claude's specific search queries (but still require player name)
   for (const clip of clipPlan.clips.slice(0, 2)) {
     const results = await searchYouTube(clip.search_query, 3);
-    const relevant = results.filter(v =>
-      !isBlockedChannel(v.channelTitle) &&
-      v.title.toLowerCase().includes(playerName.split(" ").pop().toLowerCase())
+    const relevant = results.filter(
+      (v) =>
+        !isBlockedChannel(v.channelTitle) &&
+        v.title
+          .toLowerCase()
+          .includes(playerName.split(" ").pop().toLowerCase()),
     );
     allVideos.push(...relevant.slice(0, 1));
   }
 
-  const uniqueVideos = [...new Map(allVideos.map(v => [v.videoId, v])).values()].slice(0, 5);
+  const uniqueVideos = [
+    ...new Map(allVideos.map((v) => [v.videoId, v])).values(),
+  ].slice(0, 5);
   console.log(`  Found ${uniqueVideos.length} player-specific videos`);
-  uniqueVideos.forEach(v => console.log(`    - ${v.title.slice(0, 60)}`));
+  uniqueVideos.forEach((v) => console.log(`    - ${v.title.slice(0, 60)}`));
 
   if (uniqueVideos.length === 0) {
     console.error(`  No videos found specifically about ${playerName}`);
@@ -356,8 +386,12 @@ Return JSON:
   // Skip scene detection — download 2s clips at varied intervals from each video
   const clipBriefs = [];
   const clipDuration = 3; // 3s clips
-  const mood = script.storyType === "forgotten_legend" ? "nostalgic" :
-               script.storyType === "record_breaker" ? "epic" : "dramatic";
+  const mood =
+    script.storyType === "forgotten_legend"
+      ? "nostalgic"
+      : script.storyType === "record_breaker"
+        ? "epic"
+        : "dramatic";
 
   // Download MORE clips than segments (for quick-cut pacing — 2 clips per segment)
   const totalClips = Math.min(clipPlan.clips.length * 3, 18);
@@ -367,7 +401,7 @@ Return JSON:
 
   for (let i = 0; i < totalClips; i++) {
     const slot = i + 1;
-    const existing = existingClips.find(c => c.slot === slot);
+    const existing = existingClips.find((c) => c.slot === slot);
 
     // Skip approved clips — don't overwrite what the user already signed off on
     if (existing?.approved && existing?.clipUrl) {
@@ -377,7 +411,8 @@ Return JSON:
     }
 
     const segIdx = Math.floor(i / 2); // 2 clips per segment
-    const planned = clipPlan.clips[segIdx] || clipPlan.clips[clipPlan.clips.length - 1];
+    const planned =
+      clipPlan.clips[segIdx] || clipPlan.clips[clipPlan.clips.length - 1];
     const seg = segments[segIdx] || segments[segments.length - 1];
     // Rotate through ALL videos for variety (not just one source)
     const videoIdx = i % uniqueVideos.length;
@@ -385,13 +420,20 @@ Return JSON:
 
     // Spread clips across the video: start from 10s, increment by ~20s per clip
     // Add randomness to avoid always picking the same moments
-    const startTime = 10 + (i * 18) + Math.floor(Math.random() * 15);
+    const startTime = 10 + i * 18 + Math.floor(Math.random() * 15);
 
     const rawPath = path.join(tmpDir, `raw_${i}.mp4`);
     const transformedPath = path.join(tmpDir, `clip_${i}.mp4`);
 
-    console.log(`  Clip ${slot}: downloading from ${video.videoId} at ${startTime}s...`);
-    const ok = await downloadClip(video.videoId, startTime, clipDuration, rawPath);
+    console.log(
+      `  Clip ${slot}: downloading from ${video.videoId} at ${startTime}s...`,
+    );
+    const ok = await downloadClip(
+      video.videoId,
+      startTime,
+      clipDuration,
+      rawPath,
+    );
 
     if (!ok) {
       console.log(`  Clip ${i + 1}: download failed, skipping`);
@@ -410,15 +452,27 @@ Return JSON:
 
     // 6. Transform
     const shouldMirror = Math.random() > 0.5;
-    console.log(`  Clip ${i + 1}: transforming (mood=${mood}, mirror=${shouldMirror})...`);
-    const transformed = transformClip(rawPath, transformedPath, mood, shouldMirror);
+    console.log(
+      `  Clip ${i + 1}: transforming (mood=${mood}, mirror=${shouldMirror})...`,
+    );
+    const transformed = transformClip(
+      rawPath,
+      transformedPath,
+      mood,
+      shouldMirror,
+    );
 
     if (!transformed) {
       console.log(`  Clip ${i + 1}: transform failed, skipping`);
       clipBriefs.push({
-        slot: i + 1, start: seg.start, duration: seg.end - seg.start,
-        segmentName: seg.name, clipType: planned.clip_type, searchQuery: planned.search_query,
-        clipUrl: null, source: "none",
+        slot: i + 1,
+        start: seg.start,
+        duration: seg.end - seg.start,
+        segmentName: seg.name,
+        clipType: planned.clip_type,
+        searchQuery: planned.search_query,
+        clipUrl: null,
+        source: "none",
       });
       continue;
     }
@@ -443,33 +497,48 @@ Return JSON:
     } catch (e) {
       console.error(`  Clip ${i + 1}: R2 upload failed: ${e.message}`);
       clipBriefs.push({
-        slot: i + 1, start: seg.start, duration: seg.end - seg.start,
-        segmentName: seg.name, clipType: planned.clip_type, searchQuery: planned.search_query,
-        clipUrl: null, source: "none",
+        slot: i + 1,
+        start: seg.start,
+        duration: seg.end - seg.start,
+        segmentName: seg.name,
+        clipType: planned.clip_type,
+        searchQuery: planned.search_query,
+        clipUrl: null,
+        source: "none",
       });
     }
 
     // Clean up raw file
-    try { fs.unlinkSync(rawPath); } catch {}
+    try {
+      fs.unlinkSync(rawPath);
+    } catch {}
   }
 
   // 8. Get player photo
   console.log("  Fetching player photo...");
-  const playerPhotoUrl = await getPlayerImage(script.playerName, script.playerSport);
+  const playerPhotoUrl = await getPlayerImage(
+    script.playerName,
+    script.playerSport,
+  );
   console.log(`  Photo: ${playerPhotoUrl ? "found" : "not found"}`);
 
   // 9. Save to KV
   script.clipBriefs = clipBriefs;
-  script.clipsSourced = clipBriefs.filter(c => c.clipUrl).length;
-  script.clipSourceStatus = script.clipsSourced > 0 ? "GitHub Actions" : "Fallback";
+  script.clipsSourced = clipBriefs.filter((c) => c.clipUrl).length;
+  script.clipSourceStatus =
+    script.clipsSourced > 0 ? "GitHub Actions" : "Fallback";
   script.dateSourced = new Date().toISOString();
   if (playerPhotoUrl) script.playerPhotoUrl = playerPhotoUrl;
 
   await kvSet(`lore:script:${rowId}`, script);
-  console.log(`  Saved: ${script.clipsSourced}/${clipBriefs.length} clips sourced`);
+  console.log(
+    `  Saved: ${script.clipsSourced}/${clipBriefs.length} clips sourced`,
+  );
 
   // Clean up temp dir
-  try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
+  try {
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch {}
 
   return {
     rowId,
@@ -494,7 +563,10 @@ async function main() {
   try {
     rowIds = JSON.parse(rowIdsArg);
   } catch {
-    rowIds = (rowIdsArg || "").split(",").map(s => s.trim()).filter(Boolean);
+    rowIds = (rowIdsArg || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 
   if (rowIds.length === 0) {
@@ -510,7 +582,9 @@ async function main() {
 
   console.log(`Batch: ${batchId}`);
   console.log(`Scripts: ${rowIds.length}`);
-  console.log(`Env check: ANTHROPIC=${!!process.env.ANTHROPIC_API_KEY} YT=${!!process.env.YOUTUBE_API_KEY} KV=${!!process.env.KV_REST_API_URL} R2=${!!process.env.R2_ACCOUNT_ID}`);
+  console.log(
+    `Env check: ANTHROPIC=${!!process.env.ANTHROPIC_API_KEY} YT=${!!process.env.YOUTUBE_API_KEY} KV=${!!process.env.KV_REST_API_URL} R2=${!!process.env.R2_ACCOUNT_ID}`,
+  );
 
   const results = [];
   for (const rowId of rowIds) {
@@ -526,16 +600,18 @@ async function main() {
   // Summary
   console.log("\n=== SUMMARY ===");
   const total = results.length;
-  const success = results.filter(r => r.status === "done").length;
+  const success = results.filter((r) => r.status === "done").length;
   const totalClips = results.reduce((sum, r) => sum + (r.clipsSourced || 0), 0);
   console.log(`Scripts: ${success}/${total} processed`);
   console.log(`Clips: ${totalClips} sourced`);
-  results.forEach(r => console.log(`  ${r.rowId}: ${r.status} (${r.clipsSourced || 0} clips)`));
+  results.forEach((r) =>
+    console.log(`  ${r.rowId}: ${r.status} (${r.clipsSourced || 0} clips)`),
+  );
 
   if (success === 0) process.exit(1);
 }
 
-main().catch(e => {
+main().catch((e) => {
   console.error("Fatal:", e);
   process.exit(1);
 });
