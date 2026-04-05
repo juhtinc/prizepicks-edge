@@ -403,6 +403,25 @@ async function apiPost(action, body = {}) {
   return r.json();
 }
 
+// ── API cooldown system ──
+const API_COOLDOWNS = {}; // { "action:rowId": timestamp }
+const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+function checkCooldown(action, rowId) {
+  const key = `${action}:${rowId || 'global'}`;
+  const lastRun = API_COOLDOWNS[key];
+  if (lastRun) {
+    const elapsed = Date.now() - lastRun;
+    if (elapsed < COOLDOWN_MS) {
+      const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 60000);
+      toast(`Last done ${Math.floor(elapsed / 60000)}m ago — please wait ${remaining} more minute${remaining > 1 ? 's' : ''}`);
+      return false;
+    }
+  }
+  API_COOLDOWNS[key] = Date.now();
+  return true;
+}
+
 const REJECTION_REASONS = [
   { id: "wrong_player", label: "Wrong player" },
   { id: "low_res", label: "Low resolution" },
@@ -1096,6 +1115,7 @@ async function saveInlineEdit(el) {
 
 // ── Generate 5 Titles ──
 async function generateTitles(rowId) {
+  if (!checkCooldown('titles', rowId)) return;
   toast('Generating 5 title options...');
   const result = await apiPost('generate-titles', { rowId });
   if (result.ok) {
@@ -1212,6 +1232,7 @@ function openRegenModal(rowId) {
 }
 
 async function doRegenScript(rowId) {
+  if (!checkCooldown('regen', rowId)) return;
   const suggestion = document.getElementById('regenSuggestion').value.trim();
   const btn = document.getElementById('regenBtn');
   btn.disabled = true;
@@ -1338,6 +1359,7 @@ async function batchAction(type) {
 
 // ── Render + Publish ──
 async function renderVideo(rowId, preview) {
+  if (!checkCooldown(preview ? 'render' : 'publish', rowId)) return;
   const action = preview ? 'Preview render' : 'Full publish';
   if (!preview && !confirm(`Publish ${rowId} to YouTube? This will render, upload, and make it live.`)) return;
 
@@ -1366,6 +1388,7 @@ async function renderVideo(rowId, preview) {
 }
 
 async function generateVoiceover(rowId) {
+  if (!checkCooldown('voiceover', rowId)) return;
   toast("Generating voiceover...");
   const result = await apiPost("generate-voiceover", { rowId });
   if (result.ok) {
@@ -2594,6 +2617,7 @@ async function saveSchedule(rowId) {
 
 // ── Thumbnail ──
 async function generateThumbnail(rowId) {
+  if (!checkCooldown('thumbnail', rowId)) return;
   toast('Generating thumbnail via Creatomate...');
   try {
     const r = await fetch(`/api/lore?route=generate-thumbnail`, {
@@ -2801,14 +2825,29 @@ async function loadCosts() {
 
     <div class="section-header"><h1 class="section-title" style="font-size:20px">Recent Activity</h1></div>
     <div style="display:flex;flex-direction:column;gap:4px">
-      ${costs.slice().reverse().slice(0, 50).map(c => `
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:8px 14px;display:flex;align-items:center;gap:12px;font-size:11px">
-          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);min-width:70px">${c.date?.slice(5, 10) || ''}</span>
-          <span style="color:var(--gold);min-width:80px;font-weight:600">${c.service}</span>
-          <span style="color:var(--text);flex:1">${c.description || ''}</span>
-          <span style="font-family:'JetBrains Mono',monospace;color:var(--text2)">$${c.amount.toFixed(2)}</span>
-        </div>
-      `).join('')}
+      ${costs.slice().reverse().slice(0, 50).map((c, i) => {
+        const dateStr = c.date ? new Date(c.date).toLocaleString() : '';
+        const shortDate = c.date?.slice(5, 10) || '';
+        const time = c.date?.slice(11, 16) || '';
+        return `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden">
+          <div style="padding:8px 14px;display:flex;align-items:center;gap:12px;font-size:11px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);min-width:40px">${shortDate}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);min-width:36px">${time}</span>
+            <span style="color:var(--gold);min-width:80px;font-weight:600">${c.service}</span>
+            <span style="color:var(--text);flex:1">${c.description || ''}</span>
+            <span style="font-family:'JetBrains Mono',monospace;color:var(--text2)">$${c.amount.toFixed(2)}</span>
+            <span style="color:var(--text3);font-size:10px">▾</span>
+          </div>
+          <div style="display:none;padding:8px 14px;border-top:1px solid var(--border);background:var(--bg3);font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);line-height:1.8">
+            Service: ${c.service}<br>
+            Amount: $${c.amount.toFixed(4)}<br>
+            Description: ${c.description || '—'}<br>
+            Timestamp: ${dateStr}<br>
+            Rate: ~$${c.service === 'Claude' ? '0.003/1K input tokens' : c.service === 'ElevenLabs' ? '0.30/generation' : c.service === 'Creatomate' ? '0.50-1.00/render' : 'varies'}
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   `;
 }
