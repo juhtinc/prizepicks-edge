@@ -2312,7 +2312,8 @@
       <div class="clip-row-actions">
         <button class="btn btn-sm btn-green" onclick="event.stopPropagation();approveClip(${i})" title="Approve" style="padding:2px 5px">✓</button>
         <button class="btn btn-sm btn-red" onclick="event.stopPropagation();rejectClip(${i})" title="Reject" style="padding:2px 5px">✗</button>
-        <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();replaceClip(${i})" title="Replace">↻</button>
+        <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();replaceClip(${i})" title="Upload replacement">↻</button>
+        <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();clipOptions(${i})" title="More options" style="padding:2px 4px">⋯</button>
         <span class="drag-handle" title="Drag to reorder">⠿</span>
       </div>
     </div>`;
@@ -3416,19 +3417,24 @@
       }
 
       // Replace clip — show choice: upload or YouTube search
+      // ↻ goes straight to upload
       async function replaceClip(idx) {
+        openUploadModal(idx + 1);
+      }
+
+      // Clip options menu (YouTube search, library, save)
+      function clipOptions(idx) {
         const slot = idx + 1;
-        // Show a quick picker
         const picker = document.createElement("div");
         picker.className = "reject-picker";
         const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
         const rect = row?.getBoundingClientRect() || { top: 200, right: 400 };
         picker.style.cssText = `position:fixed;z-index:500;top:${rect.top}px;left:${Math.min(rect.right + 8, window.innerWidth - 200)}px`;
         picker.innerHTML = `
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Replace with...</div>
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Options</div>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();openYouTubeSearch(${slot})" style="color:var(--text)">Search YouTube</button>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();openClipLibrary(${slot})" style="color:var(--text)">From Library</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload file</button>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload File</button>
     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${slot - 1})" style="color:var(--gold)">Save to Library</button>
   `;
