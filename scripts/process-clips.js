@@ -406,7 +406,8 @@ Return JSON:
     const existing = existingClips.find((c) => c.slot === slot);
 
     // Skip approved clips — don't overwrite what the user already signed off on
-    if (existing?.approved && existing?.clipUrl) {
+    // Re-source rejected clips and clips without URLs
+    if (existing?.approved && existing?.clipUrl && !existing?.rejected) {
       console.log(`  Clip ${slot}: already approved, keeping`);
       clipBriefs.push(existing);
       continue;
