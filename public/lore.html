@@ -3494,6 +3494,7 @@
       </div>
       <div class="yt-footer">
         <button class="btn btn-dim" onclick="document.getElementById('ytModal').remove()">Cancel</button>
+        <button class="btn btn-dim" id="ytSaveLibBtn" onclick="saveYouTubeClipToLibrary()" disabled style="text-transform:none;letter-spacing:0">Save to Library</button>
         <button class="btn btn-gold" id="ytClipBtn" onclick="doClipFromYouTube(${slot})" disabled>Clip & Replace</button>
       </div>
     </div>
@@ -3560,6 +3561,7 @@
         panel.style.display = "flex";
         document.getElementById("ytSelectedTitle").textContent = video.title;
         document.getElementById("ytClipBtn").disabled = false;
+        document.getElementById("ytSaveLibBtn").disabled = false;
 
         // Load YouTube IFrame Player API if not already loaded
         if (!window.YT) {
@@ -3641,6 +3643,37 @@
           toast(`Failed: ${result.error || "unknown"}`);
           btn.disabled = false;
           btn.textContent = "Clip & Replace";
+        }
+      }
+
+      // ── Save YouTube search result to library ──
+      async function saveYouTubeClipToLibrary() {
+        if (!ytSelectedVideo) {
+          toast("Select a video first");
+          return;
+        }
+        const startTime =
+          parseFloat(document.getElementById("ytStartTime").value) || 0;
+        const duration =
+          parseFloat(document.getElementById("ytDuration").value) || 3;
+        const name = prompt(
+          "Name this clip:",
+          `${scriptData?.playerName || ""} — ${ytSelectedVideo.title.slice(0, 30)}`,
+        );
+        if (!name) return;
+
+        // Save a reference with the YouTube URL + timestamp
+        const clipRef = `https://youtube.com/watch?v=${ytSelectedVideo.videoId}&t=${Math.floor(startTime)}`;
+        const result = await apiPost("save-clip-library", {
+          name,
+          playerName: scriptData?.playerName || "",
+          url: clipRef,
+          source: `youtube:${ytSelectedVideo.videoId}@${startTime}s+${duration}s`,
+        });
+        if (result.ok) {
+          toast(`Saved to library: ${name}`);
+        } else {
+          toast(`Failed: ${result.error || "unknown"}`);
         }
       }
 
