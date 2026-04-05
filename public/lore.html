@@ -1402,9 +1402,17 @@ function uploadVoiceover(rowId) {
     const reader = new FileReader();
     const base64 = await new Promise(r => { reader.onload = () => r(reader.result.split(',')[1]); reader.readAsDataURL(file); });
 
-    const result = await apiPost('upload-voiceover', { rowId, audioBase64: base64, fileName: file.name });
+    // Get audio duration from the file before uploading
+    const audioDur = await new Promise(r => {
+      const a = document.createElement('audio');
+      a.onloadedmetadata = () => { r(a.duration); URL.revokeObjectURL(a.src); };
+      a.onerror = () => r(null);
+      a.src = URL.createObjectURL(file);
+    });
+
+    const result = await apiPost('upload-voiceover', { rowId, audioBase64: base64, fileName: file.name, duration: audioDur });
     if (result.ok) {
-      toast(`Voiceover uploaded (${result.duration ? result.duration.toFixed(1) + 's' : 'done'})`);
+      toast(`Voiceover uploaded (${audioDur ? audioDur.toFixed(1) + 's' : 'done'})${audioDur > 60 ? ' — WARNING: exceeds 60s' : ''}`);
       selectScript(rowId);
     } else {
       toast(`Failed: ${result.error || 'unknown'}`);
