@@ -3865,7 +3865,11 @@
         if (!curScript || !scriptData) return;
         const clip = curClipList[idx];
         if (!clip || !clip.url) {
-          toast("No clip to save");
+          toast("No clip to save — replace it first");
+          return;
+        }
+        if (!clip.url.includes(".mp4") && !clip.url.includes(".webm")) {
+          toast("Not a valid video clip");
           return;
         }
 
