@@ -1792,14 +1792,14 @@
           ? batches
               .map(
                 (b) => `
-    <div class="batch-card ${curBatch === b.batchId ? "active" : ""}" onclick="selectBatch('${b.batchId}')">
-      <div class="batch-id">${b.batchId}</div>
-      <div class="batch-meta">
-        <span class="status-pill ${(b.status || "").toLowerCase().replace(/\s/g, "")}">${b.status || "?"}</span>
-        <span class="batch-count">${b.videoCount || "?"} videos</span>
-      </div>
-    </div>
-  `,
+        <div class="batch-card ${curBatch === b.batchId ? "active" : ""}" onclick="selectBatch('${b.batchId}')">
+          <div class="batch-id">${b.batchId}</div>
+          <div class="batch-meta">
+            <span class="status-pill ${(b.status || "").toLowerCase().replace(/\s/g, "")}">${b.status || "?"}</span>
+            <span class="batch-count">${b.videoCount || "?"} videos</span>
+          </div>
+        </div>
+      `,
               )
               .join("")
           : '<div class="empty">No batches</div>';
@@ -1840,90 +1840,90 @@
         const totalClipSlots = scripts.length * 18;
 
         document.getElementById("scriptsArea").innerHTML = `
-  <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
-    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;letter-spacing:0.3px">
-      <span style="color:var(--text2)">${scripts.length}</span> scripts
-      <span style="margin:0 6px;opacity:0.3">|</span>
-      <span style="color:var(--text2)">${totalSourced}</span>/<span style="color:var(--text3)">${totalClipSlots}</span> sourced
-      <span style="margin:0 6px;opacity:0.3">|</span>
-      <span style="color:var(--green)">${totalApproved}</span> approved
-      ${totalRejected > 0 ? `<span style="margin:0 6px;opacity:0.3">|</span><span style="color:var(--red)">${totalRejected}</span> rejected` : ""}
-    </div>
-  </div>
-  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-    <button class="btn btn-dim btn-sm" onclick="batchAction('source')">Source All Clips</button>
-    <button class="btn btn-dim btn-sm" onclick="batchAction('voice')">Generate All Voices</button>
-    <button class="btn btn-green btn-sm" onclick="batchAction('approve')">Approve All Reviewed</button>
-    <button class="btn btn-gold btn-sm" onclick="batchAction('render')">Render All Ready</button>
-    <button class="btn btn-gold btn-sm" onclick="batchAction('publish')">Publish All Rendered</button>
-  </div>
-  ${(() => {
-    const withAnalytics = scripts.filter((s) => s.viewsAt48h != null);
-    if (!withAnalytics.length) return "";
-    const avgViews = Math.round(
-      withAnalytics.reduce((s, x) => s + x.viewsAt48h, 0) /
-        withAnalytics.length,
-    );
-    const avgRetention = (
-      withAnalytics.reduce((s, x) => s + (x.retentionAt48h || 0), 0) /
-      withAnalytics.length
-    ).toFixed(1);
-    const best = withAnalytics.sort(
-      (a, b) => (b.viewsAt48h || 0) - (a.viewsAt48h || 0),
-    )[0];
-    return `<div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;letter-spacing:0.3px">
-        <span style="color:var(--text2)">ANALYTICS</span>
-        <span style="margin:0 6px;opacity:0.3">|</span>
-        avg <span style="color:var(--gold-bright)">${avgViews.toLocaleString()}</span> views
-        <span style="margin:0 6px;opacity:0.3">|</span>
-        avg <span style="color:${parseFloat(avgRetention) > 50 ? "var(--green)" : "var(--text2)"}">${avgRetention}%</span> retention
-        <span style="margin:0 6px;opacity:0.3">|</span>
-        top: ${best.playerName} (${best.viewsAt48h?.toLocaleString()})
+      <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;letter-spacing:0.3px">
+          <span style="color:var(--text2)">${scripts.length}</span> scripts
+          <span style="margin:0 6px;opacity:0.3">|</span>
+          <span style="color:var(--text2)">${totalSourced}</span>/<span style="color:var(--text3)">${totalClipSlots}</span> sourced
+          <span style="margin:0 6px;opacity:0.3">|</span>
+          <span style="color:var(--green)">${totalApproved}</span> approved
+          ${totalRejected > 0 ? `<span style="margin:0 6px;opacity:0.3">|</span><span style="color:var(--red)">${totalRejected}</span> rejected` : ""}
+        </div>
       </div>
-    </div>`;
-  })()}
-  <table class="script-table"><thead><tr>
-    <th>Player</th><th>Type</th><th>Pipeline</th><th>Clips</th><th>Review</th>
-  </tr></thead><tbody>${scripts
-    .map((s) => {
-      const approved = s.clipsApproved || 0;
-      const sourced = s.clipsSourced || 0;
-      const pct = sourced > 0 ? Math.round((approved / sourced) * 100) : 0;
-      // Pipeline stages: Script → Clips → Voice → Render → Published
-      const stages = [
-        { name: "Script", done: s.hasScript },
-        { name: "Clips", done: s.hasClips },
-        { name: "Voice", done: s.hasVoice },
-        { name: "Render", done: s.hasRender },
-        { name: "Live", done: s.isPublished },
-      ];
-      // Find the current active stage (first not-done)
-      const activeIdx = stages.findIndex((st) => !st.done);
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn btn-dim btn-sm" onclick="batchAction('source')">Source All Clips</button>
+        <button class="btn btn-dim btn-sm" onclick="batchAction('voice')">Generate All Voices</button>
+        <button class="btn btn-green btn-sm" onclick="batchAction('approve')">Approve All Reviewed</button>
+        <button class="btn btn-gold btn-sm" onclick="batchAction('render')">Render All Ready</button>
+        <button class="btn btn-gold btn-sm" onclick="batchAction('publish')">Publish All Rendered</button>
+      </div>
+      ${(() => {
+        const withAnalytics = scripts.filter((s) => s.viewsAt48h != null);
+        if (!withAnalytics.length) return "";
+        const avgViews = Math.round(
+          withAnalytics.reduce((s, x) => s + x.viewsAt48h, 0) /
+            withAnalytics.length,
+        );
+        const avgRetention = (
+          withAnalytics.reduce((s, x) => s + (x.retentionAt48h || 0), 0) /
+          withAnalytics.length
+        ).toFixed(1);
+        const best = withAnalytics.sort(
+          (a, b) => (b.viewsAt48h || 0) - (a.viewsAt48h || 0),
+        )[0];
+        return `<div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;letter-spacing:0.3px">
+            <span style="color:var(--text2)">ANALYTICS</span>
+            <span style="margin:0 6px;opacity:0.3">|</span>
+            avg <span style="color:var(--gold-bright)">${avgViews.toLocaleString()}</span> views
+            <span style="margin:0 6px;opacity:0.3">|</span>
+            avg <span style="color:${parseFloat(avgRetention) > 50 ? "var(--green)" : "var(--text2)"}">${avgRetention}%</span> retention
+            <span style="margin:0 6px;opacity:0.3">|</span>
+            top: ${best.playerName} (${best.viewsAt48h?.toLocaleString()})
+          </div>
+        </div>`;
+      })()}
+      <table class="script-table"><thead><tr>
+        <th>Player</th><th>Type</th><th>Pipeline</th><th>Clips</th><th>Review</th>
+      </tr></thead><tbody>${scripts
+        .map((s) => {
+          const approved = s.clipsApproved || 0;
+          const sourced = s.clipsSourced || 0;
+          const pct = sourced > 0 ? Math.round((approved / sourced) * 100) : 0;
+          // Pipeline stages: Script → Clips → Voice → Render → Published
+          const stages = [
+            { name: "Script", done: s.hasScript },
+            { name: "Clips", done: s.hasClips },
+            { name: "Voice", done: s.hasVoice },
+            { name: "Render", done: s.hasRender },
+            { name: "Live", done: s.isPublished },
+          ];
+          // Find the current active stage (first not-done)
+          const activeIdx = stages.findIndex((st) => !st.done);
 
-      return `
-    <tr onclick="selectScript('${s.rowId}')" class="${curScript === s.rowId ? "selected" : ""}">
-      <td><div class="player-cell">
-        <div class="avatar" id="avatar-${s.rowId}">${s.playerPhotoUrl ? `<img src="${s.playerPhotoUrl}">` : ""}</div>
-        <div><div class="player-name">${s.playerName || "?"}</div><div class="player-sport">${s.playerSport || ""} · <span class="tag" style="display:inline">${(s.storyType || "").replace(/_/g, " ")}</span></div></div>
-      </div></td>
-      <td><div class="pipeline-stages">
-        ${stages
-          .map((st, si) => {
-            const cls = st.done ? "done" : si === activeIdx ? "active" : "";
-            return `${si > 0 ? '<div class="pipeline-connector' + (si <= activeIdx || activeIdx === -1 ? " done" : "") + '"></div>' : ""}
-          <div class="pipeline-step ${cls}">
-            <div class="pipeline-dot ${cls}"></div>
-            <div class="pipeline-label">${st.name}</div>
-          </div>`;
-          })
-          .join("")}
-      </div></td>
-      <td><div class="clip-dots" title="${sourced} sourced">${Array.from({ length: Math.min(s.clipBriefCount || 7, 18) }, (_, i) => `<div class="clip-dot ${i < sourced ? "ok" : "no"}"></div>`).join("")}</div></td>
-      <td style="font-family:'JetBrains Mono';font-size:10px;color:${pct === 100 ? "var(--green)" : pct > 0 ? "var(--text2)" : "var(--text3)"}">${approved}/${sourced} ${pct === 100 ? "✓" : ""}</td>
-    </tr>`;
-    })
-    .join("")}</tbody></table>`;
+          return `
+        <tr onclick="selectScript('${s.rowId}')" class="${curScript === s.rowId ? "selected" : ""}">
+          <td><div class="player-cell">
+            <div class="avatar" id="avatar-${s.rowId}">${s.playerPhotoUrl ? `<img src="${s.playerPhotoUrl}">` : ""}</div>
+            <div><div class="player-name">${s.playerName || "?"}</div><div class="player-sport">${s.playerSport || ""} · <span class="tag" style="display:inline">${(s.storyType || "").replace(/_/g, " ")}</span></div></div>
+          </div></td>
+          <td><div class="pipeline-stages">
+            ${stages
+              .map((st, si) => {
+                const cls = st.done ? "done" : si === activeIdx ? "active" : "";
+                return `${si > 0 ? '<div class="pipeline-connector' + (si <= activeIdx || activeIdx === -1 ? " done" : "") + '"></div>' : ""}
+              <div class="pipeline-step ${cls}">
+                <div class="pipeline-dot ${cls}"></div>
+                <div class="pipeline-label">${st.name}</div>
+              </div>`;
+              })
+              .join("")}
+          </div></td>
+          <td><div class="clip-dots" title="${sourced} sourced">${Array.from({ length: Math.min(s.clipBriefCount || 7, 18) }, (_, i) => `<div class="clip-dot ${i < sourced ? "ok" : "no"}"></div>`).join("")}</div></td>
+          <td style="font-family:'JetBrains Mono';font-size:10px;color:${pct === 100 ? "var(--green)" : pct > 0 ? "var(--text2)" : "var(--text3)"}">${approved}/${sourced} ${pct === 100 ? "✓" : ""}</td>
+        </tr>`;
+        })
+        .join("")}</tbody></table>`;
 
         // Auto-fetch Wikipedia photos for players without one
         fetchPlayerPhotos(scripts);
@@ -1986,264 +1986,267 @@
         );
 
         document.getElementById("detailArea").innerHTML = `
-  <div class="detail">
-    <div class="detail-head">
-      <div class="detail-photo" id="detailPhoto" onclick="uploadPlayerPhoto('${rowId}')" style="cursor:pointer" title="Click to upload photo">${s.playerPhotoUrl || photoCache[s.playerName] ? `<img src="${s.playerPhotoUrl || photoCache[s.playerName]}">` : ""}</div>
-      <input type="file" id="photoFileInput" accept="image/png,image/jpeg,image/webp" style="display:none">
-      <div>
-        <div class="detail-title">${s.playerName || "?"}</div>
-        <div class="detail-sub">${(s.storyType || "").replace(/_/g, " ").toUpperCase()} · ${s.playerSport || "NBA"} · ${rowId}</div>
-      </div>
-      <div class="detail-actions">
-        <button class="btn btn-gold" onclick="openVideoPreview()">▶ Preview</button>
-        <button class="btn btn-green btn-sm" onclick="approveAllClips('${rowId}')">✓ Approve All</button>
-        <button class="btn btn-dim btn-sm" onclick="updateScriptStatus('${rowId}','Ready')">Mark Ready</button>
-        ${s.renderUrl ? `<a href="${s.renderUrl}" target="_blank" class="btn btn-dim btn-sm">Rendered</a>` : ""}
-        ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim btn-sm">YouTube</a>` : ""}
-        <button class="btn btn-dim btn-sm" onclick="openRegenModal('${rowId}')">Regen Script${s.scriptVersions?.length ? " (" + s.scriptVersions.length + ")" : ""}</button>
-        <button class="btn btn-dim btn-sm" onclick="generateVoiceover('${rowId}')">${s.voiceoverUrl ? "Regen Voice" : "Gen Voice"}</button>
-        ${!s.renderUrl ? `<button class="btn btn-dim btn-sm" onclick="renderVideo('${rowId}',true)">Preview Render</button>` : ""}
-        ${s.renderUrl && !s.youtubeUrl ? `<button class="btn btn-gold btn-sm" onclick="renderVideo('${rowId}',false)">Publish</button>` : ""}
-        ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="btn btn-green btn-sm">Live</a>` : ""}
-        <button class="btn btn-dim btn-sm" onclick="sourceClips('${rowId}')">Re-source</button>
-      </div>
-    </div>
-
-    ${(() => {
-      const totalClips = clips.filter((c) => c.clipUrl).length;
-      const approvedClips = clips.filter((c) => c.approved).length;
-      const rejectedClips = clips.filter((c) => c.rejected).length;
-      const pct =
-        totalClips > 0 ? Math.round((approvedClips / totalClips) * 100) : 0;
-      return `<div class="approval-bar" style="padding:8px 20px;border-bottom:1px solid var(--border)">
-        <span class="approval-label">${approvedClips}/${totalClips} approved</span>
-        <div class="approval-track"><div class="approval-fill green" style="width:${pct}%"></div></div>
-        ${rejectedClips > 0 ? `<span class="approval-label" style="color:var(--red)">${rejectedClips} rejected</span>` : ""}
-        <span class="status-pill ${(s.status || "").toLowerCase()}">${s.status || "—"}</span>
-      </div>`;
-    })()}
-
-    <div class="detail-workspace">
-      <div class="detail-main">
-        <div class="script-overview">
-          ${(() => {
-            const wc =
-              (s.script || "").split(/\s+/).filter(Boolean).length +
-              (s.hookLine || "").split(/\s+/).filter(Boolean).length;
-            const overLimit = wc > 110;
-            return `<div class="script-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
-              <span>Script · <span id="wordCountLabel" style="${overLimit ? "color:var(--red)" : ""}">${wc}</span>/${110} words ${overLimit ? '<span style="color:var(--red);font-size:9px">— too long for 59s</span>' : ""}</span>
-              <span style="font-size:14px">▾</span>
-            </div>`;
-          })()}
-          <div class="script-body-text open">
-            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-weight:600">Hook Line</div>
-            <div class="editable" contenteditable="true" data-field="hookLine" data-row="${rowId}" onblur="saveInlineEdit(this)" style="color:var(--gold);font-style:italic;margin-bottom:10px;font-size:13px;line-height:1.5">${s.hookLine || ""}</div>
-            <div class="edit-hint">Click to edit · changes save automatically</div>
-
-            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;margin-top:8px;font-weight:600">Script</div>
-            <div class="editable" contenteditable="true" data-field="script" data-row="${rowId}" onblur="saveInlineEdit(this)" style="font-size:12px;line-height:1.7">${s.script || ""}</div>
-            <div class="edit-hint">Click to edit · changes save automatically</div>
+      <div class="detail">
+        <div class="detail-head">
+          <div class="detail-photo" id="detailPhoto" onclick="uploadPlayerPhoto('${rowId}')" style="cursor:pointer" title="Click to upload photo">${s.playerPhotoUrl || photoCache[s.playerName] ? `<img src="${s.playerPhotoUrl || photoCache[s.playerName]}">` : ""}</div>
+          <input type="file" id="photoFileInput" accept="image/png,image/jpeg,image/webp" style="display:none">
+          <div>
+            <div class="detail-title">${s.playerName || "?"}</div>
+            <div class="detail-sub">${(s.storyType || "").replace(/_/g, " ").toUpperCase()} · ${s.playerSport || "NBA"} · ${rowId}</div>
+          </div>
+          <div class="detail-actions">
+            <button class="btn btn-gold" onclick="openVideoPreview()">▶ Preview</button>
+            <button class="btn btn-green btn-sm" onclick="approveAllClips('${rowId}')">✓ Approve All</button>
+            <button class="btn btn-dim btn-sm" onclick="updateScriptStatus('${rowId}','Ready')">Mark Ready</button>
+            ${s.renderUrl ? `<a href="${s.renderUrl}" target="_blank" class="btn btn-dim btn-sm">Rendered</a>` : ""}
+            ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim btn-sm">YouTube</a>` : ""}
+            <button class="btn btn-dim btn-sm" onclick="openRegenModal('${rowId}')">Regen Script${s.scriptVersions?.length ? " (" + s.scriptVersions.length + ")" : ""}</button>
+            <button class="btn btn-dim btn-sm" onclick="generateVoiceover('${rowId}')">${s.voiceoverUrl ? "Regen Voice" : "Gen Voice"}</button>
+            ${!s.renderUrl ? `<button class="btn btn-dim btn-sm" onclick="renderVideo('${rowId}',true)">Preview Render</button>` : ""}
+            ${s.renderUrl && !s.youtubeUrl ? `<button class="btn btn-gold btn-sm" onclick="renderVideo('${rowId}',false)">Publish</button>` : ""}
+            ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="btn btn-green btn-sm">Live</a>` : ""}
+            <button class="btn btn-dim btn-sm" onclick="sourceClips('${rowId}')">Re-source</button>
           </div>
         </div>
 
         ${(() => {
-          // Distribute 14 clips across segments proportionally to duration
-          const totalDur = segments.reduce(
-            (s, seg) => s + (seg.end - seg.start),
-            0,
-          );
-          const TOTAL_CLIPS = 28;
-          let assignedClips = 0;
-          const segClipRanges = segments.map((seg, i) => {
-            const segDur = seg.end - seg.start;
-            const proportion = segDur / totalDur;
-            let numClips = Math.max(1, Math.round(proportion * TOTAL_CLIPS));
-            // Last segment gets whatever's left
-            if (i === segments.length - 1)
-              numClips = TOTAL_CLIPS - assignedClips;
-            const startIdx = assignedClips;
-            assignedClips += numClips;
-            return { startIdx, endIdx: startIdx + numClips - 1, numClips };
-          });
-
-          return segments
-            .map((seg, i) => {
-              const text = scriptSentences[i] || "";
-              const range = segClipRanges[i];
-              return `
-              <div class="tl-segment ${i === 0 ? "active" : ""}" onclick="selectSegment(${i}, ${range.startIdx})" data-seg="${i}" data-clip-start="${range.startIdx}" data-clip-end="${range.endIdx}">
-                <div class="tl-seg-head">
-                  <span class="tl-time">${formatTime(seg.start)}–${formatTime(seg.end)}</span>
-                  <span class="tl-phase">${seg.name}</span>
-                  <span style="font-size:9px;color:var(--text3);margin-left:auto">clips ${range.startIdx + 1}–${range.endIdx + 1}</span>
-                </div>
-                <div class="tl-text">${highlightText(text)}</div>
-              </div>`;
-            })
-            .join("");
+          const totalClips = clips.filter((c) => c.clipUrl).length;
+          const approvedClips = clips.filter((c) => c.approved).length;
+          const rejectedClips = clips.filter((c) => c.rejected).length;
+          const pct =
+            totalClips > 0 ? Math.round((approvedClips / totalClips) * 100) : 0;
+          return `<div class="approval-bar" style="padding:8px 20px;border-bottom:1px solid var(--border)">
+            <span class="approval-label">${approvedClips}/${totalClips} approved</span>
+            <div class="approval-track"><div class="approval-fill green" style="width:${pct}%"></div></div>
+            ${rejectedClips > 0 ? `<span class="approval-label" style="color:var(--red)">${rejectedClips} rejected</span>` : ""}
+            <span class="status-pill ${(s.status || "").toLowerCase()}">${s.status || "—"}</span>
+          </div>`;
         })()}
 
-          <div class="script-section" style="margin-top:16px">
-            <div class="script-label" style="display:flex;align-items:center;justify-content:space-between">
-              <span>Titles — pick 2 for A/B testing</span>
-              <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();generateTitles('${rowId}')" style="text-transform:none;letter-spacing:0">Generate 5 titles</button>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:3px" id="titlePicker">
+        <div class="detail-workspace">
+          <div class="detail-main">
+            <div class="script-overview">
               ${(() => {
-                const allTitles =
-                  s.allTitles || [s.titleA, s.titleB].filter(Boolean);
-                const uniqueTitles = [...new Set(allTitles)];
-                return uniqueTitles
-                  .map((t, i) => {
-                    const isA = t === s.titleA;
-                    const isB = t === s.titleB;
-                    const isSelected = isA || isB;
-                    const label = isA ? "A" : isB ? "B" : "";
-                    return `<div class="script-meta" style="cursor:pointer;padding:6px 8px;border-radius:4px;border:1px solid ${isSelected ? "var(--gold)" : "var(--border)"};background:${isSelected ? "var(--gold-dim)" : "transparent"};display:flex;align-items:center;gap:6px" onclick="pickTitleForAB('${rowId}',${i})">
-                    ${isSelected ? `<span style="color:var(--gold);font-weight:700;font-size:10px;min-width:12px">${label}</span>` : '<span style="min-width:12px;font-size:10px;color:var(--text3)">·</span>'}
-                    <span style="flex:1">${t}</span>
-                  </div>`;
-                  })
-                  .join("");
+                const wc =
+                  (s.script || "").split(/\s+/).filter(Boolean).length +
+                  (s.hookLine || "").split(/\s+/).filter(Boolean).length;
+                const overLimit = wc > 110;
+                return `<div class="script-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
+                  <span>Script · <span id="wordCountLabel" style="${overLimit ? "color:var(--red)" : ""}">${wc}</span>/${110} words ${overLimit ? '<span style="color:var(--red);font-size:9px">— too long for 59s</span>' : ""}</span>
+                  <span style="font-size:14px">▾</span>
+                </div>`;
               })()}
+              <div class="script-body-text open">
+                <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-weight:600">Hook Line</div>
+                <div class="editable" contenteditable="true" data-field="hookLine" data-row="${rowId}" onblur="saveInlineEdit(this)" style="color:var(--gold);font-style:italic;margin-bottom:10px;font-size:13px;line-height:1.5">${s.hookLine || ""}</div>
+                <div class="edit-hint">Click to edit · changes save automatically</div>
+
+                <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;margin-top:8px;font-weight:600">Script</div>
+                <div class="editable" contenteditable="true" data-field="script" data-row="${rowId}" onblur="saveInlineEdit(this)" style="font-size:12px;line-height:1.7">${s.script || ""}</div>
+                <div class="edit-hint">Click to edit · changes save automatically</div>
+              </div>
             </div>
-          </div>
-          <div class="script-section">
-            <div class="script-label">Comment Bait</div>
-            <div class="editable script-meta" contenteditable="true" data-field="commentBait" data-row="${rowId}" onblur="saveInlineEdit(this)">${s.commentBait || "—"}</div>
-          </div>
 
-          ${
-            s.loopExplanation || s.foreshadowLine
-              ? `
-          <div class="script-section">
-            <div class="script-label">Quality Notes</div>
-            ${s.loopExplanation ? `<div class="script-meta" style="margin-bottom:4px"><span style="color:var(--gold)">Loop:</span> ${s.loopExplanation}</div>` : ""}
-            ${s.foreshadowLine ? `<div class="script-meta"><span style="color:var(--gold)">Foreshadow:</span> ${s.foreshadowLine}</div>` : ""}
-          </div>`
-              : ""
-          }
+            ${(() => {
+              // Distribute 14 clips across segments proportionally to duration
+              const totalDur = segments.reduce(
+                (s, seg) => s + (seg.end - seg.start),
+                0,
+              );
+              const TOTAL_CLIPS = 28;
+              let assignedClips = 0;
+              const segClipRanges = segments.map((seg, i) => {
+                const segDur = seg.end - seg.start;
+                const proportion = segDur / totalDur;
+                let numClips = Math.max(
+                  1,
+                  Math.round(proportion * TOTAL_CLIPS),
+                );
+                // Last segment gets whatever's left
+                if (i === segments.length - 1)
+                  numClips = TOTAL_CLIPS - assignedClips;
+                const startIdx = assignedClips;
+                assignedClips += numClips;
+                return { startIdx, endIdx: startIdx + numClips - 1, numClips };
+              });
 
-          <div class="script-section">
-            <div class="script-label">Schedule</div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="date" id="schedDate" value="${s.scheduledDate || ""}" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
-              <input type="time" id="schedTime" value="${s.scheduledPostTime || "19:00"}" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
-              <button class="btn btn-dim btn-sm" onclick="saveSchedule('${rowId}')" style="text-transform:none;letter-spacing:0">Save</button>
+              return segments
+                .map((seg, i) => {
+                  const text = scriptSentences[i] || "";
+                  const range = segClipRanges[i];
+                  return `
+                  <div class="tl-segment ${i === 0 ? "active" : ""}" onclick="selectSegment(${i}, ${range.startIdx})" data-seg="${i}" data-clip-start="${range.startIdx}" data-clip-end="${range.endIdx}">
+                    <div class="tl-seg-head">
+                      <span class="tl-time">${formatTime(seg.start)}–${formatTime(seg.end)}</span>
+                      <span class="tl-phase">${seg.name}</span>
+                      <span style="font-size:9px;color:var(--text3);margin-left:auto">clips ${range.startIdx + 1}–${range.endIdx + 1}</span>
+                    </div>
+                    <div class="tl-text">${highlightText(text)}</div>
+                  </div>`;
+                })
+                .join("");
+            })()}
+
+              <div class="script-section" style="margin-top:16px">
+                <div class="script-label" style="display:flex;align-items:center;justify-content:space-between">
+                  <span>Titles — pick 2 for A/B testing</span>
+                  <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();generateTitles('${rowId}')" style="text-transform:none;letter-spacing:0">Generate 5 titles</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:3px" id="titlePicker">
+                  ${(() => {
+                    const allTitles =
+                      s.allTitles || [s.titleA, s.titleB].filter(Boolean);
+                    const uniqueTitles = [...new Set(allTitles)];
+                    return uniqueTitles
+                      .map((t, i) => {
+                        const isA = t === s.titleA;
+                        const isB = t === s.titleB;
+                        const isSelected = isA || isB;
+                        const label = isA ? "A" : isB ? "B" : "";
+                        return `<div class="script-meta" style="cursor:pointer;padding:6px 8px;border-radius:4px;border:1px solid ${isSelected ? "var(--gold)" : "var(--border)"};background:${isSelected ? "var(--gold-dim)" : "transparent"};display:flex;align-items:center;gap:6px" onclick="pickTitleForAB('${rowId}',${i})">
+                        ${isSelected ? `<span style="color:var(--gold);font-weight:700;font-size:10px;min-width:12px">${label}</span>` : '<span style="min-width:12px;font-size:10px;color:var(--text3)">·</span>'}
+                        <span style="flex:1">${t}</span>
+                      </div>`;
+                      })
+                      .join("");
+                  })()}
+                </div>
+              </div>
+              <div class="script-section">
+                <div class="script-label">Comment Bait</div>
+                <div class="editable script-meta" contenteditable="true" data-field="commentBait" data-row="${rowId}" onblur="saveInlineEdit(this)">${s.commentBait || "—"}</div>
+              </div>
+
+              ${
+                s.loopExplanation || s.foreshadowLine
+                  ? `
+              <div class="script-section">
+                <div class="script-label">Quality Notes</div>
+                ${s.loopExplanation ? `<div class="script-meta" style="margin-bottom:4px"><span style="color:var(--gold)">Loop:</span> ${s.loopExplanation}</div>` : ""}
+                ${s.foreshadowLine ? `<div class="script-meta"><span style="color:var(--gold)">Foreshadow:</span> ${s.foreshadowLine}</div>` : ""}
+              </div>`
+                  : ""
+              }
+
+              <div class="script-section">
+                <div class="script-label">Schedule</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input type="date" id="schedDate" value="${s.scheduledDate || ""}" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+                  <input type="time" id="schedTime" value="${s.scheduledPostTime || "19:00"}" style="padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+                  <button class="btn btn-dim btn-sm" onclick="saveSchedule('${rowId}')" style="text-transform:none;letter-spacing:0">Save</button>
+                </div>
+                ${s.scheduledDate ? `<div class="script-meta" style="margin-top:4px">Scheduled: ${s.scheduledDate} at ${s.scheduledPostTime || "19:00"}</div>` : ""}
+              </div>
+
+              <div id="clipTimeline"></div>
             </div>
-            ${s.scheduledDate ? `<div class="script-meta" style="margin-top:4px">Scheduled: ${s.scheduledDate} at ${s.scheduledPostTime || "19:00"}</div>` : ""}
+
+          <div class="detail-sidebar">
+            <div class="phone-frame">
+              <video id="clipVideo" muted loop autoplay></video>
+              <div class="phone-overlay"></div>
+            </div>
+            <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">Clip <span id="clipSlotLabel">#1</span></div>
+            <div class="narrator-box">
+              <div class="narrator-label">Narrator says:</div>
+              <div id="clipNarratorText">Select a clip</div>
+            </div>
+            <div class="sidebar-actions">
+              <div id="clipActions" style="display:flex;gap:4px">
+                <button class="btn btn-green btn-sm" style="flex:1" onclick="approveClip(curClipIdx)">✓ Approve</button>
+                <button class="btn btn-red btn-sm" style="flex:1" onclick="rejectClip(curClipIdx)">✗ Reject</button>
+                <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(curClipIdx)">↻ Replace</button>
+              </div>
+            </div>
+            <div>
+              <div class="clip-panel-title" style="display:flex;justify-content:space-between;align-items:center">
+                <span>Voiceover${s.voiceoverDuration ? ` · ${s.voiceoverDuration.toFixed(1)}s` : ""}</span>
+                <button class="btn btn-dim btn-sm" onclick="uploadVoiceover('${rowId}')" style="text-transform:none;letter-spacing:0;font-size:8px">Upload</button>
+              </div>
+              ${s.voiceoverDuration > 60 ? `<div style="font-size:9px;color:var(--red);margin-bottom:4px;font-weight:600">Exceeds 60s limit — trim the script and regenerate</div>` : ""}
+              ${s.voiceoverUrl ? `<audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>` : '<div style="font-size:10px;color:var(--text3)">No voiceover yet</div>'}
+              <input type="file" id="voiceFileInput" accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a" style="display:none">
+            </div>
+            ${(() => {
+              const moodKey = MOOD_MAP[s.storyType] || "cinematic";
+              const defaultTrack = MUSIC_LIBRARY[moodKey]?.[0]?.url || "";
+              const activeTrack = s.musicTrack || defaultTrack;
+              const trackLabel = s.musicMood || moodKey;
+              return `<div>
+              <div class="clip-panel-title">Background Music · ${trackLabel}</div>
+              ${
+                activeTrack
+                  ? `
+                <audio id="musicPlayer" controls preload="none" style="width:100%;height:28px;border-radius:4px;opacity:0.85"></audio>
+                <button class="btn btn-dim btn-sm" onclick="loadMusicToR2()" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
+              `
+                  : '<div style="font-size:10px;color:var(--text3)">No track available</div>'
+              }`;
+            })()}
+              <div style="display:flex;gap:4px;margin-top:4px">
+                <select id="musicSelect" style="flex:1;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:10px" onchange="changeMusicFromSelect('${rowId}')">
+                  <option value="">Change track...</option>
+                  <optgroup label="Presets" id="presetOptions"></optgroup>
+                  ${Object.entries(MUSIC_LIBRARY)
+                    .map(
+                      ([cat, tracks]) =>
+                        `<optgroup label="${cat}">${tracks.map((t) => `<option value="${t.url}" ${t.url === (s.musicTrack || "") ? "selected" : ""}>${t.name}</option>`).join("")}</optgroup>`,
+                    )
+                    .join("")}
+                </select>
+              </div>
+              <div style="display:flex;gap:4px;margin-top:4px">
+                <button class="btn btn-dim btn-sm" onclick="saveAsPreset()" style="flex:1;text-transform:none;letter-spacing:0">Save as Preset</button>
+              </div>
+            </div>
+            <div class="sidebar-info">
+              Clips: ${clips.filter((c) => c.clipUrl).length}/${clips.length} sourced<br>
+              Voice: ${s.voiceoverUrl ? '<span style="color:var(--green)">Generated</span>' : "Pending"}<br>
+              Render: ${s.renderUrl ? '<a href="' + s.renderUrl + '" target="_blank" style="color:var(--gold)">View</a>' : "Pending"}
+            </div>
+
+            ${
+              s.renderUrl
+                ? `
+              <div class="clip-panel-title" style="margin-top:16px">Rendered Video</div>
+              <div class="render-player"><video src="${s.renderUrl}" controls preload="metadata"></video></div>
+            `
+                : '<div class="render-placeholder">Not yet rendered</div>'
+            }
+
+            <div style="font-size:8px;color:var(--text3);font-family:'JetBrains Mono',monospace;line-height:2;padding:8px;background:var(--bg3);border-radius:4px;letter-spacing:0.3px">
+              <span style="color:var(--text2)">KEYS</span><br>
+              ↑↓ navigate · A approve · R reject<br>
+              Space play/pause · P preview · Esc back
+            </div>
+
+            <div class="clip-panel-title" style="margin-top:16px">Thumbnail</div>
+            <div style="margin-bottom:8px">
+              ${s.thumbnailUrl ? `<img src="${s.thumbnailUrl}" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-bottom:6px">` : ""}
+              <div style="display:flex;gap:4px">
+                <button class="btn btn-dim btn-sm" onclick="generateThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">${s.thumbnailUrl ? "Regen" : "Generate"}</button>
+                <button class="btn btn-dim btn-sm" onclick="uploadThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">Upload</button>
+              </div>
+            </div>
+            <input type="file" id="thumbFileInput" accept="image/png,image/jpeg" style="display:none">
+
+            ${
+              s.youtubeVideoId
+                ? `
+            <div class="clip-panel-title" style="margin-top:16px">Comments</div>
+            <div id="commentsPanel"><button class="btn btn-dim btn-sm" onclick="loadComments('${rowId}')" style="text-transform:none;letter-spacing:0">Load comments</button></div>
+            `
+                : ""
+            }
+
+            <div class="clip-panel-title" style="margin-top:16px">Status</div>
+            <div class="script-meta">Clips: ${s.clipSourceStatus || "—"} (${clips.filter((c) => c.clipUrl).length}/${clips.length})</div>
+            <div class="script-meta">Music: ${s.musicMood || "—"}</div>
+            <div class="script-meta">Voiceover: ${s.voiceoverUrl ? "Generated" : "Pending"}</div>
+            <div class="script-meta">Render: ${s.renderUrl ? "Complete" : "Pending"}</div>
           </div>
-
-          <div id="clipTimeline"></div>
         </div>
-
-      <div class="detail-sidebar">
-        <div class="phone-frame">
-          <video id="clipVideo" muted loop autoplay></video>
-          <div class="phone-overlay"></div>
-        </div>
-        <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">Clip <span id="clipSlotLabel">#1</span></div>
-        <div class="narrator-box">
-          <div class="narrator-label">Narrator says:</div>
-          <div id="clipNarratorText">Select a clip</div>
-        </div>
-        <div class="sidebar-actions">
-          <div id="clipActions" style="display:flex;gap:4px">
-            <button class="btn btn-green btn-sm" style="flex:1" onclick="approveClip(curClipIdx)">✓ Approve</button>
-            <button class="btn btn-red btn-sm" style="flex:1" onclick="rejectClip(curClipIdx)">✗ Reject</button>
-            <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(curClipIdx)">↻ Replace</button>
-          </div>
-        </div>
-        <div>
-          <div class="clip-panel-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span>Voiceover${s.voiceoverDuration ? ` · ${s.voiceoverDuration.toFixed(1)}s` : ""}</span>
-            <button class="btn btn-dim btn-sm" onclick="uploadVoiceover('${rowId}')" style="text-transform:none;letter-spacing:0;font-size:8px">Upload</button>
-          </div>
-          ${s.voiceoverDuration > 60 ? `<div style="font-size:9px;color:var(--red);margin-bottom:4px;font-weight:600">Exceeds 60s limit — trim the script and regenerate</div>` : ""}
-          ${s.voiceoverUrl ? `<audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>` : '<div style="font-size:10px;color:var(--text3)">No voiceover yet</div>'}
-          <input type="file" id="voiceFileInput" accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a" style="display:none">
-        </div>
-        ${(() => {
-          const moodKey = MOOD_MAP[s.storyType] || "cinematic";
-          const defaultTrack = MUSIC_LIBRARY[moodKey]?.[0]?.url || "";
-          const activeTrack = s.musicTrack || defaultTrack;
-          const trackLabel = s.musicMood || moodKey;
-          return `<div>
-          <div class="clip-panel-title">Background Music · ${trackLabel}</div>
-          ${
-            activeTrack
-              ? `
-            <audio id="musicPlayer" controls preload="none" style="width:100%;height:28px;border-radius:4px;opacity:0.85"></audio>
-            <button class="btn btn-dim btn-sm" onclick="loadMusicToR2()" style="margin-top:4px;width:100%;text-transform:none;letter-spacing:0">Load & Play Music</button>
-          `
-              : '<div style="font-size:10px;color:var(--text3)">No track available</div>'
-          }`;
-        })()}
-          <div style="display:flex;gap:4px;margin-top:4px">
-            <select id="musicSelect" style="flex:1;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:10px" onchange="changeMusicFromSelect('${rowId}')">
-              <option value="">Change track...</option>
-              <optgroup label="Presets" id="presetOptions"></optgroup>
-              ${Object.entries(MUSIC_LIBRARY)
-                .map(
-                  ([cat, tracks]) =>
-                    `<optgroup label="${cat}">${tracks.map((t) => `<option value="${t.url}" ${t.url === (s.musicTrack || "") ? "selected" : ""}>${t.name}</option>`).join("")}</optgroup>`,
-                )
-                .join("")}
-            </select>
-          </div>
-          <div style="display:flex;gap:4px;margin-top:4px">
-            <button class="btn btn-dim btn-sm" onclick="saveAsPreset()" style="flex:1;text-transform:none;letter-spacing:0">Save as Preset</button>
-          </div>
-        </div>
-        <div class="sidebar-info">
-          Clips: ${clips.filter((c) => c.clipUrl).length}/${clips.length} sourced<br>
-          Voice: ${s.voiceoverUrl ? '<span style="color:var(--green)">Generated</span>' : "Pending"}<br>
-          Render: ${s.renderUrl ? '<a href="' + s.renderUrl + '" target="_blank" style="color:var(--gold)">View</a>' : "Pending"}
-        </div>
-
-        ${
-          s.renderUrl
-            ? `
-          <div class="clip-panel-title" style="margin-top:16px">Rendered Video</div>
-          <div class="render-player"><video src="${s.renderUrl}" controls preload="metadata"></video></div>
-        `
-            : '<div class="render-placeholder">Not yet rendered</div>'
-        }
-
-        <div style="font-size:8px;color:var(--text3);font-family:'JetBrains Mono',monospace;line-height:2;padding:8px;background:var(--bg3);border-radius:4px;letter-spacing:0.3px">
-          <span style="color:var(--text2)">KEYS</span><br>
-          ↑↓ navigate · A approve · R reject<br>
-          Space play/pause · P preview · Esc back
-        </div>
-
-        <div class="clip-panel-title" style="margin-top:16px">Thumbnail</div>
-        <div style="margin-bottom:8px">
-          ${s.thumbnailUrl ? `<img src="${s.thumbnailUrl}" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-bottom:6px">` : ""}
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-dim btn-sm" onclick="generateThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">${s.thumbnailUrl ? "Regen" : "Generate"}</button>
-            <button class="btn btn-dim btn-sm" onclick="uploadThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">Upload</button>
-          </div>
-        </div>
-        <input type="file" id="thumbFileInput" accept="image/png,image/jpeg" style="display:none">
-
-        ${
-          s.youtubeVideoId
-            ? `
-        <div class="clip-panel-title" style="margin-top:16px">Comments</div>
-        <div id="commentsPanel"><button class="btn btn-dim btn-sm" onclick="loadComments('${rowId}')" style="text-transform:none;letter-spacing:0">Load comments</button></div>
-        `
-            : ""
-        }
-
-        <div class="clip-panel-title" style="margin-top:16px">Status</div>
-        <div class="script-meta">Clips: ${s.clipSourceStatus || "—"} (${clips.filter((c) => c.clipUrl).length}/${clips.length})</div>
-        <div class="script-meta">Music: ${s.musicMood || "—"}</div>
-        <div class="script-meta">Voiceover: ${s.voiceoverUrl ? "Generated" : "Pending"}</div>
-        <div class="script-meta">Render: ${s.renderUrl ? "Complete" : "Pending"}</div>
-      </div>
-    </div>
-  </div>`;
+      </div>`;
 
         // Set music track URL for the player
         const _moodKey = MOOD_MAP[s.storyType] || "cinematic";
@@ -2325,25 +2328,25 @@
                   '"></div>'
                 : '<div class="clip-status-dot pending" title="Pending"></div>';
             return `
-    <div class="clip-row ${i === curClipIdx ? "active" : ""} ${approvalClass}" data-idx="${i}" data-slot="${c.slot}" onclick="selectClip(${i})"
-         draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropClip(event,${i})" ondragend="dragEnd(event)">
-      ${statusDot}
-      <div class="clip-row-num">${i + 1}</div>
-      <div class="clip-row-thumb">
-        ${c.source === "photo" ? `<img src="${c.url}" class="clip-photo ${i % 2 === 0 ? "" : "zoom-out"}" style="animation:none">` : `<video src="${c.url}" muted preload="auto" onloadeddata="this.currentTime=0.5"></video>`}
-      </div>
-      <div class="clip-row-text">
-        <div class="clip-row-caption">${clipCaptions[i] || "—"}</div>
-        <div class="clip-row-time">${formatTime(i * clipDur)}–${formatTime((i + 1) * clipDur)}${c.rejected && reasonLabel ? ` · <span style="color:var(--red)">${reasonLabel}</span>` : ""}</div>
-      </div>
-      <div class="clip-row-actions">
-        <button class="btn btn-sm btn-green" onclick="event.stopPropagation();approveClip(${i})" title="Approve" style="padding:2px 5px">✓</button>
-        <button class="btn btn-sm btn-red" onclick="event.stopPropagation();rejectClip(${i})" title="Reject" style="padding:2px 5px">✗</button>
-        <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();replaceClip(${i})" title="Upload replacement">↻</button>
-        <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();clipOptions(${i})" title="More options" style="padding:2px 4px">⋯</button>
-        <span class="drag-handle" title="Drag to reorder">⠿</span>
-      </div>
-    </div>`;
+        <div class="clip-row ${i === curClipIdx ? "active" : ""} ${approvalClass}" data-idx="${i}" data-slot="${c.slot}" onclick="selectClip(${i})"
+             draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropClip(event,${i})" ondragend="dragEnd(event)">
+          ${statusDot}
+          <div class="clip-row-num">${i + 1}</div>
+          <div class="clip-row-thumb">
+            ${c.source === "photo" ? `<img src="${c.url}" class="clip-photo ${i % 2 === 0 ? "" : "zoom-out"}" style="animation:none">` : `<video src="${c.url}" muted preload="auto" onloadeddata="this.currentTime=0.5"></video>`}
+          </div>
+          <div class="clip-row-text">
+            <div class="clip-row-caption">${clipCaptions[i] || "—"}</div>
+            <div class="clip-row-time">${formatTime(i * clipDur)}–${formatTime((i + 1) * clipDur)}${c.rejected && reasonLabel ? ` · <span style="color:var(--red)">${reasonLabel}</span>` : ""}</div>
+          </div>
+          <div class="clip-row-actions">
+            <button class="btn btn-sm btn-green" onclick="event.stopPropagation();approveClip(${i})" title="Approve" style="padding:2px 5px">✓</button>
+            <button class="btn btn-sm btn-red" onclick="event.stopPropagation();rejectClip(${i})" title="Reject" style="padding:2px 5px">✗</button>
+            <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();replaceClip(${i})" title="Upload replacement">↻</button>
+            <button class="btn btn-sm btn-dim" onclick="event.stopPropagation();clipOptions(${i})" title="More options" style="padding:2px 4px">⋯</button>
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+          </div>
+        </div>`;
           })
           .join("");
       }
@@ -2380,10 +2383,10 @@
 
         // Update sidebar action buttons to current clip index
         document.getElementById("clipActions").innerHTML = `
-    <button class="btn btn-green btn-sm" style="flex:1" onclick="approveClip(${idx})">✓ Approve</button>
-    <button class="btn btn-red btn-sm" style="flex:1" onclick="rejectClip(${idx})">✗ Reject</button>
-    <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(${idx})">↻ Replace</button>
-  `;
+        <button class="btn btn-green btn-sm" style="flex:1" onclick="approveClip(${idx})">✓ Approve</button>
+        <button class="btn btn-red btn-sm" style="flex:1" onclick="rejectClip(${idx})">✗ Reject</button>
+        <button class="btn btn-dim btn-sm" style="flex:1" onclick="replaceClip(${idx})">↻ Replace</button>
+      `;
       }
 
       function selectSegment(segIdx, clipSlot) {
@@ -2428,7 +2431,7 @@
         const a = curClipList[dragIdx];
         const b = curClipList[targetIdx];
 
-        // Swap URLs and video-related data, keep slot numbers fixed
+        // Swap ALL clip data, keep slot numbers fixed
         const swapFields = [
           "url",
           "source",
@@ -2436,6 +2439,8 @@
           "rejected",
           "rejectionReason",
           "clipUrl",
+          "kenBurns",
+          "isPhoto",
         ];
         const tmpVals = {};
         for (const f of swapFields) {
@@ -2444,27 +2449,8 @@
           b[f] = tmpVals[f];
         }
 
-        // Update the thumbnails in the DOM
-        const rows = document.querySelectorAll(".clip-row");
-        [dragIdx, targetIdx].forEach((idx) => {
-          const row = rows[idx];
-          if (!row) return;
-          const clip = curClipList[idx];
-          // Update thumbnail video
-          const thumbVid = row.querySelector(".clip-row-thumb video");
-          if (thumbVid) thumbVid.src = clip.url;
-          // Update approval state
-          row.classList.toggle("approved", !!clip.approved);
-          row.classList.toggle("rejected", !!clip.rejected);
-          const dot = row.querySelector(".clip-status-dot");
-          if (dot)
-            dot.className = `clip-status-dot ${clip.approved ? "ok" : clip.rejected ? "no" : "pending"}`;
-        });
-
-        // Update sidebar if either swapped slot is currently selected
-        if (curClipIdx === dragIdx || curClipIdx === targetIdx) {
-          selectClip(curClipIdx);
-        }
+        // Re-render full timeline to handle photo/video switching
+        renderClipTimeline(curClipList);
 
         // Save new clip order to KV
         const order = curClipList.map((c) => c.slot);
@@ -2518,9 +2504,9 @@
         picker.className = "reject-picker";
         picker.style.cssText = `position:fixed;z-index:10;top:${row.getBoundingClientRect().top}px;left:${row.getBoundingClientRect().right + 8}px`;
         picker.innerHTML = `
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Why reject?</div>
-    ${REJECTION_REASONS.map((r) => `<button class="reject-option" onclick="doRejectClip(${idx},'${r.id}')">${r.label}</button>`).join("")}
-  `;
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Why reject?</div>
+        ${REJECTION_REASONS.map((r) => `<button class="reject-option" onclick="doRejectClip(${idx},'${r.id}')">${r.label}</button>`).join("")}
+      `;
         document.body.appendChild(picker);
 
         // Close on click outside
@@ -2700,44 +2686,44 @@
         modal.className = "regen-modal";
         modal.id = "regenModal";
         modal.innerHTML = `
-    <div class="regen-panel">
-      <div class="regen-header">
-        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Regenerate Script</h3>
-        <span style="font-size:11px;color:var(--text3);margin-left:auto">${s.playerName}</span>
-        <button onclick="document.getElementById('regenModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
-      </div>
-      <div class="regen-body">
-        <div style="margin-bottom:14px">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Current Script</div>
-          <div style="font-size:12px;color:var(--gold);font-style:italic;margin-bottom:4px">${s.hookLine || ""}</div>
-          <div style="font-size:11px;color:var(--text);line-height:1.6">${s.script || ""}</div>
-          <div style="margin-top:6px;font-size:10px;color:var(--text3)">
-            A: ${s.titleA || "—"} · B: ${s.titleB || "—"}
+        <div class="regen-panel">
+          <div class="regen-header">
+            <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Regenerate Script</h3>
+            <span style="font-size:11px;color:var(--text3);margin-left:auto">${s.playerName}</span>
+            <button onclick="document.getElementById('regenModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
+          </div>
+          <div class="regen-body">
+            <div style="margin-bottom:14px">
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Current Script</div>
+              <div style="font-size:12px;color:var(--gold);font-style:italic;margin-bottom:4px">${s.hookLine || ""}</div>
+              <div style="font-size:11px;color:var(--text);line-height:1.6">${s.script || ""}</div>
+              <div style="margin-top:6px;font-size:10px;color:var(--text3)">
+                A: ${s.titleA || "—"} · B: ${s.titleB || "—"}
+              </div>
+            </div>
+
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Your suggestion</div>
+            <textarea class="regen-textarea" id="regenSuggestion" placeholder="e.g. Make the hook more shocking, focus on his defensive stats, add more drama to the ending..."></textarea>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px">Claude will regenerate the script + 5 title options. Pick your top 2 for A/B testing.</div>
+
+            ${
+              versions.length > 0
+                ? `
+            <div style="margin-top:14px">
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Previous Versions (${versions.length})</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                ${versions.map((v, i) => `<span class="version-chip" onclick="revertScript('${rowId}',${i})" title="${v.savedAt?.split("T")[0] || ""}">v${i + 1} — revert</span>`).join("")}
+              </div>
+            </div>`
+                : ""
+            }
+          </div>
+          <div class="regen-footer">
+            <button class="btn btn-dim" onclick="document.getElementById('regenModal').remove()">Cancel</button>
+            <button class="btn btn-gold" id="regenBtn" onclick="doRegenScript('${rowId}')">Regenerate</button>
           </div>
         </div>
-
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Your suggestion</div>
-        <textarea class="regen-textarea" id="regenSuggestion" placeholder="e.g. Make the hook more shocking, focus on his defensive stats, add more drama to the ending..."></textarea>
-        <div style="font-size:9px;color:var(--text3);margin-top:4px">Claude will regenerate the script + 5 title options. Pick your top 2 for A/B testing.</div>
-
-        ${
-          versions.length > 0
-            ? `
-        <div style="margin-top:14px">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Previous Versions (${versions.length})</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            ${versions.map((v, i) => `<span class="version-chip" onclick="revertScript('${rowId}',${i})" title="${v.savedAt?.split("T")[0] || ""}">v${i + 1} — revert</span>`).join("")}
-          </div>
-        </div>`
-            : ""
-        }
-      </div>
-      <div class="regen-footer">
-        <button class="btn btn-dim" onclick="document.getElementById('regenModal').remove()">Cancel</button>
-        <button class="btn btn-gold" id="regenBtn" onclick="doRegenScript('${rowId}')">Regenerate</button>
-      </div>
-    </div>
-  `;
+      `;
         document.body.appendChild(modal);
         document.getElementById("regenSuggestion").focus();
       }
@@ -3216,46 +3202,46 @@
         modal.style.cssText =
           "position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;display:flex;align-items:center;justify-content:center";
         modal.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:24px;width:420px;max-width:90vw">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="font-family:'Playfair Display',serif;font-size:18px">Replace Clip #${slot}</h3>
-        <button onclick="closeUploadModal()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">&times;</button>
-      </div>
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:24px;width:420px;max-width:90vw">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="font-family:'Playfair Display',serif;font-size:18px">Replace Clip #${slot}</h3>
+            <button onclick="closeUploadModal()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">&times;</button>
+          </div>
 
-      <div id="dropZone" style="border:2px dashed var(--border2);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:12px"
-           onclick="document.getElementById('fileInput').click()"
-           ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
-           ondragleave="this.style.borderColor='var(--border2)'"
-           ondrop="handleDrop(event,${slot})">
-        <div style="font-size:24px;margin-bottom:8px">📁</div>
-        <div style="font-size:13px;color:var(--text2)">Drop an MP4 file here or click to browse</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px">Max 10MB · MP4 only</div>
-      </div>
-      <input type="file" id="fileInput" accept="video/mp4" style="display:none" onchange="handleFileSelect(event,${slot})">
+          <div id="dropZone" style="border:2px dashed var(--border2);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:12px"
+               onclick="document.getElementById('fileInput').click()"
+               ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
+               ondragleave="this.style.borderColor='var(--border2)'"
+               ondrop="handleDrop(event,${slot})">
+            <div style="font-size:24px;margin-bottom:8px">📁</div>
+            <div style="font-size:13px;color:var(--text2)">Drop an MP4 file here or click to browse</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Max 10MB · MP4 only</div>
+          </div>
+          <input type="file" id="fileInput" accept="video/mp4" style="display:none" onchange="handleFileSelect(event,${slot})">
 
-      <div id="uploadPreview" style="display:none;margin-bottom:12px">
-        <video id="previewVideo" style="width:100%;border-radius:8px;max-height:300px" controls></video>
-        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-          <label style="font-size:11px;color:var(--text2)">Trim start (s):</label>
-          <input type="number" id="trimStart" value="0" min="0" step="0.5" style="width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text);font-size:12px">
-          <label style="font-size:11px;color:var(--text2)">Duration (s):</label>
-          <input type="number" id="trimDur" value="3" min="0.5" max="5" step="0.5" style="width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text);font-size:12px">
+          <div id="uploadPreview" style="display:none;margin-bottom:12px">
+            <video id="previewVideo" style="width:100%;border-radius:8px;max-height:300px" controls></video>
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+              <label style="font-size:11px;color:var(--text2)">Trim start (s):</label>
+              <input type="number" id="trimStart" value="0" min="0" step="0.5" style="width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text);font-size:12px">
+              <label style="font-size:11px;color:var(--text2)">Duration (s):</label>
+              <input type="number" id="trimDur" value="3" min="0.5" max="5" step="0.5" style="width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--text);font-size:12px">
+            </div>
+          </div>
+
+          <div id="uploadProgress" style="display:none;margin-bottom:12px">
+            <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden">
+              <div id="uploadBar" style="height:100%;background:var(--gold);width:0%;transition:width 0.3s"></div>
+            </div>
+            <div id="uploadStatus" style="font-size:11px;color:var(--text2);margin-top:4px">Uploading...</div>
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-dim" onclick="closeUploadModal()">Cancel</button>
+            <button class="btn btn-gold" id="uploadBtn" onclick="doUpload(${slot})" disabled>Upload & Replace</button>
+          </div>
         </div>
-      </div>
-
-      <div id="uploadProgress" style="display:none;margin-bottom:12px">
-        <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden">
-          <div id="uploadBar" style="height:100%;background:var(--gold);width:0%;transition:width 0.3s"></div>
-        </div>
-        <div id="uploadStatus" style="font-size:11px;color:var(--text2);margin-top:4px">Uploading...</div>
-      </div>
-
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn btn-dim" onclick="closeUploadModal()">Cancel</button>
-        <button class="btn btn-gold" id="uploadBtn" onclick="doUpload(${slot})" disabled>Upload & Replace</button>
-      </div>
-    </div>
-  `;
+      `;
         document.body.appendChild(modal);
       }
 
@@ -3461,16 +3447,16 @@
         const rect = row?.getBoundingClientRect() || { top: 200, right: 400 };
         picker.style.cssText = `position:fixed;z-index:500;top:${rect.top}px;left:${Math.min(rect.right + 8, window.innerWidth - 200)}px`;
         picker.innerHTML = `
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Options</div>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openYouTubeSearch(${slot})" style="color:var(--text)">Search YouTube</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openClipLibrary(${slot})" style="color:var(--text)">From Library</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload Video</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();uploadPhotoAsClip(${slot})" style="color:var(--text)">Upload Photo (Zoom Effect)</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();searchPhotos(${slot})" style="color:var(--text)">Search Photos (Zoom Effect)</button>
-    <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();moveClipToSlot(${idx})" style="color:var(--text)">Move to Slot...</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${slot - 1})" style="color:var(--gold)">Save to Library</button>
-  `;
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Options</div>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();openYouTubeSearch(${slot})" style="color:var(--text)">Search YouTube</button>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();openClipLibrary(${slot})" style="color:var(--text)">From Library</button>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload Video</button>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();uploadPhotoAsClip(${slot})" style="color:var(--text)">Upload Photo (Zoom Effect)</button>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();searchPhotos(${slot})" style="color:var(--text)">Search Photos (Zoom Effect)</button>
+        <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();moveClipToSlot(${idx})" style="color:var(--text)">Move to Slot...</button>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${slot - 1})" style="color:var(--gold)">Save to Library</button>
+      `;
         document.body.appendChild(picker);
         setTimeout(() => {
           const close = (e) => {
@@ -3494,44 +3480,44 @@
         modal.className = "yt-modal";
         modal.id = "ytModal";
         modal.innerHTML = `
-    <div class="yt-panel">
-      <div class="yt-header">
-        <h3>Search YouTube</h3>
-        <span style="font-size:11px;color:var(--text3);margin-left:auto">Clip #${slot}</span>
-        <button onclick="document.getElementById('ytModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
-      </div>
-      <div class="yt-search-row">
-        <input class="yt-search-input" id="ytSearchInput" placeholder="Search for highlights..." value="${playerName} highlights" autofocus>
-        <button class="btn btn-gold" onclick="doYouTubeSearch()">Search</button>
-      </div>
-      <div style="display:flex;flex:1;overflow:hidden;min-height:0">
-        <div class="yt-results" id="ytResults" style="flex:1;overflow-y:auto;min-width:240px">
-          <div class="empty">Press Search or Enter to find videos</div>
+        <div class="yt-panel">
+          <div class="yt-header">
+            <h3>Search YouTube</h3>
+            <span style="font-size:11px;color:var(--text3);margin-left:auto">Clip #${slot}</span>
+            <button onclick="document.getElementById('ytModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
+          </div>
+          <div class="yt-search-row">
+            <input class="yt-search-input" id="ytSearchInput" placeholder="Search for highlights..." value="${playerName} highlights" autofocus>
+            <button class="btn btn-gold" onclick="doYouTubeSearch()">Search</button>
+          </div>
+          <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+            <div class="yt-results" id="ytResults" style="flex:1;overflow-y:auto;min-width:240px">
+              <div class="empty">Press Search or Enter to find videos</div>
+            </div>
+            <div id="ytPlayerPanel" style="display:none;width:320px;flex-shrink:0;border-left:1px solid var(--border);padding:12px;flex-direction:column;gap:10px;overflow-y:auto">
+              <div id="ytPlayerWrap" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:6px;overflow:hidden">
+                <div id="ytPlayerDiv"></div>
+              </div>
+              <div id="ytSelectedTitle" style="font-size:11px;color:var(--text);font-weight:600;line-height:1.3"></div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <label style="font-size:11px;color:var(--text2);white-space:nowrap">Start (s):</label>
+                <input type="number" id="ytStartTime" value="10" min="0" step="1" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+                <button class="btn btn-dim btn-sm" onclick="grabCurrentTime()" style="text-transform:none;letter-spacing:0">Use current time</button>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <label style="font-size:11px;color:var(--text2);white-space:nowrap">Duration (s):</label>
+                <input type="number" id="ytDuration" value="3.5" min="1" max="5" step="0.5" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+              </div>
+              <div style="font-size:9px;color:var(--text3);line-height:1.5">Play the video, pause at the moment you want, then click "Use current time" to set the start.</div>
+            </div>
+          </div>
+          <div class="yt-footer">
+            <button class="btn btn-dim" onclick="document.getElementById('ytModal').remove()">Cancel</button>
+            <button class="btn btn-dim" id="ytSaveLibBtn" onclick="saveYouTubeClipToLibrary()" disabled style="text-transform:none;letter-spacing:0">Save to Library</button>
+            <button class="btn btn-gold" id="ytClipBtn" onclick="doClipFromYouTube(${slot})" disabled>Clip & Replace</button>
+          </div>
         </div>
-        <div id="ytPlayerPanel" style="display:none;width:320px;flex-shrink:0;border-left:1px solid var(--border);padding:12px;flex-direction:column;gap:10px;overflow-y:auto">
-          <div id="ytPlayerWrap" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:6px;overflow:hidden">
-            <div id="ytPlayerDiv"></div>
-          </div>
-          <div id="ytSelectedTitle" style="font-size:11px;color:var(--text);font-weight:600;line-height:1.3"></div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <label style="font-size:11px;color:var(--text2);white-space:nowrap">Start (s):</label>
-            <input type="number" id="ytStartTime" value="10" min="0" step="1" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
-            <button class="btn btn-dim btn-sm" onclick="grabCurrentTime()" style="text-transform:none;letter-spacing:0">Use current time</button>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <label style="font-size:11px;color:var(--text2);white-space:nowrap">Duration (s):</label>
-            <input type="number" id="ytDuration" value="3.5" min="1" max="5" step="0.5" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
-          </div>
-          <div style="font-size:9px;color:var(--text3);line-height:1.5">Play the video, pause at the moment you want, then click "Use current time" to set the start.</div>
-        </div>
-      </div>
-      <div class="yt-footer">
-        <button class="btn btn-dim" onclick="document.getElementById('ytModal').remove()">Cancel</button>
-        <button class="btn btn-dim" id="ytSaveLibBtn" onclick="saveYouTubeClipToLibrary()" disabled style="text-transform:none;letter-spacing:0">Save to Library</button>
-        <button class="btn btn-gold" id="ytClipBtn" onclick="doClipFromYouTube(${slot})" disabled>Clip & Replace</button>
-      </div>
-    </div>
-  `;
+      `;
         document.body.appendChild(modal);
 
         // Enter to search
@@ -3567,14 +3553,14 @@
         document.getElementById("ytResults").innerHTML = results
           .map(
             (v, i) => `
-    <div class="yt-result" data-idx="${i}" onclick="selectYouTubeResult(${i})">
-      <div class="yt-thumb"><img src="${v.thumbnail}" alt="" loading="lazy"></div>
-      <div class="yt-info">
-        <div class="yt-title">${v.title}</div>
-        <div class="yt-channel">${v.channel}</div>
-      </div>
-    </div>
-  `,
+        <div class="yt-result" data-idx="${i}" onclick="selectYouTubeResult(${i})">
+          <div class="yt-thumb"><img src="${v.thumbnail}" alt="" loading="lazy"></div>
+          <div class="yt-info">
+            <div class="yt-title">${v.title}</div>
+            <div class="yt-channel">${v.channel}</div>
+          </div>
+        </div>
+      `,
           )
           .join("");
 
@@ -3737,25 +3723,25 @@
         modal.className = "yt-modal";
         modal.id = "photoSearchModal";
         modal.innerHTML = `
-          <div class="yt-panel" style="width:700px">
-            <div class="yt-header">
-              <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Search Photos</h3>
-              <span style="font-size:11px;color:var(--text3);margin-left:auto">Slot #${slot} · Zoom Effect</span>
-              <button onclick="document.getElementById('photoSearchModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
-            </div>
-            <div class="yt-search-row">
-              <input class="yt-search-input" id="photoSearchInput" placeholder="Search for photos..." value="${playerName}" autofocus>
-              <button class="btn btn-gold" onclick="doPhotoSearch()">Search</button>
-            </div>
-            <div class="yt-results" id="photoResults" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:12px 20px">
-              <div class="empty" style="grid-column:1/-1">Press Search or Enter</div>
-            </div>
-            <div class="yt-footer">
-              <button class="btn btn-dim" onclick="document.getElementById('photoSearchModal').remove()">Cancel</button>
-              <span style="font-size:9px;color:var(--text3)">Source: Wikipedia · Wikimedia Commons · Free</span>
-            </div>
-          </div>
-        `;
+              <div class="yt-panel" style="width:700px">
+                <div class="yt-header">
+                  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Search Photos</h3>
+                  <span style="font-size:11px;color:var(--text3);margin-left:auto">Slot #${slot} · Zoom Effect</span>
+                  <button onclick="document.getElementById('photoSearchModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
+                </div>
+                <div class="yt-search-row">
+                  <input class="yt-search-input" id="photoSearchInput" placeholder="Search for photos..." value="${playerName}" autofocus>
+                  <button class="btn btn-gold" onclick="doPhotoSearch()">Search</button>
+                </div>
+                <div class="yt-results" id="photoResults" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:12px 20px">
+                  <div class="empty" style="grid-column:1/-1">Press Search or Enter</div>
+                </div>
+                <div class="yt-footer">
+                  <button class="btn btn-dim" onclick="document.getElementById('photoSearchModal').remove()">Cancel</button>
+                  <span style="font-size:9px;color:var(--text3)">Source: Wikipedia · Wikimedia Commons · Free</span>
+                </div>
+              </div>
+            `;
         document.body.appendChild(modal);
         document
           .getElementById("photoSearchInput")
@@ -3783,11 +3769,11 @@
         resultsEl.innerHTML = results
           .map(
             (p) => `
-          <div style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:all 0.12s;aspect-ratio:3/4;position:relative" onclick="selectSearchPhoto('${p.full.replace(/'/g, "\\'")}')">
-            <img src="${p.thumb}" style="width:100%;height:100%;object-fit:cover" title="${p.title}" loading="lazy">
-            <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 4px;font-size:7px;color:#fff;background:rgba(0,0,0,0.6)">${p.source}</div>
-          </div>
-        `,
+              <div style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:all 0.12s;aspect-ratio:3/4;position:relative" onclick="selectSearchPhoto('${p.full.replace(/'/g, "\\'")}')">
+                <img src="${p.thumb}" style="width:100%;height:100%;object-fit:cover" title="${p.title}" loading="lazy">
+                <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 4px;font-size:7px;color:#fff;background:rgba(0,0,0,0.6)">${p.source}</div>
+              </div>
+            `,
           )
           .join("");
       }
@@ -3832,31 +3818,31 @@
         modal.className = "yt-modal";
         modal.id = "moveSlotModal";
         modal.innerHTML = `
-          <div class="yt-panel" style="width:500px">
-            <div class="yt-header">
-              <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Move Clip #${fromIdx + 1} to...</h3>
-              <button onclick="document.getElementById('moveSlotModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
-            </div>
-            <div style="flex:1;overflow-y:auto;padding:12px 20px;max-height:60vh">
-              ${curClipList
-                .map(
-                  (c, i) => `
-                <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:5px;cursor:pointer;border:1px solid ${i === fromIdx ? "var(--gold)" : "transparent"};background:${i === fromIdx ? "var(--gold-dim)" : "transparent"};margin-bottom:3px;transition:all 0.12s"
-                     ${i !== fromIdx ? `onclick="doMoveClip(${fromIdx},${i})"` : ""}
-                     onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${i === fromIdx ? "var(--gold-dim)" : "transparent"}'">
-                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);min-width:20px">${i + 1}</span>
-                  <span style="font-size:11px;color:var(--text);flex:1">${captions[i] || "—"}</span>
-                  ${i === fromIdx ? '<span style="font-size:9px;color:var(--gold)">current</span>' : ""}
+              <div class="yt-panel" style="width:500px">
+                <div class="yt-header">
+                  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Move Clip #${fromIdx + 1} to...</h3>
+                  <button onclick="document.getElementById('moveSlotModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
                 </div>
-              `,
-                )
-                .join("")}
-            </div>
-            <div class="yt-footer">
-              <button class="btn btn-dim" onclick="document.getElementById('moveSlotModal').remove()">Cancel</button>
-            </div>
-          </div>
-        `;
+                <div style="flex:1;overflow-y:auto;padding:12px 20px;max-height:60vh">
+                  ${curClipList
+                    .map(
+                      (c, i) => `
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:5px;cursor:pointer;border:1px solid ${i === fromIdx ? "var(--gold)" : "transparent"};background:${i === fromIdx ? "var(--gold-dim)" : "transparent"};margin-bottom:3px;transition:all 0.12s"
+                         ${i !== fromIdx ? `onclick="doMoveClip(${fromIdx},${i})"` : ""}
+                         onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${i === fromIdx ? "var(--gold-dim)" : "transparent"}'">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);min-width:20px">${i + 1}</span>
+                      <span style="font-size:11px;color:var(--text);flex:1">${captions[i] || "—"}</span>
+                      ${i === fromIdx ? '<span style="font-size:9px;color:var(--gold)">current</span>' : ""}
+                    </div>
+                  `,
+                    )
+                    .join("")}
+                </div>
+                <div class="yt-footer">
+                  <button class="btn btn-dim" onclick="document.getElementById('moveSlotModal').remove()">Cancel</button>
+                </div>
+              </div>
+            `;
         document.body.appendChild(modal);
       }
 
@@ -3864,7 +3850,7 @@
         document.getElementById("moveSlotModal")?.remove();
         if (fromIdx === toIdx || !curClipList.length) return;
 
-        // Swap the clip videos between slots
+        // Swap ALL clip data between slots (keeping slot number fixed)
         const a = curClipList[fromIdx];
         const b = curClipList[toIdx];
         const swapFields = [
@@ -3874,6 +3860,8 @@
           "rejected",
           "rejectionReason",
           "clipUrl",
+          "kenBurns",
+          "isPhoto",
         ];
         const tmp = {};
         for (const f of swapFields) {
@@ -3882,18 +3870,9 @@
           b[f] = tmp[f];
         }
 
-        // Update thumbnails
-        const rows = document.querySelectorAll(".clip-row");
-        [fromIdx, toIdx].forEach((idx) => {
-          const row = rows[idx];
-          if (!row) return;
-          const clip = curClipList[idx];
-          const thumbVid = row.querySelector(".clip-row-thumb video");
-          if (thumbVid) thumbVid.src = clip.url;
-          row.classList.toggle("approved", !!clip.approved);
-          row.classList.toggle("rejected", !!clip.rejected);
-        });
-
+        // Re-render the clip timeline fully to handle photo/video switching
+        renderClipTimeline(curClipList);
+        row.classList.toggle("approved", !!clip.approved);
         // Save to KV
         const order = curClipList.map((c) => c.slot);
         apiPost("save-clip-order", { rowId: curScript, order });
@@ -3982,35 +3961,35 @@
         modal.className = "yt-modal";
         modal.id = "clipLibModal";
         modal.innerHTML = `
-          <div class="yt-panel" style="width:600px">
-            <div class="yt-header">
-              <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Clip Library — ${scriptData?.playerName || ""}</h3>
-              <button onclick="document.getElementById('clipLibModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
-            </div>
-            <div style="flex:1;overflow-y:auto;padding:12px 20px">
-              ${clips
-                .map(
-                  (c, i) => `
-                <div class="yt-result" style="position:relative">
-                  <div class="yt-thumb" onclick="useLibraryClip(${slot},'${c.url.replace(/'/g, "\\'")}')"><video src="${c.url}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover"></video></div>
-                  <div class="yt-info" onclick="useLibraryClip(${slot},'${c.url.replace(/'/g, "\\'")}')">
-                    <div class="yt-title">${c.name}</div>
-                    <div class="yt-channel">${c.playerName || ""} · ${c.source || ""}</div>
-                  </div>
-                  <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
-                    <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();renameLibraryClip(${i})" title="Rename" style="padding:2px 5px;font-size:8px">✎</button>
-                    <button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteLibraryClip(${i})" title="Delete" style="padding:2px 5px;font-size:8px">✕</button>
-                  </div>
+              <div class="yt-panel" style="width:600px">
+                <div class="yt-header">
+                  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Clip Library — ${scriptData?.playerName || ""}</h3>
+                  <button onclick="document.getElementById('clipLibModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
                 </div>
-              `,
-                )
-                .join("")}
-            </div>
-            <div class="yt-footer">
-              <button class="btn btn-dim" onclick="document.getElementById('clipLibModal').remove()">Cancel</button>
-            </div>
-          </div>
-        `;
+                <div style="flex:1;overflow-y:auto;padding:12px 20px">
+                  ${clips
+                    .map(
+                      (c, i) => `
+                    <div class="yt-result" style="position:relative">
+                      <div class="yt-thumb" onclick="useLibraryClip(${slot},'${c.url.replace(/'/g, "\\'")}')"><video src="${c.url}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover"></video></div>
+                      <div class="yt-info" onclick="useLibraryClip(${slot},'${c.url.replace(/'/g, "\\'")}')">
+                        <div class="yt-title">${c.name}</div>
+                        <div class="yt-channel">${c.playerName || ""} · ${c.source || ""}</div>
+                      </div>
+                      <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
+                        <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();renameLibraryClip(${i})" title="Rename" style="padding:2px 5px;font-size:8px">✎</button>
+                        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteLibraryClip(${i})" title="Delete" style="padding:2px 5px;font-size:8px">✕</button>
+                      </div>
+                    </div>
+                  `,
+                    )
+                    .join("")}
+                </div>
+                <div class="yt-footer">
+                  <button class="btn btn-dim" onclick="document.getElementById('clipLibModal').remove()">Cancel</button>
+                </div>
+              </div>
+            `;
         document.body.appendChild(modal);
       }
 
@@ -4163,63 +4142,63 @@
         modal.style.cssText =
           "position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:300;display:flex;align-items:center;justify-content:center;gap:24px";
         modal.innerHTML = `
-    <div style="position:relative;width:270px;height:480px;border-radius:24px;border:3px solid #1a1a1a;overflow:hidden;background:#000;flex-shrink:0">
-      <div id="pvVideoContainer" style="position:absolute;inset:0;transform:scaleX(-1)"></div>
-      <audio id="pvAudio" preload="auto"></audio>
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.6) 100%);pointer-events:none"></div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.85));pointer-events:none"></div>
-      <div id="pvCaption" style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:80%;text-align:center;font-size:16px;font-weight:900;line-height:1.3;letter-spacing:0.5px;transition:opacity 0.15s;font-family:'DM Sans',sans-serif;-webkit-text-stroke:1.5px #000;paint-order:stroke fill;text-shadow:0 1px 3px rgba(0,0,0,1),0 2px 6px rgba(0,0,0,0.8),0 0 12px rgba(0,0,0,0.6)"></div>
-      <div style="position:absolute;top:10px;left:10px;font-size:7px;font-weight:800;color:rgba(245,166,35,.7);letter-spacing:2px;background:rgba(0,0,0,.4);padding:2px 6px;border-radius:3px">SPORTS LORE</div>
-      <div id="pvLowerThird" style="position:absolute;bottom:60px;left:10px;opacity:0;transition:opacity 0.3s">
-        <div style="font-size:6px;color:rgba(245,166,35,.7);letter-spacing:2px;display:flex;align-items:center;gap:4px"><span style="display:block;width:8px;height:1px;background:#F5A623"></span>${(s.storyType || "").replace(/_/g, " ").toUpperCase()}</div>
-        <div style="font-size:10px;font-weight:900;color:#fff;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,1)">${(s.playerName || "").toUpperCase()}</div>
-      </div>
-      <div style="position:absolute;bottom:6px;right:8px;font-size:6px;color:rgba(255,255,255,.3)">@SportsLore1</div>
-      <div id="pvYoutubeUI" style="display:none">
-        <div style="position:absolute;right:8px;bottom:100px;display:flex;flex-direction:column;align-items:center;gap:14px">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg><span style="font-size:8px;color:#fff">2.4K</span></div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24" style="transform:scaleY(-1)"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg><span style="font-size:8px;color:#fff">Dislike</span></div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg><span style="font-size:8px;color:#fff">348</span></div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg><span style="font-size:8px;color:#fff">Share</span></div>
+        <div style="position:relative;width:270px;height:480px;border-radius:24px;border:3px solid #1a1a1a;overflow:hidden;background:#000;flex-shrink:0">
+          <div id="pvVideoContainer" style="position:absolute;inset:0;transform:scaleX(-1)"></div>
+          <audio id="pvAudio" preload="auto"></audio>
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.6) 100%);pointer-events:none"></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.85));pointer-events:none"></div>
+          <div id="pvCaption" style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:80%;text-align:center;font-size:16px;font-weight:900;line-height:1.3;letter-spacing:0.5px;transition:opacity 0.15s;font-family:'DM Sans',sans-serif;-webkit-text-stroke:1.5px #000;paint-order:stroke fill;text-shadow:0 1px 3px rgba(0,0,0,1),0 2px 6px rgba(0,0,0,0.8),0 0 12px rgba(0,0,0,0.6)"></div>
+          <div style="position:absolute;top:10px;left:10px;font-size:7px;font-weight:800;color:rgba(245,166,35,.7);letter-spacing:2px;background:rgba(0,0,0,.4);padding:2px 6px;border-radius:3px">SPORTS LORE</div>
+          <div id="pvLowerThird" style="position:absolute;bottom:60px;left:10px;opacity:0;transition:opacity 0.3s">
+            <div style="font-size:6px;color:rgba(245,166,35,.7);letter-spacing:2px;display:flex;align-items:center;gap:4px"><span style="display:block;width:8px;height:1px;background:#F5A623"></span>${(s.storyType || "").replace(/_/g, " ").toUpperCase()}</div>
+            <div style="font-size:10px;font-weight:900;color:#fff;margin-top:2px;text-shadow:0 1px 4px rgba(0,0,0,1)">${(s.playerName || "").toUpperCase()}</div>
+          </div>
+          <div style="position:absolute;bottom:6px;right:8px;font-size:6px;color:rgba(255,255,255,.3)">@SportsLore1</div>
+          <div id="pvYoutubeUI" style="display:none">
+            <div style="position:absolute;right:8px;bottom:100px;display:flex;flex-direction:column;align-items:center;gap:14px">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg><span style="font-size:8px;color:#fff">2.4K</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24" style="transform:scaleY(-1)"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg><span style="font-size:8px;color:#fff">Dislike</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg><span style="font-size:8px;color:#fff">348</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg><span style="font-size:8px;color:#fff">Share</span></div>
+            </div>
+            <div style="position:absolute;bottom:10px;left:8px;right:50px">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:9px;font-weight:700;color:#fff">@SportsLore1</span><span style="font-size:8px;background:rgba(255,255,255,.15);color:#fff;padding:1px 6px;border-radius:8px">Subscribe</span></div>
+              <div style="font-size:8px;color:rgba(255,255,255,.7);line-height:1.2">${s.titleA || ""} #shorts #nba</div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.1)"><div id="pvProgress" style="height:100%;background:#F5A623;width:0;transition:width 0.1s"></div></div>
         </div>
-        <div style="position:absolute;bottom:10px;left:8px;right:50px">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:9px;font-weight:700;color:#fff">@SportsLore1</span><span style="font-size:8px;background:rgba(255,255,255,.15);color:#fff;padding:1px 6px;border-radius:8px">Subscribe</span></div>
-          <div style="font-size:8px;color:rgba(255,255,255,.7);line-height:1.2">${s.titleA || ""} #shorts #nba</div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:280px;max-width:320px;max-height:480px;overflow-y:auto" id="pvAudioPanel">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--border)">
+            <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Music</span>
+            <label style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--text3);cursor:pointer">
+              <input type="checkbox" id="pvMusicToggle" onchange="togglePreviewMusic(this.checked)" style="accent-color:var(--gold)">
+              Play during preview
+            </label>
+          </div>
+          <div id="pvMusicList" style="display:flex;flex-direction:column;gap:4px"></div>
+
         </div>
-      </div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.1)"><div id="pvProgress" style="height:100%;background:#F5A623;width:0;transition:width 0.1s"></div></div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;min-width:280px;max-width:320px;max-height:480px;overflow-y:auto" id="pvAudioPanel">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--border)">
-        <span style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:600">Music</span>
-        <label style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--text3);cursor:pointer">
-          <input type="checkbox" id="pvMusicToggle" onchange="togglePreviewMusic(this.checked)" style="accent-color:var(--gold)">
-          Play during preview
-        </label>
-      </div>
-      <div id="pvMusicList" style="display:flex;flex-direction:column;gap:4px"></div>
 
-    </div>
-
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;min-width:200px">
-      <div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--gold)">${s.playerName}</div>
-      <div style="font-size:11px;color:var(--text2)">${totalDur.toFixed(0)}s · ${cutClips.length} clips · ${captions.length} captions</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-dim" onclick="pvReset()">Reset</button>
-        <button class="btn btn-gold" id="pvPlayBtn" onclick="pvToggle()">▶ Play</button>
-      </div>
-      <label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px;cursor:pointer">
-        <input type="checkbox" id="pvYtToggle" onchange="document.getElementById('pvYoutubeUI').style.display=this.checked?'block':'none'" style="accent-color:var(--gold)">
-        YouTube UI
-      </label>
-      <input type="range" id="pvScrubber" min="0" max="${(totalDur * 10).toFixed(0)}" value="0" step="1"
-        style="width:200px;accent-color:var(--gold);cursor:pointer"
-        oninput="pvScrub(this.value)">
-      <div style="font-size:11px;color:var(--text3)"><span id="pvTimeLabel">0.0s</span> / ${totalDur.toFixed(0)}s</div>
-      <div id="pvCurrentCaption" style="font-size:12px;color:var(--text);text-align:center;max-width:200px;min-height:40px;line-height:1.4"></div>
-      <button class="btn btn-dim" onclick="document.getElementById('previewModal').remove();pvStop();if(pvMusicAudio){pvMusicAudio.pause();pvMusicAudio.remove();pvMusicAudio=null;}" style="margin-top:8px">Close</button>
-    </div>
-  `;
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;min-width:200px">
+          <div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--gold)">${s.playerName}</div>
+          <div style="font-size:11px;color:var(--text2)">${totalDur.toFixed(0)}s · ${cutClips.length} clips · ${captions.length} captions</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-dim" onclick="pvReset()">Reset</button>
+            <button class="btn btn-gold" id="pvPlayBtn" onclick="pvToggle()">▶ Play</button>
+          </div>
+          <label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="pvYtToggle" onchange="document.getElementById('pvYoutubeUI').style.display=this.checked?'block':'none'" style="accent-color:var(--gold)">
+            YouTube UI
+          </label>
+          <input type="range" id="pvScrubber" min="0" max="${(totalDur * 10).toFixed(0)}" value="0" step="1"
+            style="width:200px;accent-color:var(--gold);cursor:pointer"
+            oninput="pvScrub(this.value)">
+          <div style="font-size:11px;color:var(--text3)"><span id="pvTimeLabel">0.0s</span> / ${totalDur.toFixed(0)}s</div>
+          <div id="pvCurrentCaption" style="font-size:12px;color:var(--text);text-align:center;max-width:200px;min-height:40px;line-height:1.4"></div>
+          <button class="btn btn-dim" onclick="document.getElementById('previewModal').remove();pvStop();if(pvMusicAudio){pvMusicAudio.pause();pvMusicAudio.remove();pvMusicAudio=null;}" style="margin-top:8px">Close</button>
+        </div>
+      `;
         document.body.appendChild(modal);
 
         // Store preview data globally
@@ -4382,43 +4361,43 @@
 
         // Current track
         musicList.innerHTML = `
-    <div class="audio-item" data-type="music" style="flex-direction:column;align-items:stretch;gap:6px">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="audio-type music">BG</span>
-        <span class="audio-name" style="flex:1" title="${trackName}">${trackName}</span>
-        <button class="btn btn-dim btn-sm" onclick="previewMusic('${musicTrack.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px" title="Preview">▶</button>
-        <button class="btn btn-dim btn-sm" onclick="openMusicPicker()" style="padding:2px 6px;font-size:8px;text-transform:none">Change</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:var(--text3);font-family:'JetBrains Mono',monospace">
-        <span>0:03 fade in</span>
-        <div style="flex:1;height:2px;background:linear-gradient(90deg,transparent,var(--blue),var(--blue),transparent);border-radius:1px"></div>
-        <span>fade out</span>
-      </div>
-    </div>
+        <div class="audio-item" data-type="music" style="flex-direction:column;align-items:stretch;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="audio-type music">BG</span>
+            <span class="audio-name" style="flex:1" title="${trackName}">${trackName}</span>
+            <button class="btn btn-dim btn-sm" onclick="previewMusic('${musicTrack.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px" title="Preview">▶</button>
+            <button class="btn btn-dim btn-sm" onclick="openMusicPicker()" style="padding:2px 6px;font-size:8px;text-transform:none">Change</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:var(--text3);font-family:'JetBrains Mono',monospace">
+            <span>0:03 fade in</span>
+            <div style="flex:1;height:2px;background:linear-gradient(90deg,transparent,var(--blue),var(--blue),transparent);border-radius:1px"></div>
+            <span>fade out</span>
+          </div>
+        </div>
 
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:8px;margin-bottom:4px;font-weight:600">Browse Tracks</div>
-    ${Object.entries(MUSIC_LIBRARY)
-      .map(
-        ([cat, tracks]) => `
-      <div style="margin-bottom:6px">
-        <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">${cat}</div>
-        ${tracks
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:8px;margin-bottom:4px;font-weight:600">Browse Tracks</div>
+        ${Object.entries(MUSIC_LIBRARY)
           .map(
-            (t) => `
-          <div class="audio-item" style="margin-bottom:2px;padding:4px 8px">
-            <span class="audio-name" style="flex:1;font-size:10px">${t.name}</span>
-            <button class="btn btn-dim btn-sm" onclick="previewMusic('${t.url.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px">▶</button>
-            <button class="btn btn-dim btn-sm" onclick="selectMusicTrack('${t.url.replace(/'/g, "\\'")}','${t.name}')" style="padding:2px 6px;font-size:8px;text-transform:none">Use</button>
+            ([cat, tracks]) => `
+          <div style="margin-bottom:6px">
+            <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">${cat}</div>
+            ${tracks
+              .map(
+                (t) => `
+              <div class="audio-item" style="margin-bottom:2px;padding:4px 8px">
+                <span class="audio-name" style="flex:1;font-size:10px">${t.name}</span>
+                <button class="btn btn-dim btn-sm" onclick="previewMusic('${t.url.replace(/'/g, "\\'")}')" style="padding:2px 5px;font-size:8px">▶</button>
+                <button class="btn btn-dim btn-sm" onclick="selectMusicTrack('${t.url.replace(/'/g, "\\'")}','${t.name}')" style="padding:2px 6px;font-size:8px;text-transform:none">Use</button>
+              </div>
+            `,
+              )
+              .join("")}
           </div>
         `,
           )
           .join("")}
-      </div>
-    `,
-      )
-      .join("")}
 
-  `;
+      `;
       }
 
       function generateDefaultSFX(s) {
@@ -4588,18 +4567,18 @@
         picker.style.cssText =
           "position:fixed;z-index:500;top:50%;left:50%;transform:translate(-50%,-50%);min-width:280px;max-height:400px;overflow-y:auto";
         picker.innerHTML = `
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Select Music Track</div>
-    ${allTracks
-      .map(
-        (t, i) => `
-      <button class="reject-option" onclick="selectMusicTrack('${t.url}','${t.name}');this.closest('.reject-picker').remove()" style="color:var(--text);display:flex;align-items:center;gap:6px">
-        <span style="font-size:8px;padding:1px 4px;border-radius:2px;background:var(--blue-dim);color:var(--blue)">${t.category}</span>
-        ${t.name}
-      </button>
-    `,
-      )
-      .join("")}
-  `;
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Select Music Track</div>
+        ${allTracks
+          .map(
+            (t, i) => `
+          <button class="reject-option" onclick="selectMusicTrack('${t.url}','${t.name}');this.closest('.reject-picker').remove()" style="color:var(--text);display:flex;align-items:center;gap:6px">
+            <span style="font-size:8px;padding:1px 4px;border-radius:2px;background:var(--blue-dim);color:var(--blue)">${t.category}</span>
+            ${t.name}
+          </button>
+        `,
+          )
+          .join("")}
+      `;
         document.body.appendChild(picker);
         setTimeout(() => {
           const close = (e) => {
@@ -4721,13 +4700,13 @@
         picker.style.cssText =
           "position:fixed;z-index:500;top:50%;left:50%;transform:translate(-50%,-50%);min-width:220px";
         picker.innerHTML = `
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Replace Sound</div>
-    ${SFX_LIBRARY.map(
-      (fx) => `
-      <button class="reject-option" onclick="swapSFX(${idx},'${fx.type}','${fx.name}','${fx.url}');this.closest('.reject-picker').remove()" style="color:var(--text)">${fx.name}</button>
-    `,
-    ).join("")}
-  `;
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Replace Sound</div>
+        ${SFX_LIBRARY.map(
+          (fx) => `
+          <button class="reject-option" onclick="swapSFX(${idx},'${fx.type}','${fx.name}','${fx.url}');this.closest('.reject-picker').remove()" style="color:var(--text)">${fx.name}</button>
+        `,
+        ).join("")}
+      `;
         document.body.appendChild(picker);
         setTimeout(() => {
           const close = (e) => {
@@ -4765,13 +4744,13 @@
         picker.style.cssText =
           "position:fixed;z-index:500;top:50%;left:50%;transform:translate(-50%,-50%);min-width:220px";
         picker.innerHTML = `
-    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Add at ${time}s</div>
-    ${SFX_LIBRARY.map(
-      (fx) => `
-      <button class="reject-option" onclick="doAddSFX(${parseFloat(time)},'${fx.type}','${fx.name}','${fx.url}');this.closest('.reject-picker').remove()" style="color:var(--text)">${fx.name}</button>
-    `,
-    ).join("")}
-  `;
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:6px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;font-weight:600">Add at ${time}s</div>
+        ${SFX_LIBRARY.map(
+          (fx) => `
+          <button class="reject-option" onclick="doAddSFX(${parseFloat(time)},'${fx.type}','${fx.name}','${fx.url}');this.closest('.reject-picker').remove()" style="color:var(--text)">${fx.name}</button>
+        `,
+        ).join("")}
+      `;
         document.body.appendChild(picker);
         setTimeout(() => {
           const close = (e) => {
@@ -5097,15 +5076,15 @@
         panel.innerHTML = comments
           .map(
             (c) => `
-    <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:10px">
-      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
-        <img src="${c.authorPhoto}" style="width:14px;height:14px;border-radius:50%">
-        <span style="font-weight:600;color:var(--text2)">${c.author}</span>
-        ${c.likes > 0 ? `<span style="margin-left:auto;color:var(--gold)">♥ ${c.likes}</span>` : ""}
-      </div>
-      <div style="color:var(--text);line-height:1.4">${c.text}</div>
-    </div>
-  `,
+        <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:10px">
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+            <img src="${c.authorPhoto}" style="width:14px;height:14px;border-radius:50%">
+            <span style="font-weight:600;color:var(--text2)">${c.author}</span>
+            ${c.likes > 0 ? `<span style="margin-left:auto;color:var(--gold)">♥ ${c.likes}</span>` : ""}
+          </div>
+          <div style="color:var(--text);line-height:1.4">${c.text}</div>
+        </div>
+      `,
           )
           .join("");
       }
@@ -5167,73 +5146,74 @@
         const maxViews = Math.max(...types.map(([, d]) => d.views), 1);
 
         container.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Total Views</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold-bright)">${types.reduce((s, [, d]) => s + d.views, 0).toLocaleString()}</div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Videos Tracked</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text)">${types.reduce((s, [, d]) => s + d.count, 0)}</div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Weeks of Data</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text)">${weeks.length}</div>
-      </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Best Type</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--green)">${types[0] ? types[0][0].replace(/_/g, " ") : "—"}</div>
-      </div>
-    </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Total Views</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold-bright)">${types.reduce((s, [, d]) => s + d.views, 0).toLocaleString()}</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Videos Tracked</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text)">${types.reduce((s, [, d]) => s + d.count, 0)}</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Weeks of Data</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text)">${weeks.length}</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Best Type</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--green)">${types[0] ? types[0][0].replace(/_/g, " ") : "—"}</div>
+          </div>
+        </div>
 
-    <div class="section-header"><h1 class="section-title" style="font-size:20px">Performance by Story Type</h1></div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${types
-        .map(([type, d]) => {
-          const avgViews = d.count > 0 ? Math.round(d.views / d.count) : 0;
-          const avgRet = d.count > 0 ? (d.retention / d.count).toFixed(1) : "0";
-          const pct = ((d.views / maxViews) * 100).toFixed(0);
-          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:16px">
-          <div style="min-width:140px">
-            <div style="font-weight:600;font-size:13px;text-transform:capitalize">${type.replace(/_/g, " ")}</div>
-            <div style="font-size:10px;color:var(--text3)">${d.count} video${d.count !== 1 ? "s" : ""}</div>
-          </div>
-          <div style="flex:1">
-            <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--gold),var(--gold-bright));border-radius:3px;transition:width 0.5s"></div>
-            </div>
-          </div>
-          <div style="text-align:right;min-width:80px">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold-bright)">${avgViews.toLocaleString()} avg</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${parseFloat(avgRet) > 50 ? "var(--green)" : "var(--text3)"}">${avgRet}% ret</div>
-          </div>
-        </div>`;
-        })
-        .join("")}
-    </div>
+        <div class="section-header"><h1 class="section-title" style="font-size:20px">Performance by Story Type</h1></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${types
+            .map(([type, d]) => {
+              const avgViews = d.count > 0 ? Math.round(d.views / d.count) : 0;
+              const avgRet =
+                d.count > 0 ? (d.retention / d.count).toFixed(1) : "0";
+              const pct = ((d.views / maxViews) * 100).toFixed(0);
+              return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:16px">
+              <div style="min-width:140px">
+                <div style="font-weight:600;font-size:13px;text-transform:capitalize">${type.replace(/_/g, " ")}</div>
+                <div style="font-size:10px;color:var(--text3)">${d.count} video${d.count !== 1 ? "s" : ""}</div>
+              </div>
+              <div style="flex:1">
+                <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--gold),var(--gold-bright));border-radius:3px;transition:width 0.5s"></div>
+                </div>
+              </div>
+              <div style="text-align:right;min-width:80px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold-bright)">${avgViews.toLocaleString()} avg</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${parseFloat(avgRet) > 50 ? "var(--green)" : "var(--text3)"}">${avgRet}% ret</div>
+              </div>
+            </div>`;
+            })
+            .join("")}
+        </div>
 
-    <div class="section-header" style="margin-top:24px"><h1 class="section-title" style="font-size:20px">Weekly Trends</h1></div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      ${weeks
-        .reverse()
-        .map((w) => {
-          const totalViews = Object.values(w.byType || {}).reduce(
-            (s, d) => s + (d.views || d.avgViews * d.count || 0),
-            0,
-          );
-          const totalVids = Object.values(w.byType || {}).reduce(
-            (s, d) => s + (d.count || 0),
-            0,
-          );
-          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:10px 14px;display:flex;align-items:center;gap:12px">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);min-width:90px">${w.weekOf}</div>
-          <div style="font-size:12px;color:var(--text)">${totalVids} videos</div>
-          <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${totalViews.toLocaleString()} views</div>
-        </div>`;
-        })
-        .join("")}
-    </div>
-  `;
+        <div class="section-header" style="margin-top:24px"><h1 class="section-title" style="font-size:20px">Weekly Trends</h1></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${weeks
+            .reverse()
+            .map((w) => {
+              const totalViews = Object.values(w.byType || {}).reduce(
+                (s, d) => s + (d.views || d.avgViews * d.count || 0),
+                0,
+              );
+              const totalVids = Object.values(w.byType || {}).reduce(
+                (s, d) => s + (d.count || 0),
+                0,
+              );
+              return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:10px 14px;display:flex;align-items:center;gap:12px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);min-width:90px">${w.weekOf}</div>
+              <div style="font-size:12px;color:var(--text)">${totalVids} videos</div>
+              <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${totalViews.toLocaleString()} views</div>
+            </div>`;
+            })
+            .join("")}
+        </div>
+      `;
       }
 
       // ── Cost Tracking ──
@@ -5267,56 +5247,56 @@
         });
 
         container.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px">
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Total Spent</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold-bright)">$${total.toFixed(2)}</div>
-      </div>
-      ${Object.entries(byService)
-        .map(
-          ([svc, d]) => `
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">${svc}</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text)">$${d.total.toFixed(2)}</div>
-          <div style="font-size:10px;color:var(--text3)">${d.count} calls</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">Total Spent</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold-bright)">$${total.toFixed(2)}</div>
+          </div>
+          ${Object.entries(byService)
+            .map(
+              ([svc, d]) => `
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px">
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600">${svc}</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text)">$${d.total.toFixed(2)}</div>
+              <div style="font-size:10px;color:var(--text3)">${d.count} calls</div>
+            </div>
+          `,
+            )
+            .join("")}
         </div>
-      `,
-        )
-        .join("")}
-    </div>
 
-    <div class="section-header"><h1 class="section-title" style="font-size:20px">Recent Activity</h1></div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      ${costs
-        .slice()
-        .reverse()
-        .slice(0, 50)
-        .map((c, i) => {
-          const dateStr = c.date ? new Date(c.date).toLocaleString() : "";
-          const shortDate = c.date?.slice(5, 10) || "";
-          const time = c.date?.slice(11, 16) || "";
-          return `
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden">
-          <div style="padding:8px 14px;display:flex;align-items:center;gap:12px;font-size:11px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);min-width:40px">${shortDate}</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);min-width:36px">${time}</span>
-            <span style="color:var(--gold);min-width:80px;font-weight:600">${c.service}</span>
-            <span style="color:var(--text);flex:1">${c.description || ""}</span>
-            <span style="font-family:'JetBrains Mono',monospace;color:var(--text2)">$${c.amount.toFixed(2)}</span>
-            <span style="color:var(--text3);font-size:10px">▾</span>
-          </div>
-          <div style="display:none;padding:8px 14px;border-top:1px solid var(--border);background:var(--bg3);font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);line-height:1.8">
-            Service: ${c.service}<br>
-            Amount: $${c.amount.toFixed(4)}<br>
-            Description: ${c.description || "—"}<br>
-            Timestamp: ${dateStr}<br>
-            Rate: ~$${c.service === "Claude" ? "0.003/1K input tokens" : c.service === "ElevenLabs" ? "0.30/generation" : c.service === "Creatomate" ? "0.50-1.00/render" : "varies"}
-          </div>
-        </div>`;
-        })
-        .join("")}
-    </div>
-  `;
+        <div class="section-header"><h1 class="section-title" style="font-size:20px">Recent Activity</h1></div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${costs
+            .slice()
+            .reverse()
+            .slice(0, 50)
+            .map((c, i) => {
+              const dateStr = c.date ? new Date(c.date).toLocaleString() : "";
+              const shortDate = c.date?.slice(5, 10) || "";
+              const time = c.date?.slice(11, 16) || "";
+              return `
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden">
+              <div style="padding:8px 14px;display:flex;align-items:center;gap:12px;font-size:11px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);min-width:40px">${shortDate}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);min-width:36px">${time}</span>
+                <span style="color:var(--gold);min-width:80px;font-weight:600">${c.service}</span>
+                <span style="color:var(--text);flex:1">${c.description || ""}</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--text2)">$${c.amount.toFixed(2)}</span>
+                <span style="color:var(--text3);font-size:10px">▾</span>
+              </div>
+              <div style="display:none;padding:8px 14px;border-top:1px solid var(--border);background:var(--bg3);font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);line-height:1.8">
+                Service: ${c.service}<br>
+                Amount: $${c.amount.toFixed(4)}<br>
+                Description: ${c.description || "—"}<br>
+                Timestamp: ${dateStr}<br>
+                Rate: ~$${c.service === "Claude" ? "0.003/1K input tokens" : c.service === "ElevenLabs" ? "0.30/generation" : c.service === "Creatomate" ? "0.50-1.00/render" : "varies"}
+              </div>
+            </div>`;
+            })
+            .join("")}
+        </div>
+      `;
       }
 
       // ── VPS Health Check ──
