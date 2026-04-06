@@ -3027,10 +3027,14 @@
       async function sourceClips(rowId) {
         if (
           !confirm(
-            `Trigger clip sourcing for ${rowId}?\n\nThis will run the GitHub Actions pipeline to source new clips for unapproved slots.`,
+            `Trigger clip sourcing for ${rowId}?\n\nThis will re-source all rejected/missing clips. Approved clips are kept.`,
           )
         )
           return;
+
+        // Clear rejection labels on rejected clips so they get a fresh start
+        toast("Clearing rejected clips...");
+        await apiPost("clear-rejections", { rowId });
 
         toast("Triggering GitHub Actions pipeline...");
         const batchId = scriptData?.batchId || curBatch;
