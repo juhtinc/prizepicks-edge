@@ -2465,6 +2465,11 @@
           b[f] = tmpVals[f];
         }
 
+        // Also swap slot numbers so order saves correctly
+        const tmpSlot = a.slot;
+        a.slot = b.slot;
+        b.slot = tmpSlot;
+
         // Re-render full timeline to handle photo/video switching
         renderClipTimeline(curClipList);
 
@@ -2483,6 +2488,46 @@
         });
         dragIdx = null;
       }
+
+      // ── Grab-to-scroll on detail-main ──
+      (function initGrabScroll() {
+        let isGrabbing = false,
+          startY = 0,
+          startScroll = 0;
+        document.addEventListener("mousedown", (e) => {
+          const main = document.querySelector(".detail-main");
+          if (!main || !main.contains(e.target)) return;
+          // Don't grab on buttons, inputs, or interactive elements
+          if (
+            e.target.closest(
+              "button,.btn,input,textarea,[contenteditable],a,select",
+            )
+          )
+            return;
+          isGrabbing = true;
+          startY = e.clientY;
+          startScroll = main.scrollTop;
+          main.style.cursor = "grabbing";
+          main.style.userSelect = "none";
+          e.preventDefault();
+        });
+        document.addEventListener("mousemove", (e) => {
+          if (!isGrabbing) return;
+          const main = document.querySelector(".detail-main");
+          if (!main) return;
+          const delta = startY - e.clientY;
+          main.scrollTop = startScroll + delta;
+        });
+        document.addEventListener("mouseup", () => {
+          if (!isGrabbing) return;
+          isGrabbing = false;
+          const main = document.querySelector(".detail-main");
+          if (main) {
+            main.style.cursor = "";
+            main.style.userSelect = "";
+          }
+        });
+      })();
 
       async function approveClip(idx) {
         const slot = idx + 1;
@@ -3897,10 +3942,15 @@
           b[f] = tmp[f];
         }
 
+        // Also swap slot numbers so the order saves correctly
+        const tmpSlot = a.slot;
+        a.slot = b.slot;
+        b.slot = tmpSlot;
+
         // Re-render the clip timeline fully to handle photo/video switching
         renderClipTimeline(curClipList);
-        row.classList.toggle("approved", !!clip.approved);
-        // Save to KV
+
+        // Save to KV — slot at each position represents the original clip
         const order = curClipList.map((c) => c.slot);
         apiPost("save-clip-order", { rowId: curScript, order });
 
