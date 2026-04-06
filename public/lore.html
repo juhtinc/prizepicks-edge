@@ -2476,6 +2476,14 @@
         if (row) {
           row.classList.toggle("approved", !wasApproved);
           row.classList.remove("rejected");
+          // Clear rejection reason text
+          const timeEl = row.querySelector(".clip-row-time");
+          if (timeEl) {
+            const redSpan = timeEl.querySelector(
+              "span[style*='color:var(--red)']",
+            );
+            if (redSpan) redSpan.remove();
+          }
         }
 
         const dot = row?.querySelector(".clip-status-dot");
@@ -2502,7 +2510,10 @@
 
         const picker = document.createElement("div");
         picker.className = "reject-picker";
-        picker.style.cssText = `position:fixed;z-index:10;top:${row.getBoundingClientRect().top}px;left:${row.getBoundingClientRect().right + 8}px`;
+        const rect = row.getBoundingClientRect();
+        const top = Math.min(rect.top, window.innerHeight - 250);
+        const left = Math.min(rect.right + 8, window.innerWidth - 200);
+        picker.style.cssText = `position:fixed;z-index:500;top:${Math.max(top, 10)}px;left:${left}px`;
         picker.innerHTML = `
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Why reject?</div>
         ${REJECTION_REASONS.map((r) => `<button class="reject-option" onclick="doRejectClip(${idx},'${r.id}')">${r.label}</button>`).join("")}
