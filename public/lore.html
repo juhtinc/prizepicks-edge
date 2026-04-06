@@ -3463,8 +3463,8 @@
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();openYouTubeSearch(${slot})" style="color:var(--text)">Search YouTube</button>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();openClipLibrary(${slot})" style="color:var(--text)">From Library</button>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();openUploadModal(${slot})" style="color:var(--text)">Upload Video</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();uploadPhotoAsClip(${slot})" style="color:var(--text)">Upload Photo (Ken Burns)</button>
-    <button class="reject-option" onclick="this.closest('.reject-picker').remove();searchPhotos(${slot})" style="color:var(--text)">Search Photos (Ken Burns)</button>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();uploadPhotoAsClip(${slot})" style="color:var(--text)">Upload Photo (Zoom Effect)</button>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();searchPhotos(${slot})" style="color:var(--text)">Search Photos (Zoom Effect)</button>
     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${slot - 1})" style="color:var(--gold)">Save to Library</button>
   `;
@@ -3737,7 +3737,7 @@
           <div class="yt-panel" style="width:700px">
             <div class="yt-header">
               <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Search Photos</h3>
-              <span style="font-size:11px;color:var(--text3);margin-left:auto">Slot #${slot} · Ken Burns</span>
+              <span style="font-size:11px;color:var(--text3);margin-left:auto">Slot #${slot} · Zoom Effect</span>
               <button onclick="document.getElementById('photoSearchModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:8px">&times;</button>
             </div>
             <div class="yt-search-row">
@@ -3811,7 +3811,7 @@
             fileName: "photo.jpg",
           });
           if (result.ok) {
-            toast("Photo added with Ken Burns effect");
+            toast("Photo added with Zoom Effect effect");
             document.getElementById("photoSearchModal")?.remove();
             selectScript(curScript);
           } else {
@@ -3822,7 +3822,7 @@
         }
       }
 
-      // ── Upload Photo as Clip (Ken Burns) ──
+      // ── Upload Photo as Clip (Zoom Effect) ──
       function uploadPhotoAsClip(slot) {
         const input = document.createElement("input");
         input.type = "file";
@@ -4810,7 +4810,7 @@
               next.currentTime = 0;
               next.play().catch(() => {});
             } else if (next.tagName === "IMG") {
-              // Restart Ken Burns animation — alternate zoom in/out by slot
+              // Restart Zoom Effect animation — alternate zoom in/out by slot
               const zoomOut = curCut.slot % 2 === 0;
               next.style.animation = "none";
               next.offsetHeight; // force reflow
