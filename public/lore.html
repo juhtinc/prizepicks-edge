@@ -3765,87 +3765,28 @@
       async function doPhotoSearch() {
         const query = document.getElementById("photoSearchInput").value.trim();
         if (!query) return;
-        const results = document.getElementById("photoResults");
-        results.innerHTML =
-          '<div class="empty" style="grid-column:1/-1">Searching...</div>';
+        const resultsEl = document.getElementById("photoResults");
+        resultsEl.innerHTML =
+          '<div class="empty" style="grid-column:1/-1">Searching Pexels + Wikipedia...</div>';
 
-        try {
-          // Search Wikipedia for images related to query
-          const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + " basketball")}&srnamespace=6&srlimit=20&format=json&origin=*`;
-          const wikiResp = await fetch(wikiUrl);
-          const wikiData = await wikiResp.json();
+        const { results = [] } = await api("search-photos", { q: query });
 
-          // Also search for the main article's images
-          const articleUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(query)}&prop=images&imlimit=20&format=json&origin=*`;
-          const articleResp = await fetch(articleUrl);
-          const articleData = await articleResp.json();
-
-          // Get image URLs from article
-          const imageNames = [];
-          const pages = articleData.query?.pages || {};
-          Object.values(pages).forEach((p) => {
-            (p.images || []).forEach((img) => {
-              if (
-                img.title.match(/\.(jpg|jpeg|png|svg)$/i) &&
-                !img.title.includes("Commons-logo") &&
-                !img.title.includes("Flag_of")
-              ) {
-                imageNames.push(img.title);
-              }
-            });
-          });
-
-          // Also add commons search results
-          (wikiData.query?.search || []).forEach((s) => {
-            if (s.title.match(/\.(jpg|jpeg|png)$/i)) {
-              imageNames.push(s.title);
-            }
-          });
-
-          if (!imageNames.length) {
-            results.innerHTML =
-              '<div class="empty" style="grid-column:1/-1">No photos found</div>';
-            return;
-          }
-
-          // Get actual image URLs (batch of up to 15)
-          const titles = imageNames.slice(0, 15).join("|");
-          const infoUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url|size&iiurlwidth=400&format=json&origin=*`;
-          const infoResp = await fetch(infoUrl);
-          const infoData = await infoResp.json();
-
-          const photos = [];
-          Object.values(infoData.query?.pages || {}).forEach((p) => {
-            const info = p.imageinfo?.[0];
-            if (info?.thumburl) {
-              photos.push({
-                thumb: info.thumburl,
-                full: info.url,
-                title: p.title.replace("File:", ""),
-                width: info.width,
-                height: info.height,
-              });
-            }
-          });
-
-          if (!photos.length) {
-            results.innerHTML =
-              '<div class="empty" style="grid-column:1/-1">No photos found</div>';
-            return;
-          }
-
-          results.innerHTML = photos
-            .map(
-              (p, i) => `
-            <div style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:all 0.12s;aspect-ratio:1" onclick="selectSearchPhoto('${p.full.replace(/'/g, "\\'")}')">
-              <img src="${p.thumb}" style="width:100%;height:100%;object-fit:cover" title="${p.title}" loading="lazy">
-            </div>
-          `,
-            )
-            .join("");
-        } catch (e) {
-          results.innerHTML = `<div class="empty" style="grid-column:1/-1;color:var(--red)">Error: ${e.message}</div>`;
+        if (!results.length) {
+          resultsEl.innerHTML =
+            '<div class="empty" style="grid-column:1/-1">No photos found</div>';
+          return;
         }
+
+        resultsEl.innerHTML = results
+          .map(
+            (p) => `
+          <div style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:all 0.12s;aspect-ratio:3/4;position:relative" onclick="selectSearchPhoto('${p.full.replace(/'/g, "\\'")}')">
+            <img src="${p.thumb}" style="width:100%;height:100%;object-fit:cover" title="${p.title}" loading="lazy">
+            <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 4px;font-size:7px;color:#fff;background:rgba(0,0,0,0.6)">${p.source}</div>
+          </div>
+        `,
+          )
+          .join("");
       }
 
       async function selectSearchPhoto(url) {
