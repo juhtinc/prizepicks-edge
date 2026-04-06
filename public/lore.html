@@ -3468,6 +3468,7 @@
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();uploadPhotoAsClip(${slot})" style="color:var(--text)">Upload Photo (Zoom Effect)</button>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();searchPhotos(${slot})" style="color:var(--text)">Search Photos (Zoom Effect)</button>
     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+    <button class="reject-option" onclick="this.closest('.reject-picker').remove();moveClipToSlot(${idx})" style="color:var(--text)">Move to Slot...</button>
     <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${slot - 1})" style="color:var(--gold)">Save to Library</button>
   `;
         document.body.appendChild(picker);
@@ -3822,6 +3823,83 @@
         } catch (e) {
           toast("Error: " + e.message);
         }
+      }
+
+      // ── Move Clip to Slot ──
+      function moveClipToSlot(fromIdx) {
+        const captions = window.clipCaptionsHtml || [];
+        const modal = document.createElement("div");
+        modal.className = "yt-modal";
+        modal.id = "moveSlotModal";
+        modal.innerHTML = `
+          <div class="yt-panel" style="width:500px">
+            <div class="yt-header">
+              <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Move Clip #${fromIdx + 1} to...</h3>
+              <button onclick="document.getElementById('moveSlotModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:12px 20px;max-height:60vh">
+              ${curClipList
+                .map(
+                  (c, i) => `
+                <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:5px;cursor:pointer;border:1px solid ${i === fromIdx ? "var(--gold)" : "transparent"};background:${i === fromIdx ? "var(--gold-dim)" : "transparent"};margin-bottom:3px;transition:all 0.12s"
+                     ${i !== fromIdx ? `onclick="doMoveClip(${fromIdx},${i})"` : ""}
+                     onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${i === fromIdx ? "var(--gold-dim)" : "transparent"}'">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);min-width:20px">${i + 1}</span>
+                  <span style="font-size:11px;color:var(--text);flex:1">${captions[i] || "—"}</span>
+                  ${i === fromIdx ? '<span style="font-size:9px;color:var(--gold)">current</span>' : ""}
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+            <div class="yt-footer">
+              <button class="btn btn-dim" onclick="document.getElementById('moveSlotModal').remove()">Cancel</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      function doMoveClip(fromIdx, toIdx) {
+        document.getElementById("moveSlotModal")?.remove();
+        if (fromIdx === toIdx || !curClipList.length) return;
+
+        // Swap the clip videos between slots
+        const a = curClipList[fromIdx];
+        const b = curClipList[toIdx];
+        const swapFields = [
+          "url",
+          "source",
+          "approved",
+          "rejected",
+          "rejectionReason",
+          "clipUrl",
+        ];
+        const tmp = {};
+        for (const f of swapFields) {
+          tmp[f] = a[f];
+          a[f] = b[f];
+          b[f] = tmp[f];
+        }
+
+        // Update thumbnails
+        const rows = document.querySelectorAll(".clip-row");
+        [fromIdx, toIdx].forEach((idx) => {
+          const row = rows[idx];
+          if (!row) return;
+          const clip = curClipList[idx];
+          const thumbVid = row.querySelector(".clip-row-thumb video");
+          if (thumbVid) thumbVid.src = clip.url;
+          row.classList.toggle("approved", !!clip.approved);
+          row.classList.toggle("rejected", !!clip.rejected);
+        });
+
+        // Save to KV
+        const order = curClipList.map((c) => c.slot);
+        apiPost("save-clip-order", { rowId: curScript, order });
+
+        selectClip(toIdx);
+        toast(`Swapped clip #${fromIdx + 1} ↔ #${toIdx + 1}`);
       }
 
       // ── Upload Photo as Clip (Zoom Effect) ──
