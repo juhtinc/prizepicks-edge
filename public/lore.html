@@ -2432,6 +2432,18 @@
           .querySelectorAll(".clip-row")
           .forEach((r) => r.classList.remove("drag-over"));
         if (row) row.classList.add("drag-over");
+
+        // Auto-scroll when dragging near top/bottom edge of the clip list
+        const main = document.querySelector(".detail-main");
+        if (!main) return;
+        const rect = main.getBoundingClientRect();
+        const edge = 60; // pixels from edge to start scrolling
+        const speed = 8;
+        if (e.clientY < rect.top + edge) {
+          main.scrollTop -= speed;
+        } else if (e.clientY > rect.bottom - edge) {
+          main.scrollTop += speed;
+        }
       }
 
       function dropClip(e, targetIdx) {
@@ -2488,46 +2500,6 @@
         });
         dragIdx = null;
       }
-
-      // ── Grab-to-scroll on detail-main ──
-      (function initGrabScroll() {
-        let isGrabbing = false,
-          startY = 0,
-          startScroll = 0;
-        document.addEventListener("mousedown", (e) => {
-          const main = document.querySelector(".detail-main");
-          if (!main || !main.contains(e.target)) return;
-          // Don't grab on buttons, inputs, or interactive elements
-          if (
-            e.target.closest(
-              "button,.btn,input,textarea,[contenteditable],a,select",
-            )
-          )
-            return;
-          isGrabbing = true;
-          startY = e.clientY;
-          startScroll = main.scrollTop;
-          main.style.cursor = "grabbing";
-          main.style.userSelect = "none";
-          e.preventDefault();
-        });
-        document.addEventListener("mousemove", (e) => {
-          if (!isGrabbing) return;
-          const main = document.querySelector(".detail-main");
-          if (!main) return;
-          const delta = startY - e.clientY;
-          main.scrollTop = startScroll + delta;
-        });
-        document.addEventListener("mouseup", () => {
-          if (!isGrabbing) return;
-          isGrabbing = false;
-          const main = document.querySelector(".detail-main");
-          if (main) {
-            main.style.cursor = "";
-            main.style.userSelect = "";
-          }
-        });
-      })();
 
       async function approveClip(idx) {
         const slot = idx + 1;
