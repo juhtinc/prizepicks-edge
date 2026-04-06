@@ -2184,10 +2184,10 @@
             </div>
             <div>
               <div class="clip-panel-title" style="display:flex;justify-content:space-between;align-items:center">
-                <span>Voiceover${s.voiceoverDuration ? ` · ${s.voiceoverDuration.toFixed(1)}s` : ""}</span>
+                <span>Voiceover${s.voiceoverDuration ? ` · ${s.voiceoverDuration.toFixed(1)}s` : ""}${s.voiceoverSpeed && s.voiceoverSpeed > 1 ? ` · ${s.voiceoverSpeed.toFixed(2)}x` : ""}</span>
                 <button class="btn btn-dim btn-sm" onclick="uploadVoiceover('${rowId}')" style="text-transform:none;letter-spacing:0;font-size:8px">Upload</button>
               </div>
-              ${s.voiceoverDuration > 60 ? `<div style="font-size:9px;color:var(--red);margin-bottom:4px;font-weight:600">Exceeds 60s limit — trim the script and regenerate</div>` : ""}
+              ${s.voiceoverDuration > 59 ? `<div style="font-size:9px;color:var(--red);margin-bottom:4px;font-weight:600">Over 59s — use Speed Up or trim script</div>` : ""}
               ${s.voiceoverUrl ? `<audio controls preload="metadata" style="width:100%;height:28px;border-radius:4px;opacity:0.85" src="${s.voiceoverUrl}"></audio>` : '<div style="font-size:10px;color:var(--text3)">No voiceover yet</div>'}
               <input type="file" id="voiceFileInput" accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a" style="display:none">
             </div>
@@ -3018,14 +3018,70 @@
         toast("Generating voiceover...");
         const result = await apiPost("generate-voiceover", { rowId });
         if (result.ok) {
-          const dur = result.duration?.toFixed(1) || "?";
-          if (parseFloat(dur) > 60) {
-            toast(
-              `Warning: voiceover is ${dur}s — exceeds 60s Shorts limit! Trim the script.`,
-            );
+          const dur = parseFloat(result.duration) || 0;
+          if (dur > 59) {
+            // Show options: speed up locally (free) or regenerate ($0.30)
+            const speedNeeded = (dur / 58).toFixed(2);
+            showVoiceoverFixOptions(rowId, dur, speedNeeded);
           } else {
-            toast(`Voiceover generated (${dur}s)`);
+            toast(`Voiceover generated (${dur.toFixed(1)}s)`);
           }
+          selectScript(rowId);
+        } else {
+          toast(`Failed: ${result.error || "unknown"}`);
+        }
+      }
+
+      function showVoiceoverFixOptions(rowId, duration, speed) {
+        const modal = document.createElement("div");
+        modal.className = "yt-modal";
+        modal.id = "voFixModal";
+        modal.innerHTML = `
+          <div class="yt-panel" style="width:420px">
+            <div class="yt-header">
+              <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Audio Too Long</h3>
+              <button onclick="document.getElementById('voFixModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
+            </div>
+            <div style="padding:20px">
+              <div style="font-size:13px;color:var(--text);margin-bottom:16px">
+                Voiceover is <span style="color:var(--red);font-weight:700">${duration.toFixed(1)}s</span> — YouTube Shorts max is 60s.
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn btn-gold" onclick="applyLocalSpeedup('${rowId}',${speed});document.getElementById('voFixModal').remove()" style="padding:10px;font-size:12px;text-transform:none;letter-spacing:0">
+                  Speed up ${speed}x locally (free, sounds natural)
+                </button>
+                <button class="btn btn-dim" onclick="regenerateVoiceFaster('${rowId}',${speed});document.getElementById('voFixModal').remove()" style="padding:10px;font-size:12px;text-transform:none;letter-spacing:0">
+                  Regenerate at ${speed}x with ElevenLabs ($0.30)
+                </button>
+                <button class="btn btn-dim" onclick="document.getElementById('voFixModal').remove()" style="padding:8px;font-size:11px;text-transform:none;letter-spacing:0">
+                  Keep as-is (trim script manually)
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      async function applyLocalSpeedup(rowId, speed) {
+        toast(`Applying ${speed}x speed locally...`);
+        await apiPost("set-voiceover-speed", {
+          rowId,
+          speed: parseFloat(speed),
+        });
+        toast(`Speed set to ${speed}x — preview will play faster`);
+        selectScript(rowId);
+      }
+
+      async function regenerateVoiceFaster(rowId, speed) {
+        if (!checkCooldown("voiceover", rowId)) return;
+        toast("Regenerating at faster speed ($0.30)...");
+        const result = await apiPost("generate-voiceover", {
+          rowId,
+          speed: parseFloat(speed),
+        });
+        if (result.ok) {
+          toast(`Voiceover regenerated (${result.duration?.toFixed(1)}s)`);
           selectScript(rowId);
         } else {
           toast(`Failed: ${result.error || "unknown"}`);
@@ -4250,6 +4306,7 @@
         const pvAudio = document.getElementById("pvAudio");
         if (s.voiceoverUrl && pvAudio) {
           pvAudio.src = s.voiceoverUrl;
+          pvAudio.playbackRate = s.voiceoverSpeed || 1.0;
           pvAudio.load();
         }
       }
