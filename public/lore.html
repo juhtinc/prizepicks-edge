@@ -1754,17 +1754,25 @@
 
       // ── API cooldown system ──
       const API_COOLDOWNS = {}; // { "action:rowId": timestamp }
-      const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+      const COOLDOWN_TIMES = {
+        voiceover: 3 * 60 * 1000, // 3 min (expensive)
+        render: 3 * 60 * 1000,
+        publish: 3 * 60 * 1000,
+        thumbnail: 3 * 60 * 1000,
+        regen: 60 * 1000, // 1 min (cheap)
+        titles: 60 * 1000,
+      };
 
       function checkCooldown(action, rowId) {
         const key = `${action}:${rowId || "global"}`;
         const lastRun = API_COOLDOWNS[key];
+        const cooldownMs = COOLDOWN_TIMES[action] || 60 * 1000;
         if (lastRun) {
           const elapsed = Date.now() - lastRun;
-          if (elapsed < COOLDOWN_MS) {
-            const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 60000);
+          if (elapsed < cooldownMs) {
+            const remaining = Math.ceil((cooldownMs - elapsed) / 1000);
             toast(
-              `Last done ${Math.floor(elapsed / 60000)}m ago — please wait ${remaining} more minute${remaining > 1 ? "s" : ""}`,
+              `Last done ${Math.floor(elapsed / 1000)}s ago — please wait ${remaining}s`,
             );
             return false;
           }
@@ -2455,41 +2463,13 @@
         if (dragIdx === null || dragIdx === targetIdx) return;
         if (!curClipList.length) return;
 
-        // Swap the video clips between slots — text stays fixed to slot position
-        const a = curClipList[dragIdx];
-        const b = curClipList[targetIdx];
-
-        // Swap ALL clip data, keep slot numbers fixed
-        const swapFields = [
-          "url",
-          "source",
-          "approved",
-          "rejected",
-          "rejectionReason",
-          "clipUrl",
-          "kenBurns",
-          "isPhoto",
-        ];
-        const tmpVals = {};
-        for (const f of swapFields) {
-          tmpVals[f] = a[f];
-          a[f] = b[f];
-          b[f] = tmpVals[f];
-        }
-
-        // Also swap slot numbers so order saves correctly
-        const tmpSlot = a.slot;
-        a.slot = b.slot;
-        b.slot = tmpSlot;
-
-        // Re-render full timeline to handle photo/video switching
-        renderClipTimeline(curClipList);
-
-        // Save new clip order to KV
-        const order = curClipList.map((c) => c.slot);
-        apiPost("save-clip-order", { rowId: curScript, order });
-
-        toast(`Swapped clip #${dragIdx + 1} ↔ #${targetIdx + 1}`);
+        // Swap in KV and reload
+        const slotA = curClipList[dragIdx].slot;
+        const slotB = curClipList[targetIdx].slot;
+        toast(`Swapping clip #${dragIdx + 1} ↔ #${targetIdx + 1}...`);
+        apiPost("swap-clips", { rowId: curScript, slotA, slotB }).then(() =>
+          selectScript(curScript),
+        );
         dragIdx = null;
       }
 
@@ -3489,7 +3469,9 @@
         picker.className = "reject-picker";
         const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
         const rect = row?.getBoundingClientRect() || { top: 200, right: 400 };
-        picker.style.cssText = `position:fixed;z-index:500;top:${rect.top}px;left:${Math.min(rect.right + 8, window.innerWidth - 200)}px`;
+        const top = Math.min(Math.max(rect.top, 10), window.innerHeight - 350);
+        const left = Math.min(rect.right + 8, window.innerWidth - 220);
+        picker.style.cssText = `position:fixed;z-index:500;top:${top}px;left:${left}px`;
         picker.innerHTML = `
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Options</div>
         <button class="reject-option" onclick="this.closest('.reject-picker').remove();openYouTubeSearch(${slot})" style="color:var(--text)">Search YouTube</button>
@@ -3890,44 +3872,15 @@
         document.body.appendChild(modal);
       }
 
-      function doMoveClip(fromIdx, toIdx) {
+      async function doMoveClip(fromIdx, toIdx) {
         document.getElementById("moveSlotModal")?.remove();
         if (fromIdx === toIdx || !curClipList.length) return;
 
-        // Swap ALL clip data between slots (keeping slot number fixed)
-        const a = curClipList[fromIdx];
-        const b = curClipList[toIdx];
-        const swapFields = [
-          "url",
-          "source",
-          "approved",
-          "rejected",
-          "rejectionReason",
-          "clipUrl",
-          "kenBurns",
-          "isPhoto",
-        ];
-        const tmp = {};
-        for (const f of swapFields) {
-          tmp[f] = a[f];
-          a[f] = b[f];
-          b[f] = tmp[f];
-        }
-
-        // Also swap slot numbers so the order saves correctly
-        const tmpSlot = a.slot;
-        a.slot = b.slot;
-        b.slot = tmpSlot;
-
-        // Re-render the clip timeline fully to handle photo/video switching
-        renderClipTimeline(curClipList);
-
-        // Save to KV — slot at each position represents the original clip
-        const order = curClipList.map((c) => c.slot);
-        apiPost("save-clip-order", { rowId: curScript, order });
-
-        selectClip(toIdx);
-        toast(`Swapped clip #${fromIdx + 1} ↔ #${toIdx + 1}`);
+        const slotA = curClipList[fromIdx].slot;
+        const slotB = curClipList[toIdx].slot;
+        toast(`Swapping clip #${fromIdx + 1} ↔ #${toIdx + 1}...`);
+        await apiPost("swap-clips", { rowId: curScript, slotA, slotB });
+        selectScript(curScript); // Reload everything fresh
       }
 
       // ── Upload Photo as Clip (Zoom Effect) ──
