@@ -649,14 +649,19 @@
         overflow-y: auto;
       }
       .detail-main::-webkit-scrollbar {
-        width: 4px;
+        width: 8px;
       }
       .detail-main::-webkit-scrollbar-track {
-        background: transparent;
+        background: var(--bg3);
+        border-radius: 4px;
       }
       .detail-main::-webkit-scrollbar-thumb {
-        background: var(--bg5);
-        border-radius: 2px;
+        background: var(--border3);
+        border-radius: 4px;
+        cursor: grab;
+      }
+      .detail-main::-webkit-scrollbar-thumb:hover {
+        background: var(--gold);
       }
       .detail-sidebar {
         width: 300px;
@@ -1960,7 +1965,7 @@
         scriptData = s;
 
         const clips = s.clipBriefs || [];
-        const TOTAL_CLIPS = 18; // ~3s per clip for 55s video
+        const TOTAL_CLIPS = 18;
         const clipUrls = [];
         for (let i = 1; i <= TOTAL_CLIPS; i++) {
           const brief = clips.find((c) => c.slot === i);
@@ -1975,6 +1980,17 @@
             rejectionReason: brief?.rejectionReason || null,
             clipUrl: brief?.clipUrl,
           });
+        }
+
+        // Apply saved display order if it exists
+        if (s.clipDisplayOrder && s.clipDisplayOrder.length === TOTAL_CLIPS) {
+          const ordered = s.clipDisplayOrder
+            .map((slot) => clipUrls.find((c) => c.slot === slot))
+            .filter(Boolean);
+          if (ordered.length === TOTAL_CLIPS) {
+            clipUrls.length = 0;
+            ordered.forEach((c) => clipUrls.push(c));
+          }
         }
 
         // Build timeline segments from story template
