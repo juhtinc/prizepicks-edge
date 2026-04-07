@@ -3426,6 +3426,15 @@
             document.getElementById("uploadStatus").textContent =
               "Clip replaced!";
             toast(`Clip #${slot} replaced successfully`);
+            // Auto-save to library
+            if (result.url) {
+              await apiPost("save-clip-library", {
+                name: `${scriptData?.playerName || ""} clip (slot ${slot})`,
+                playerName: scriptData?.playerName || "",
+                url: result.url,
+                source: "manual_upload",
+              });
+            }
             setTimeout(() => {
               closeUploadModal();
               selectScript(curScript);
@@ -3520,10 +3529,13 @@
 
       // Clip options menu (YouTube search, library, save)
       function clipOptions(idx) {
-        const slot = idx + 1;
+        // Look up actual slot from curClipList (may be swapped)
+        const slot = curClipList[idx]?.slot || idx + 1;
         const picker = document.createElement("div");
         picker.className = "reject-picker";
-        const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+        // Find row by array index, not slot number
+        const allRows = document.querySelectorAll(".clip-row");
+        const row = allRows[idx];
         const rect = row?.getBoundingClientRect() || { top: 200, right: 400 };
         const top = Math.min(Math.max(rect.top, 10), window.innerHeight - 350);
         const left = Math.min(rect.right + 8, window.innerWidth - 220);
@@ -3726,6 +3738,15 @@
 
         if (result.ok) {
           toast(`Clip #${slot} replaced from YouTube`);
+          // Auto-save to library
+          if (result.url) {
+            await apiPost("save-clip-library", {
+              name: `${scriptData?.playerName || ""} — ${ytSelectedVideo.title.slice(0, 40)}`,
+              playerName: scriptData?.playerName || "",
+              url: result.url,
+              source: `youtube:${ytSelectedVideo.videoId}@${startTime}s`,
+            });
+          }
           document.getElementById("ytModal").remove();
           selectScript(curScript);
         } else if (result.error?.includes("CLIP_API_URL")) {
@@ -3967,6 +3988,15 @@
           });
           if (result.ok) {
             toast("Photo uploaded — will zoom during playback");
+            // Auto-save to library
+            if (result.url) {
+              await apiPost("save-clip-library", {
+                name: `${scriptData?.playerName || ""} photo (slot ${slot})`,
+                playerName: scriptData?.playerName || "",
+                url: result.url,
+                source: "photo",
+              });
+            }
             selectScript(curScript);
           } else {
             toast("Failed: " + (result.error || "unknown"));
@@ -4004,62 +4034,168 @@
         else toast(`Failed: ${result.error || "unknown"}`);
       }
 
-      async function openClipLibrary(slot) {
-        toast("Loading library...");
-        const { clips = [] } = await api("clip-library", {
-          playerName: scriptData?.playerName || "",
-        });
+      // Library state
+      window._libSlot = null;
+      window._libCurrentFolder = null;
+      window._libAllClips = [];
+      window._libFolders = [];
 
-        if (!clips.length) {
-          toast("No saved clips — use the save button on clips first");
-          return;
-        }
+      async function openClipLibrary(slot) {
+        window._libSlot = slot;
+        window._libCurrentFolder = scriptData?.playerName || null;
+        toast("Loading library...");
+
+        const [clipsRes, foldersRes] = await Promise.all([
+          api("clip-library"),
+          api("list-folders"),
+        ]);
+        window._libAllClips = clipsRes.clips || [];
+        window._libFolders = foldersRes.folders || [];
+
+        renderClipLibraryModal();
+      }
+
+      function renderClipLibraryModal() {
+        const slot = window._libSlot;
+        const allClips = window._libAllClips;
+        const folders = window._libFolders;
+        const currentFolder = window._libCurrentFolder;
+
+        // Filter clips by current folder (or all if no folder selected)
+        const filtered = currentFolder
+          ? allClips.filter(
+              (c) =>
+                (c.folder || c.playerName) === currentFolder &&
+                c.source !== "placeholder",
+            )
+          : allClips.filter((c) => c.source !== "placeholder");
+
+        // Make sure current folder exists in folder list
+        const folderList =
+          folders.length > 0
+            ? folders
+            : [{ name: currentFolder || "Unsorted", count: filtered.length }];
+
+        const existing = document.getElementById("clipLibModal");
+        if (existing) existing.remove();
 
         const modal = document.createElement("div");
         modal.className = "yt-modal";
         modal.id = "clipLibModal";
         modal.innerHTML = `
-              <div class="yt-panel" style="width:600px">
-                <div class="yt-header">
-                  <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Clip Library — ${scriptData?.playerName || ""}</h3>
-                  <button onclick="document.getElementById('clipLibModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
-                </div>
-                <div style="flex:1;overflow-y:auto;padding:12px 20px">
-                  ${clips
-                    .map(
-                      (c, i) => `
+          <div class="yt-panel" style="width:780px;max-width:95vw">
+            <div class="yt-header">
+              <h3 style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px">Clip Library</h3>
+              <span style="font-size:11px;color:var(--text3);margin-left:8px">${currentFolder || "All"} · ${filtered.length} clips</span>
+              <button onclick="document.getElementById('clipLibModal').remove()" style="background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-left:auto">&times;</button>
+            </div>
+            <div style="display:flex;flex:1;min-height:0">
+              <!-- Folder sidebar -->
+              <div style="width:180px;border-right:1px solid var(--border);padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:3px">
+                <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 8px;font-weight:600">Folders</div>
+                <button class="reject-option" onclick="switchLibFolder(null)" style="color:${!currentFolder ? "var(--gold)" : "var(--text)"};text-align:left">All Clips</button>
+                ${folderList
+                  .map(
+                    (f) => `
+                  <button class="reject-option" onclick="switchLibFolder('${f.name.replace(/'/g, "\\'")}')" style="color:${currentFolder === f.name ? "var(--gold)" : "var(--text)"};text-align:left;display:flex;justify-content:space-between;align-items:center">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span>
+                    <span style="font-size:8px;color:var(--text3);margin-left:4px">${f.count}</span>
+                  </button>
+                `,
+                  )
+                  .join("")}
+                <button class="btn btn-dim btn-sm" onclick="createNewFolder()" style="margin-top:6px;text-transform:none;letter-spacing:0;font-size:9px">+ New Folder</button>
+              </div>
+
+              <!-- Clips list -->
+              <div style="flex:1;overflow-y:auto;padding:12px 16px">
+                ${filtered.length === 0 ? '<div class="empty">No clips in this folder</div>' : ""}
+                ${filtered
+                  .map((c) => {
+                    const realIdx = allClips.indexOf(c);
+                    return `
                     <div class="yt-result" style="position:relative">
-                      <div class="yt-thumb" onclick="useLibraryClip(${slot},'${c.url.replace(/'/g, "\\'")}')"><video src="${c.url}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover"></video></div>
+                      <div class="yt-thumb" onclick="useLibraryClip(${slot},'${c.url.replace(/'/g, "\\'")}')"><video src="${c.url}" muted preload="metadata" style="width:100%;height:100%;object-fit:cover" onloadeddata="this.currentTime=0.5"></video></div>
                       <div class="yt-info" onclick="useLibraryClip(${slot},'${c.url.replace(/'/g, "\\'")}')">
                         <div class="yt-title">${c.name}</div>
-                        <div class="yt-channel">${c.playerName || ""} · ${c.source || ""}</div>
+                        <div class="yt-channel">${c.folder || c.playerName || ""} · ${(c.source || "").slice(0, 20)}</div>
                       </div>
                       <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
-                        <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();renameLibraryClip(${i})" title="Rename" style="padding:2px 5px;font-size:8px">✎</button>
-                        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteLibraryClip(${i})" title="Delete" style="padding:2px 5px;font-size:8px">✕</button>
+                        <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();moveLibraryClipToFolder(${realIdx})" title="Move to folder" style="padding:2px 5px;font-size:8px">📁</button>
+                        <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();renameLibraryClip(${realIdx})" title="Rename" style="padding:2px 5px;font-size:8px">✎</button>
+                        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteLibraryClip(${realIdx})" title="Delete" style="padding:2px 5px;font-size:8px">✕</button>
                       </div>
                     </div>
-                  `,
-                    )
-                    .join("")}
-                </div>
-                <div class="yt-footer">
-                  <button class="btn btn-dim" onclick="document.getElementById('clipLibModal').remove()">Cancel</button>
-                </div>
+                  `;
+                  })
+                  .join("")}
               </div>
-            `;
+            </div>
+            <div class="yt-footer">
+              <button class="btn btn-dim" onclick="document.getElementById('clipLibModal').remove()">Close</button>
+            </div>
+          </div>
+        `;
         document.body.appendChild(modal);
       }
 
+      function switchLibFolder(folder) {
+        window._libCurrentFolder = folder;
+        renderClipLibraryModal();
+      }
+
+      async function createNewFolder() {
+        const name = prompt("Folder name:");
+        if (!name) return;
+        const result = await apiPost("create-folder", { name });
+        if (result.ok) {
+          toast(`Created folder: ${name}`);
+          // Refresh
+          const [clipsRes, foldersRes] = await Promise.all([
+            api("clip-library"),
+            api("list-folders"),
+          ]);
+          window._libAllClips = clipsRes.clips || [];
+          window._libFolders = foldersRes.folders || [];
+          window._libCurrentFolder = name;
+          renderClipLibraryModal();
+        }
+      }
+
+      async function moveLibraryClipToFolder(index) {
+        const folders = window._libFolders.map((f) => f.name);
+        const target = prompt(
+          `Move to which folder? Available: ${folders.join(", ")}\n(or type a new name)`,
+          window._libCurrentFolder || "",
+        );
+        if (!target) return;
+        const result = await apiPost("edit-clip-library", {
+          index,
+          newFolder: target,
+        });
+        if (result.ok) {
+          toast(`Moved to ${target}`);
+          const [clipsRes, foldersRes] = await Promise.all([
+            api("clip-library"),
+            api("list-folders"),
+          ]);
+          window._libAllClips = clipsRes.clips || [];
+          window._libFolders = foldersRes.folders || [];
+          renderClipLibraryModal();
+        }
+      }
+
       async function renameLibraryClip(index) {
-        const newName = prompt("New name:");
+        const newName = prompt(
+          "New name:",
+          window._libAllClips[index]?.name || "",
+        );
         if (!newName) return;
         const result = await apiPost("edit-clip-library", { index, newName });
         if (result.ok) {
           toast("Renamed");
-          document.getElementById("clipLibModal")?.remove();
-          // Reopen to refresh
-          openClipLibrary(1);
+          window._libAllClips[index].name = newName;
+          renderClipLibraryModal();
         }
       }
 
@@ -4071,8 +4207,11 @@
         });
         if (result.ok) {
           toast("Deleted");
-          document.getElementById("clipLibModal")?.remove();
-          openClipLibrary(1);
+          window._libAllClips.splice(index, 1);
+          // Refresh folders count
+          const foldersRes = await api("list-folders");
+          window._libFolders = foldersRes.folders || [];
+          renderClipLibraryModal();
         }
       }
 
