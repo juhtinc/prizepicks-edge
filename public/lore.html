@@ -3601,25 +3601,28 @@
                 <div id="ytPlayerDiv"></div>
               </div>
               <div id="ytSelectedTitle" style="font-size:11px;color:var(--text);font-weight:600;line-height:1.3"></div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <label style="font-size:11px;color:var(--text2);white-space:nowrap">Start (s):</label>
-                <input type="number" id="ytStartTime" value="10" min="0" step="1" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
-                <button class="btn btn-dim btn-sm" onclick="grabCurrentTime()" style="text-transform:none;letter-spacing:0">Use current</button>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <label style="font-size:11px;color:var(--text2);white-space:nowrap">Start:</label>
+                <input type="text" id="ytStartTime" value="0:10.0" placeholder="m:ss.s" style="width:80px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+                <button class="btn btn-dim btn-sm" onclick="grabCurrentTime()" style="text-transform:none;letter-spacing:0;font-size:9px">Use current</button>
               </div>
-              <div style="display:flex;gap:8px;align-items:center">
+              <div style="display:flex;gap:6px;align-items:center">
                 <label style="font-size:11px;color:var(--text2);white-space:nowrap">Duration:</label>
-                <input type="number" id="ytDuration" value="3.5" min="1" max="5" step="0.5" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+                <input type="number" id="ytDuration" value="3.5" min="0.5" max="10" step="0.1" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+                <span style="font-size:9px;color:var(--text3)">seconds</span>
               </div>
-              <div style="display:flex;gap:8px;align-items:flex-start">
+              <button class="btn btn-dim btn-sm" onclick="previewYTSegment()" style="text-transform:none;letter-spacing:0;font-size:10px">▶ Preview Segment (3.5s)</button>
+              <div style="display:flex;gap:6px;align-items:flex-start">
                 <label style="font-size:11px;color:var(--text2);white-space:nowrap;padding-top:6px">Slot:</label>
                 <select id="ytTargetSlot" style="flex:1;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:10px;max-width:100%">
                   ${(curClipList || [])
                     .map((c, i) => {
                       const pos = i + 1;
-                      const caption = (window.clipCaptionsHtml?.[i] || "")
+                      const fullCaption = (window.clipCaptionsHtml?.[i] || "")
                         .replace(/<[^>]+>/g, "")
-                        .slice(0, 35);
-                      return `<option value="${c.slot}" ${c.slot === slot ? "selected" : ""}>#${pos} — ${caption}${caption.length === 35 ? "..." : ""}</option>`;
+                        .replace(/"/g, "&quot;");
+                      const shortCaption = fullCaption.slice(0, 35);
+                      return `<option value="${c.slot}" title="${fullCaption}" ${c.slot === slot ? "selected" : ""}>#${pos} — ${shortCaption}${fullCaption.length > 35 ? "..." : ""}</option>`;
                     })
                     .join("")}
                 </select>
@@ -3744,9 +3747,52 @@
           toast("Player not ready — try again");
           return;
         }
-        const t = Math.floor(window.ytPlayer.getCurrentTime());
-        document.getElementById("ytStartTime").value = t;
-        toast(`Start time set to ${t}s`);
+        const t = window.ytPlayer.getCurrentTime();
+        document.getElementById("ytStartTime").value = formatYTTime(t);
+        toast(`Start time set to ${formatYTTime(t)}`);
+      }
+
+      // Convert "1:23.5" or "83.5" to seconds
+      function parseYTTime(str) {
+        if (typeof str === "number") return str;
+        if (!str) return 0;
+        const s = String(str).trim();
+        if (s.includes(":")) {
+          const parts = s.split(":");
+          const min = parseFloat(parts[0]) || 0;
+          const sec = parseFloat(parts[1]) || 0;
+          return min * 60 + sec;
+        }
+        return parseFloat(s) || 0;
+      }
+
+      // Convert seconds to "1:23.5"
+      function formatYTTime(seconds) {
+        if (seconds == null || isNaN(seconds)) return "0:00.0";
+        const m = Math.floor(seconds / 60);
+        const s = (seconds - m * 60).toFixed(1);
+        return `${m}:${s.padStart(4, "0")}`;
+      }
+
+      function previewYTSegment() {
+        if (!window.ytPlayer || !window.ytPlayer.seekTo) {
+          toast("Player not ready");
+          return;
+        }
+        const startStr = document.getElementById("ytStartTime").value;
+        const start = parseYTTime(startStr);
+        const duration =
+          parseFloat(document.getElementById("ytDuration").value) || 3.5;
+
+        window.ytPlayer.seekTo(start, true);
+        window.ytPlayer.playVideo();
+        toast(`Playing ${duration}s preview from ${formatYTTime(start)}`);
+
+        // Stop after the duration
+        if (window._ytPreviewTimer) clearTimeout(window._ytPreviewTimer);
+        window._ytPreviewTimer = setTimeout(() => {
+          if (window.ytPlayer?.pauseVideo) window.ytPlayer.pauseVideo();
+        }, duration * 1000);
       }
 
       async function doClipFromYouTube(slot) {
@@ -3756,8 +3802,9 @@
         btn.disabled = true;
         btn.textContent = "Clipping...";
 
-        const startTime =
-          parseFloat(document.getElementById("ytStartTime").value) || 0;
+        const startTime = parseYTTime(
+          document.getElementById("ytStartTime").value,
+        );
         const duration =
           parseFloat(document.getElementById("ytDuration").value) || 3;
 
@@ -3809,8 +3856,9 @@
           toast("Pick a video first");
           return;
         }
-        const startTime =
-          parseFloat(document.getElementById("ytStartTime").value) || 0;
+        const startTime = parseYTTime(
+          document.getElementById("ytStartTime").value,
+        );
         const duration =
           parseFloat(document.getElementById("ytDuration").value) || 3.5;
         const slot = parseInt(document.getElementById("ytTargetSlot").value);
@@ -3867,29 +3915,84 @@
         }
 
         list.innerHTML = q
-          .map(
-            (item, i) => `
+          .map((item, i) => {
+            const safeTitle = item.title.replace(/"/g, "&quot;");
+            return `
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:6px;display:flex;flex-direction:column;gap:3px;font-size:10px">
             <div style="display:flex;align-items:center;gap:4px">
-              <select onchange="updateQueueSlot(${i}, this.value)" style="flex:1;padding:2px 4px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:9px">
+              <select onchange="updateQueueSlot(${i}, this.value)" title="${safeTitle}" style="flex:1;padding:2px 4px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:9px">
                 ${(curClipList || [])
                   .map((c, ci) => {
                     const pos = ci + 1;
-                    const cap = (window.clipCaptionsHtml?.[ci] || "")
+                    const fullCap = (window.clipCaptionsHtml?.[ci] || "")
                       .replace(/<[^>]+>/g, "")
-                      .slice(0, 25);
-                    return `<option value="${c.slot}" ${c.slot === item.slot ? "selected" : ""}>#${pos} — ${cap}</option>`;
+                      .replace(/"/g, "&quot;");
+                    const cap = fullCap.slice(0, 25);
+                    return `<option value="${c.slot}" title="${fullCap}" ${c.slot === item.slot ? "selected" : ""}>#${pos} — ${cap}</option>`;
                   })
                   .join("")}
               </select>
               <button class="btn btn-red btn-sm" onclick="removeFromQueue(${i})" style="padding:1px 4px;font-size:8px">✕</button>
             </div>
-            <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px" title="${item.title}">${item.title}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">${item.startTime}s · ${item.duration}s</div>
+            <div onclick="loadQueueItem(${i})" style="color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;cursor:pointer;text-decoration:underline" title="Click to load this clip back into the player">${item.title}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">${formatYTTime(item.startTime)} · ${item.duration}s</div>
           </div>
-        `,
-          )
+        `;
+          })
           .join("");
+      }
+
+      // Load a queued item back into the player for editing
+      function loadQueueItem(idx) {
+        const item = window.ytClipQueue[idx];
+        if (!item) return;
+
+        // Set the selected video so Clip & Replace works
+        ytSelectedVideo = {
+          videoId: item.videoId,
+          title: item.title,
+          channel: "",
+          thumbnail: "",
+        };
+
+        // Show player panel and update fields
+        const panel = document.getElementById("ytPlayerPanel");
+        if (panel) panel.style.display = "flex";
+        const titleEl = document.getElementById("ytSelectedTitle");
+        if (titleEl) titleEl.textContent = item.title;
+        document.getElementById("ytStartTime").value = formatYTTime(
+          item.startTime,
+        );
+        document.getElementById("ytDuration").value = item.duration;
+        document.getElementById("ytTargetSlot").value = item.slot;
+        document.getElementById("ytClipBtn").disabled = false;
+        document.getElementById("ytSaveLibBtn").disabled = false;
+        document.getElementById("ytAddQueueBtn").disabled = false;
+
+        // Load video into player at the right time
+        if (window.YT && window.YT.Player) {
+          createYTPlayer(item.videoId);
+          // Wait a bit for player to be ready, then seek
+          setTimeout(() => {
+            if (window.ytPlayer?.seekTo) {
+              window.ytPlayer.seekTo(item.startTime, true);
+            }
+          }, 1500);
+        } else {
+          const tag = document.createElement("script");
+          tag.src = "https://www.youtube.com/iframe_api";
+          document.head.appendChild(tag);
+          window.onYouTubeIframeAPIReady = () => {
+            createYTPlayer(item.videoId);
+            setTimeout(() => {
+              if (window.ytPlayer?.seekTo) {
+                window.ytPlayer.seekTo(item.startTime, true);
+              }
+            }, 1500);
+          };
+        }
+
+        toast(`Loaded queue item — modify and re-add or replace`);
       }
 
       function updateQueueSlot(idx, slot) {
@@ -3966,8 +4069,9 @@
           toast("Select a video first");
           return;
         }
-        const startTime =
-          parseFloat(document.getElementById("ytStartTime").value) || 0;
+        const startTime = parseYTTime(
+          document.getElementById("ytStartTime").value,
+        );
         const duration =
           parseFloat(document.getElementById("ytDuration").value) || 3;
         const name = prompt(
