@@ -2482,8 +2482,9 @@
       }
 
       async function approveClip(idx) {
-        const slot = idx + 1;
-        const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+        const slot = curClipList[idx]?.slot || idx + 1;
+        const allRows = document.querySelectorAll(".clip-row");
+        const row = allRows[idx];
         const wasApproved = row?.classList.contains("approved");
 
         if (row) {
@@ -2513,9 +2514,10 @@
       }
 
       async function rejectClip(idx) {
-        const slot = idx + 1;
+        const slot = curClipList[idx]?.slot || idx + 1;
         // Show rejection reason picker
-        const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+        const allRows = document.querySelectorAll(".clip-row");
+        const row = allRows[idx];
         if (!row) return;
 
         // Remove any existing picker
@@ -2547,8 +2549,9 @@
 
       async function doRejectClip(idx, reason) {
         document.querySelector(".reject-picker")?.remove();
-        const slot = idx + 1;
-        const row = document.querySelector(`.clip-row[data-slot="${slot}"]`);
+        const slot = curClipList[idx]?.slot || idx + 1;
+        const allRows = document.querySelectorAll(".clip-row");
+        const row = allRows[idx];
         if (row) {
           row.classList.add("rejected");
           row.classList.remove("approved");
@@ -3524,7 +3527,8 @@
       // Replace clip — show choice: upload or YouTube search
       // ↻ goes straight to upload
       async function replaceClip(idx) {
-        openUploadModal(idx + 1);
+        const slot = curClipList[idx]?.slot || idx + 1;
+        openUploadModal(slot);
       }
 
       // Clip options menu (YouTube search, library, save)
@@ -3549,7 +3553,7 @@
         <button class="reject-option" onclick="this.closest('.reject-picker').remove();searchPhotos(${slot})" style="color:var(--text)">Search Photos (Zoom Effect)</button>
         <div style="border-top:1px solid var(--border);margin:4px 0"></div>
         <button class="reject-option" onclick="this.closest('.reject-picker').remove();moveClipToSlot(${idx})" style="color:var(--text)">Move to Slot...</button>
-        <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${slot - 1})" style="color:var(--gold)">Save to Library</button>
+        <button class="reject-option" onclick="this.closest('.reject-picker').remove();saveClipToLibrary(${idx})" style="color:var(--gold)">Save to Library</button>
       `;
         document.body.appendChild(picker);
         setTimeout(() => {
@@ -3606,14 +3610,17 @@
                 <label style="font-size:11px;color:var(--text2);white-space:nowrap">Duration:</label>
                 <input type="number" id="ytDuration" value="3.5" min="1" max="5" step="0.5" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
               </div>
-              <div style="display:flex;gap:8px;align-items:center">
-                <label style="font-size:11px;color:var(--text2);white-space:nowrap">Slot:</label>
-                <select id="ytTargetSlot" style="flex:1;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:11px">
-                  ${Array.from({ length: 18 }, (_, i) => i + 1)
-                    .map(
-                      (n) =>
-                        `<option value="${n}" ${n === slot ? "selected" : ""}>Slot ${n}</option>`,
-                    )
+              <div style="display:flex;gap:8px;align-items:flex-start">
+                <label style="font-size:11px;color:var(--text2);white-space:nowrap;padding-top:6px">Slot:</label>
+                <select id="ytTargetSlot" style="flex:1;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:10px;max-width:100%">
+                  ${(curClipList || [])
+                    .map((c, i) => {
+                      const pos = i + 1;
+                      const caption = (window.clipCaptionsHtml?.[i] || "")
+                        .replace(/<[^>]+>/g, "")
+                        .slice(0, 35);
+                      return `<option value="${c.slot}" ${c.slot === slot ? "selected" : ""}>#${pos} — ${caption}${caption.length === 35 ? "..." : ""}</option>`;
+                    })
                     .join("")}
                 </select>
               </div>
@@ -3827,14 +3834,15 @@
 
       function findNextSlotToReplace(currentSlot) {
         if (!curClipList?.length) return null;
-        // Find next clip that's not approved, starting after currentSlot
-        for (let i = currentSlot; i < 18; i++) {
-          const clip = curClipList[i]; // i is 0-indexed, so this gets slot currentSlot+1
-          if (clip && !clip.approved) return i + 1;
+        // currentSlot is the actual KV slot — find its display position
+        const curIdx = curClipList.findIndex((c) => c.slot === currentSlot);
+        if (curIdx < 0) return null;
+        // Find next clip that's not approved, starting after curIdx (display order)
+        for (let i = curIdx + 1; i < curClipList.length; i++) {
+          if (!curClipList[i].approved) return curClipList[i].slot;
         }
-        for (let i = 0; i < currentSlot - 1; i++) {
-          const clip = curClipList[i];
-          if (clip && !clip.approved) return i + 1;
+        for (let i = 0; i < curIdx; i++) {
+          if (!curClipList[i].approved) return curClipList[i].slot;
         }
         return null;
       }
@@ -3864,11 +3872,14 @@
           <div style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:6px;display:flex;flex-direction:column;gap:3px;font-size:10px">
             <div style="display:flex;align-items:center;gap:4px">
               <select onchange="updateQueueSlot(${i}, this.value)" style="flex:1;padding:2px 4px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-size:9px">
-                ${Array.from({ length: 18 }, (_, n) => n + 1)
-                  .map(
-                    (n) =>
-                      `<option value="${n}" ${n === item.slot ? "selected" : ""}>Slot ${n}</option>`,
-                  )
+                ${(curClipList || [])
+                  .map((c, ci) => {
+                    const pos = ci + 1;
+                    const cap = (window.clipCaptionsHtml?.[ci] || "")
+                      .replace(/<[^>]+>/g, "")
+                      .slice(0, 25);
+                    return `<option value="${c.slot}" ${c.slot === item.slot ? "selected" : ""}>#${pos} — ${cap}</option>`;
+                  })
                   .join("")}
               </select>
               <button class="btn btn-red btn-sm" onclick="removeFromQueue(${i})" style="padding:1px 4px;font-size:8px">✕</button>
