@@ -2415,23 +2415,35 @@
       `;
       }
 
-      // Parse "youtube:VIDEOID@12.5s+3.5s" → {videoId, start, duration}
-      function parseClipSource(src) {
-        if (!src || typeof src !== "string") return null;
-        const m = src.match(/^youtube:([^@]+)@([\d.]+)s(?:\+([\d.]+)s)?/);
-        if (!m) return null;
-        return {
-          videoId: m[1],
-          start: parseFloat(m[2]) || 0,
-          duration: m[3] ? parseFloat(m[3]) : 3.5,
-        };
+      // Resolve a clip's YouTube source: prefer explicit fields, fall back to source string
+      function parseClipSource(clip) {
+        if (!clip) return null;
+        if (clip.youtubeVideoId) {
+          return {
+            videoId: clip.youtubeVideoId,
+            start: parseFloat(clip.youtubeStartTime) || 0,
+            duration: parseFloat(clip.youtubeDuration) || 3.5,
+          };
+        }
+        const src = clip.source;
+        if (typeof src === "string") {
+          const m = src.match(/^youtube:([^@]+)@([\d.]+)s(?:\+([\d.]+)s)?/);
+          if (m) {
+            return {
+              videoId: m[1],
+              start: parseFloat(m[2]) || 0,
+              duration: m[3] ? parseFloat(m[3]) : 3.5,
+            };
+          }
+        }
+        return null;
       }
 
       // Click clip → open YT search modal pre-loaded with source video at timestamp
       function tweakClip(idx) {
         const clip = curClipList[idx];
         if (!clip) return;
-        const parsed = parseClipSource(clip.source);
+        const parsed = parseClipSource(clip);
         if (!parsed) {
           toast("This clip has no YouTube source — use Replace instead");
           return;
