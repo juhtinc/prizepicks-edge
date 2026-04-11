@@ -3702,11 +3702,21 @@
                       const fullCaption = (window.clipCaptionsHtml?.[i] || "")
                         .replace(/<[^>]+>/g, "")
                         .replace(/"/g, "&quot;");
-                      const shortCaption = fullCaption.slice(0, 35);
-                      return `<option value="${c.slot}" title="${fullCaption}" ${c.slot === slot ? "selected" : ""}>#${pos} — ${shortCaption}${fullCaption.length > 35 ? "..." : ""}</option>`;
+                      const shortCaption = fullCaption.slice(0, 30);
+                      const status = c.rejected
+                        ? " \u274c"
+                        : c.approved
+                          ? " \u2705"
+                          : "";
+                      return `<option value="${c.slot}" title="${fullCaption}" ${c.slot === slot ? "selected" : ""}>#${pos}${status} — ${shortCaption}${fullCaption.length > 30 ? "..." : ""}</option>`;
                     })
                     .join("")}
                 </select>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <label style="font-size:11px;color:var(--text2);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:4px">
+                  <input type="checkbox" id="ytMirrorClip" checked style="accent-color:var(--gold)"> Mirror clip
+                </label>
               </div>
             </div>
             <!-- Queue panel -->
@@ -3889,6 +3899,8 @@
         const duration =
           parseFloat(document.getElementById("ytDuration").value) || 3;
 
+        const mirror = document.getElementById("ytMirrorClip")?.checked ?? true;
+
         // Try VPS first
         const result = await apiPost("clip-from-youtube", {
           rowId: curScript,
@@ -3896,6 +3908,7 @@
           videoId: ytSelectedVideo.videoId,
           startTime,
           duration,
+          mirror,
         });
 
         if (result.ok) {
@@ -3944,12 +3957,14 @@
           parseFloat(document.getElementById("ytDuration").value) || 3.5;
         const slot = parseInt(document.getElementById("ytTargetSlot").value);
 
+        const mirror = document.getElementById("ytMirrorClip")?.checked ?? true;
         window.ytClipQueue.push({
           videoId: ytSelectedVideo.videoId,
           title: ytSelectedVideo.title,
           startTime,
           duration,
           slot,
+          mirror,
         });
         toast(`Added to queue (slot ${slot})`);
 
@@ -4016,7 +4031,7 @@
               <button class="btn btn-red btn-sm" onclick="removeFromQueue(${i})" style="padding:1px 4px;font-size:8px">✕</button>
             </div>
             <div onclick="loadQueueItem(${i})" style="color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;cursor:pointer;text-decoration:underline" title="Click to load this clip back into the player">${item.title}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">${formatYTTime(item.startTime)} · ${item.duration}s</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">${formatYTTime(item.startTime)} · ${item.duration}s${item.mirror !== false ? " · mirrored" : ""}</div>
           </div>
         `;
           })
@@ -4117,6 +4132,7 @@
               videoId: item.videoId,
               startTime: item.startTime,
               duration: item.duration,
+              mirror: item.mirror ?? true,
             });
             if (result.ok) {
               successCount++;
