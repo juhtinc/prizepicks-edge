@@ -3687,12 +3687,18 @@
                 <span style="font-size:9px;color:var(--text3)">m:ss.s</span>
                 <button class="btn btn-dim btn-sm" onclick="grabCurrentTime()" style="text-transform:none;letter-spacing:0;font-size:9px">Use current</button>
               </div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <label style="font-size:11px;color:var(--text2);white-space:nowrap">End:</label>
+                <input type="text" id="ytEndTime" value="" placeholder="m:ss.s" title="Set end point — start will auto-calculate as end minus duration" style="width:90px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace" oninput="syncStartFromEnd()">
+                <span style="font-size:9px;color:var(--text3)">auto-sets start</span>
+                <button class="btn btn-dim btn-sm" onclick="grabCurrentTimeEnd()" style="text-transform:none;letter-spacing:0;font-size:9px">Use current</button>
+              </div>
               <div style="display:flex;gap:6px;align-items:center">
                 <label style="font-size:11px;color:var(--text2);white-space:nowrap">Duration:</label>
-                <input type="number" id="ytDuration" value="3.5" min="1" max="10" step="1" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
+                <input type="number" id="ytDuration" value="3.5" min="1" max="10" step="0.5" style="width:60px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace">
                 <span style="font-size:9px;color:var(--text3)">seconds</span>
               </div>
-              <button class="btn btn-dim btn-sm" onclick="previewYTSegment()" style="text-transform:none;letter-spacing:0;font-size:10px">▶ Preview Segment (3.5s)</button>
+              <button class="btn btn-dim btn-sm" onclick="previewYTSegment()" style="text-transform:none;letter-spacing:0;font-size:10px">▶ Preview Segment</button>
               <div style="display:flex;gap:6px;align-items:flex-start">
                 <label style="font-size:11px;color:var(--text2);white-space:nowrap;padding-top:6px">Slot:</label>
                 <select id="ytTargetSlot" style="flex:1;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:10px;max-width:100%">
@@ -3840,7 +3846,29 @@
         }
         const t = window.ytPlayer.getCurrentTime();
         document.getElementById("ytStartTime").value = formatYTTime(t);
+        document.getElementById("ytEndTime").value = "";
         toast(`Start time set to ${formatYTTime(t)}`);
+      }
+
+      function grabCurrentTimeEnd() {
+        if (!window.ytPlayer || !window.ytPlayer.getCurrentTime) {
+          toast("Player not ready — try again");
+          return;
+        }
+        const t = window.ytPlayer.getCurrentTime();
+        document.getElementById("ytEndTime").value = formatYTTime(t);
+        syncStartFromEnd();
+        toast(`End time set to ${formatYTTime(t)} — start auto-calculated`);
+      }
+
+      function syncStartFromEnd() {
+        const endVal = document.getElementById("ytEndTime").value;
+        if (!endVal) return;
+        const endSec = parseYTTime(endVal);
+        const dur =
+          parseFloat(document.getElementById("ytDuration").value) || 3.5;
+        const startSec = Math.max(0, endSec - dur);
+        document.getElementById("ytStartTime").value = formatYTTime(startSec);
       }
 
       // Convert "1:23.5" or "83.5" to seconds
@@ -4147,9 +4175,11 @@
               }
             } else {
               failCount++;
+              toast(`Slot ${item.slot} failed: ${result.error || "unknown"}`);
             }
           } catch (e) {
             failCount++;
+            toast(`Slot ${item.slot} error: ${e.message}`);
           }
         }
 
