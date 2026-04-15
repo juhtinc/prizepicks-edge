@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sports Lore — Outro Options</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: #09090b;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        font-family: sans-serif;
+        padding: 30px 20px 80px;
+        gap: 20px;
+      }
+
+      .page-title {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        color: rgba(255, 255, 255, 0.15);
+        margin-bottom: 10px;
+      }
+
+      .options-row {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+      }
+
+      .option-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .option-label {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 13px;
+        letter-spacing: 0.2em;
+        color: rgba(245, 166, 35, 0.5);
+        text-align: center;
+      }
+      .option-desc {
+        font-family: "Libre Caslon Text", serif;
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.25);
+        text-align: center;
+        max-width: 200px;
+        line-height: 1.5;
+        margin-top: -4px;
+      }
+
+      .phone-frame {
+        position: relative;
+        width: 200px;
+        aspect-ratio: 9 / 16;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 1px rgba(245, 166, 35, 0.1),
+          0 30px 80px -20px rgba(0, 0, 0, 0.7),
+          0 0 80px -30px rgba(245, 166, 35, 0.06);
+        cursor: pointer;
+        transition:
+          transform 0.3s,
+          box-shadow 0.3s;
+      }
+      .phone-frame:hover {
+        transform: scale(1.03);
+        box-shadow:
+          0 0 0 1px rgba(245, 166, 35, 0.2),
+          0 30px 80px -20px rgba(0, 0, 0, 0.7),
+          0 0 100px -20px rgba(245, 166, 35, 0.1);
+      }
+
+      /* ── The Outro Card ── */
+      .outro {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 28px 16px;
+        overflow: hidden;
+      }
+
+      .outro::before {
+        content: "";
+        position: absolute;
+        inset: -20%;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 30%,
+          rgba(0, 0, 0, 0.4) 60%,
+          rgba(0, 0, 0, 0.85) 100%
+        );
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .outro::after {
+        content: "";
+        position: absolute;
+        top: 42%;
+        left: 50%;
+        width: 160px;
+        height: 120px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(
+          ellipse,
+          rgba(245, 166, 35, 0.06) 0%,
+          transparent 70%
+        );
+        filter: blur(30px);
+        pointer-events: none;
+        z-index: 0;
+        animation: ambientPulse 4s ease-in-out infinite alternate;
+      }
+
+      @keyframes ambientPulse {
+        0% {
+          opacity: 0.6;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        100% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1.15);
+        }
+      }
+
+      .outro-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .outro-question {
+        font-family: "Libre Caslon Text", Georgia, serif;
+        font-style: italic;
+        font-size: 9px;
+        color: rgba(220, 210, 195, 0.9);
+        text-align: center;
+        line-height: 1.6;
+        letter-spacing: 0.01em;
+        max-width: 90%;
+        opacity: 0;
+        transform: translateY(8px);
+        animation: fadeSlideUp 1s ease-out 0.6s forwards;
+      }
+
+      .outro-player {
+        font-family: "Bebas Neue", Impact, sans-serif;
+        font-size: 30px;
+        color: #f5a623;
+        letter-spacing: 0.06em;
+        text-align: center;
+        line-height: 1;
+        margin-top: 16px;
+        opacity: 0;
+        transform: translateY(10px) scale(0.96);
+        animation: nameReveal 1.1s cubic-bezier(0.16, 1, 0.3, 1) 1s forwards;
+        text-shadow:
+          0 0 30px rgba(245, 166, 35, 0.15),
+          0 0 60px rgba(245, 166, 35, 0.05);
+      }
+
+      .outro-line {
+        width: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(245, 166, 35, 0.15) 15%,
+          rgba(245, 166, 35, 0.5) 50%,
+          rgba(245, 166, 35, 0.15) 85%,
+          transparent 100%
+        );
+        margin-top: 20px;
+        animation: lineExpand 1.2s cubic-bezier(0.16, 1, 0.3, 1) 1.5s forwards;
+      }
+
+      @keyframes lineExpand {
+        to {
+          width: 80px;
+        }
+      }
+
+      .outro-brand {
+        font-family: "Bebas Neue", Impact, sans-serif;
+        font-size: 11px;
+        color: rgba(245, 166, 35, 0.5);
+        letter-spacing: 0.35em;
+        margin-top: 14px;
+        opacity: 0;
+        animation: fadeIn 1.2s ease-out 2s forwards;
+      }
+
+      /* Particles */
+      .particles {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .particle {
+        position: absolute;
+        width: 1.5px;
+        height: 1.5px;
+        background: rgba(245, 166, 35, 0.35);
+        border-radius: 50%;
+        animation: particleFloat linear infinite;
+        opacity: 0;
+      }
+      .particle:nth-child(1) {
+        left: 15%;
+        animation-duration: 8s;
+        animation-delay: 0.5s;
+      }
+      .particle:nth-child(2) {
+        left: 35%;
+        animation-duration: 10s;
+        animation-delay: 1.2s;
+        width: 1px;
+        height: 1px;
+      }
+      .particle:nth-child(3) {
+        left: 55%;
+        animation-duration: 9s;
+        animation-delay: 0.8s;
+      }
+      .particle:nth-child(4) {
+        left: 75%;
+        animation-duration: 11s;
+        animation-delay: 1.8s;
+        width: 1px;
+        height: 1px;
+      }
+      .particle:nth-child(5) {
+        left: 88%;
+        animation-duration: 7s;
+        animation-delay: 2.2s;
+      }
+      .particle:nth-child(6) {
+        left: 42%;
+        animation-duration: 12s;
+        animation-delay: 0.3s;
+      }
+
+      @keyframes particleFloat {
+        0% {
+          transform: translateY(100%) translateX(0);
+          opacity: 0;
+        }
+        10% {
+          opacity: 0.4;
+        }
+        50% {
+          opacity: 0.2;
+        }
+        90% {
+          opacity: 0;
+        }
+        100% {
+          transform: translateY(-120%) translateX(15px);
+          opacity: 0;
+        }
+      }
+
+      @keyframes fadeSlideUp {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes nameReveal {
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      @keyframes fadeIn {
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* Live caption between name & brand */
+      .outro-caption {
+        font-family: "Libre Caslon Text", Georgia, serif;
+        font-style: italic;
+        font-size: 8.5px;
+        color: rgba(220, 210, 195, 0.85);
+        text-align: center;
+        line-height: 1.6;
+        max-width: 88%;
+        margin-top: 14px;
+        min-height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0 3px;
+      }
+      .outro-caption .w {
+        opacity: 0;
+        transform: translateY(3px);
+        transition:
+          opacity 0.25s ease,
+          transform 0.25s ease;
+        display: inline-block;
+      }
+      .outro-caption .w.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .outro-caption .w.gold {
+        color: #f5a623;
+      }
+      .outro-caption .w.red {
+        color: #e84040;
+      }
+
+      /* Replay */
+      .replay-btn {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: none;
+        border: 1px solid rgba(245, 166, 35, 0.2);
+        color: rgba(245, 166, 35, 0.5);
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 12px;
+        letter-spacing: 0.2em;
+        padding: 7px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+        z-index: 100;
+      }
+      .replay-btn:hover {
+        border-color: rgba(245, 166, 35, 0.5);
+        color: rgba(245, 166, 35, 0.9);
+        background: rgba(245, 166, 35, 0.05);
+      }
+
+      /* Recommended badge */
+      .recommended {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: rgba(245, 166, 35, 0.9);
+        color: #000;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 8px;
+        letter-spacing: 0.15em;
+        padding: 3px 8px;
+        border-radius: 3px;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-title">OUTRO OPTIONS &mdash; CLICK TO REPLAY</div>
+
+    <div class="options-row">
+      <!-- OPTION A: Full question -->
+      <div class="option-col">
+        <div class="option-label">OPTION A</div>
+        <div class="option-desc">Full question — 15 words</div>
+        <div class="phone-frame" onclick="replayCard(this)">
+          <div class="outro">
+            <div class="particles">
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+            </div>
+            <div class="outro-content">
+              <div class="outro-question">
+                Did the NBA already see its greatest<br />defender the day
+                Manute Bol<br />walked in?
+              </div>
+              <div class="outro-player">MANUTE BOL</div>
+              <div class="outro-line"></div>
+              <div class="outro-brand">SPORTS LORE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTION B: Short punch -->
+      <div class="option-col" style="position: relative">
+        <div class="option-label">OPTION B</div>
+        <div class="option-desc">Core question only — 8 words</div>
+        <div
+          class="phone-frame"
+          onclick="replayCard(this)"
+          style="position: relative"
+        >
+          <div class="outro">
+            <div class="particles">
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+            </div>
+            <div class="outro-content">
+              <div class="outro-question">
+                Did the NBA already see<br />its greatest defender?
+              </div>
+              <div class="outro-player">MANUTE BOL</div>
+              <div class="outro-line"></div>
+              <div class="outro-brand">SPORTS LORE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTION C: Live captions between name & brand -->
+      <div class="option-col" style="position: relative">
+        <div class="option-label">OPTION C</div>
+        <div class="option-desc">
+          Captions sync with narrator — words appear live
+        </div>
+        <div class="phone-frame" onclick="replayC()" style="position: relative">
+          <div class="recommended">RECOMMENDED</div>
+          <div class="outro" id="outroC">
+            <div class="particles">
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+              <div class="particle"></div>
+            </div>
+            <div class="outro-content">
+              <div class="outro-player" style="margin-top: 0">MANUTE BOL</div>
+              <div class="outro-caption" id="outroCCaption"></div>
+              <div class="outro-line"></div>
+              <div class="outro-brand">SPORTS LORE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="replay-btn" onclick="replayAll()">REPLAY ALL</button>
+
+    <script>
+      function replayCard(frame) {
+        const els = frame.querySelectorAll(
+          ".outro-question, .outro-player, .outro-line, .outro-brand, .particle",
+        );
+        els.forEach((el) => {
+          el.style.animation = "none";
+          el.offsetHeight;
+          el.style.animation = "";
+        });
+      }
+
+      // Option C: word-by-word caption reveal
+      const OUTRO_WORDS = [
+        { text: "So", delay: 800 },
+        { text: "ask", delay: 180 },
+        { text: "yourself", delay: 220 },
+        { text: "—", delay: 350 },
+        { text: "did", delay: 180 },
+        { text: "the", delay: 120 },
+        { text: "NBA", cls: "gold", delay: 160 },
+        { text: "already", delay: 180 },
+        { text: "see", delay: 160 },
+        { text: "its", delay: 140 },
+        { text: "greatest", cls: "gold", delay: 200 },
+        { text: "defender", cls: "gold", delay: 220 },
+        { text: "the", delay: 350 },
+        { text: "day", delay: 160 },
+        { text: "Manute", cls: "gold", delay: 200 },
+        { text: "Bol", cls: "gold", delay: 180 },
+        { text: "walked", delay: 200 },
+        { text: "in?", delay: 0 },
+      ];
+
+      let cTimer = null;
+
+      function runCaptionC() {
+        const el = document.getElementById("outroCCaption");
+        el.innerHTML = OUTRO_WORDS.map(
+          (w) => `<span class="w${w.cls ? " " + w.cls : ""}">${w.text}</span>`,
+        ).join("");
+
+        const spans = el.querySelectorAll(".w");
+        let i = 0;
+        let cumDelay = 1200; // wait for name to appear first
+
+        function showNext() {
+          if (i >= spans.length) return;
+          spans[i].classList.add("visible");
+          const d = OUTRO_WORDS[i].delay || 160;
+          i++;
+          cTimer = setTimeout(showNext, d);
+        }
+        cTimer = setTimeout(showNext, cumDelay);
+      }
+
+      function replayC() {
+        clearTimeout(cTimer);
+        const frame = document.querySelector("#outroC").closest(".phone-frame");
+        replayCard(frame);
+        runCaptionC();
+      }
+
+      function replayAll() {
+        document.querySelectorAll(".phone-frame").forEach((f) => replayCard(f));
+        clearTimeout(cTimer);
+        runCaptionC();
+      }
+
+      // Auto-start option C on load
+      runCaptionC();
+    </script>
+  </body>
+</html>

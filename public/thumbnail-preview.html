@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sports Lore — Thumbnail Auto-Fit</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: #0a0a0c;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        padding: 30px 20px 60px;
+        gap: 20px;
+        font-family: sans-serif;
+      }
+
+      .page-title {
+        font-family: "Montserrat", sans-serif;
+        font-weight: 800;
+        font-size: 10px;
+        letter-spacing: 0.15em;
+        color: rgba(255, 255, 255, 0.15);
+      }
+      .section-label {
+        font-family: "Montserrat", sans-serif;
+        font-weight: 800;
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        color: rgba(255, 255, 255, 0.1);
+        margin-top: 16px;
+      }
+
+      .options-row {
+        display: flex;
+        gap: 28px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .option-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .option-label {
+        font-family: "Montserrat", sans-serif;
+        font-weight: 900;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        color: rgba(255, 255, 255, 0.3);
+      }
+      .option-desc {
+        font-size: 9px;
+        color: rgba(255, 255, 255, 0.15);
+        text-align: center;
+        max-width: 240px;
+        line-height: 1.4;
+      }
+
+      .thumb-frame {
+        position: relative;
+        width: 240px;
+        aspect-ratio: 9 / 16;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow:
+          0 20px 60px -15px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.04);
+      }
+      .thumb-frame-sm {
+        position: relative;
+        width: 240px;
+        aspect-ratio: 9 / 16;
+        border-radius: 14px;
+        overflow: hidden;
+        transform: scale(0.45);
+        transform-origin: top center;
+        margin-bottom: -230px;
+        box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.5);
+      }
+
+      .thumb {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background: #080604;
+      }
+
+      .subject {
+        position: absolute;
+        bottom: -3%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 130%;
+        height: 82%;
+        background: url("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Manute_Bol_1993.jpg/440px-Manute_Bol_1993.jpg")
+          center 5% / cover no-repeat;
+        z-index: 3;
+        filter: saturate(0.12) contrast(1.45) brightness(0.82);
+        mask-image: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 1) 50%,
+          rgba(0, 0, 0, 0.95) 70%,
+          transparent 92%
+        );
+        -webkit-mask-image: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 1) 50%,
+          rgba(0, 0, 0, 0.95) 70%,
+          transparent 92%
+        );
+      }
+      .subject::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          170deg,
+          rgba(200, 150, 50, 0.1) 0%,
+          transparent 25%
+        );
+      }
+
+      .subject-glow {
+        position: absolute;
+        bottom: 5%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 70%;
+        height: 65%;
+        border-radius: 50%;
+        filter: blur(50px);
+        z-index: 1;
+        background: radial-gradient(
+          ellipse,
+          rgba(200, 140, 40, 0.35) 0%,
+          transparent 70%
+        );
+        opacity: 0.5;
+      }
+
+      .text-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 5%;
+      }
+
+      .stroked {
+        -webkit-text-stroke: 4px rgba(0, 0, 0, 0.9);
+        paint-order: stroke fill;
+      }
+
+      .line1 {
+        font-family: "Montserrat", sans-serif;
+        font-weight: 900;
+        font-size: 54px;
+        color: #d4920f;
+        line-height: 0.9;
+        letter-spacing: -0.02em;
+        text-shadow: 0 0 35px rgba(212, 146, 15, 0.2);
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      /* Line 2 auto-fits to a fixed width */
+      .line2 {
+        font-family: "Montserrat", sans-serif;
+        font-weight: 900;
+        color: #fff;
+        line-height: 1;
+        margin-top: 1px;
+        text-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+        text-align: center;
+        text-transform: uppercase;
+        white-space: nowrap;
+        /* Target width — same for all, font-size set by JS */
+        width: 85%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-text-stroke: 3px rgba(0, 0, 0, 0.85);
+        paint-order: stroke fill;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-title">
+      AUTO-FIT TEXT — SAME WIDTH REGARDLESS OF LENGTH
+    </div>
+
+    <div class="options-row">
+      <div class="option-col">
+        <div class="option-label">1 WORD</div>
+        <div class="option-desc">"WARRIOR" fills the width</div>
+        <div class="thumb-frame">
+          <div class="thumb">
+            <div class="subject-glow"></div>
+            <div class="subject"></div>
+            <div class="text-layer">
+              <div class="line1 stroked">7'7"</div>
+              <div class="line2" data-fit>WARRIOR</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-col">
+        <div class="option-label">3 WORDS</div>
+        <div class="option-desc">"BLOCKS A GAME" auto-shrinks</div>
+        <div class="thumb-frame">
+          <div class="thumb">
+            <div class="subject-glow"></div>
+            <div class="subject"></div>
+            <div class="text-layer">
+              <div class="line1 stroked">15</div>
+              <div class="line2" data-fit>BLOCKS A GAME</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-col">
+        <div class="option-label">4 WORDS</div>
+        <div class="option-desc">"BLOCKS PER GAME" still fits</div>
+        <div class="thumb-frame">
+          <div class="thumb">
+            <div class="subject-glow"></div>
+            <div class="subject"></div>
+            <div class="text-layer">
+              <div class="line1 stroked">15</div>
+              <div class="line2" data-fit>BLOCKS PER GAME</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-col">
+        <div class="option-label">2 WORDS</div>
+        <div class="option-desc">"NEVER PLAYED" fills nicely</div>
+        <div class="thumb-frame">
+          <div class="thumb">
+            <div class="subject-glow"></div>
+            <div class="subject"></div>
+            <div class="text-layer">
+              <div class="line1 stroked">NEVER</div>
+              <div class="line2" data-fit>PLAYED</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-col">
+        <div class="option-label">5 WORDS</div>
+        <div class="option-desc">Stress test — still one line</div>
+        <div class="thumb-frame">
+          <div class="thumb">
+            <div class="subject-glow"></div>
+            <div class="subject"></div>
+            <div class="text-layer">
+              <div class="line1 stroked">24</div>
+              <div class="line2" data-fit>YEARS WITHOUT BASKETBALL</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">FEED SIZE — ALL READABLE AT THUMBNAIL SCALE</div>
+
+    <div class="options-row" id="feedRow"></div>
+
+    <script>
+      // Auto-fit: measure text, scale font to fill target width
+      function fitText() {
+        document.querySelectorAll("[data-fit]").forEach((el) => {
+          const container = el.closest(".text-layer");
+          const maxW = container.offsetWidth * 0.85; // 85% of text-layer width
+          const minSize = 10;
+          const maxSize = 28;
+          let size = maxSize;
+
+          el.style.fontSize = size + "px";
+
+          // Shrink until it fits
+          while (el.scrollWidth > maxW && size > minSize) {
+            size -= 0.5;
+            el.style.fontSize = size + "px";
+          }
+
+          el.style.letterSpacing = size > 20 ? "0.04em" : "0.02em";
+        });
+      }
+
+      // Build feed-size duplicates
+      function buildFeedRow() {
+        const fullFrames = document.querySelectorAll(".thumb-frame");
+        const feedRow = document.getElementById("feedRow");
+        fullFrames.forEach((frame) => {
+          const col = document.createElement("div");
+          col.className = "option-col";
+          const sm = frame.cloneNode(true);
+          sm.className = "thumb-frame-sm";
+          col.appendChild(sm);
+          feedRow.appendChild(col);
+        });
+        // Re-fit text in cloned small frames
+        fitText();
+      }
+
+      // Run after fonts load
+      document.fonts.ready.then(() => {
+        fitText();
+        buildFeedRow();
+      });
+
+      // Fallback
+      window.addEventListener("load", () => {
+        fitText();
+      });
+    </script>
+  </body>
+</html>

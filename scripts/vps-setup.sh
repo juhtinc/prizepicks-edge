@@ -63,80 +63,14 @@ fi
 # 6. Setup the clip API
 echo "[6/7] Setting up clip processing API..."
 mkdir -p /opt/sports-lore
-cat > /opt/sports-lore/server.js << 'APIEOF'
-const http = require("http");
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
-
-const PORT = 3456;
-const API_SECRET = process.env.CLIP_API_SECRET || "sports-lore-clips-2026";
-const USE_WARP = process.env.USE_WARP !== "false";
-
-const server = http.createServer(async (req, res) => {
-  if (req.method === "POST" && req.url === "/download-clip") {
-    let body = "";
-    req.on("data", chunk => body += chunk);
-    req.on("end", () => {
-      try {
-        const { videoId, startTime, duration, secret } = JSON.parse(body);
-        if (secret !== API_SECRET) {
-          res.writeHead(401);
-          return res.end(JSON.stringify({ error: "unauthorized" }));
-        }
-
-        const clipDir = `/tmp/clips-${Date.now()}`;
-        fs.mkdirSync(clipDir, { recursive: true });
-        const fullPath = path.join(clipDir, "full.mp4");
-        const clipPath = path.join(clipDir, "clip.mp4");
-
-        console.log(`Downloading ${videoId}...`);
-        const proxyArg = USE_WARP ? '--proxy socks5://127.0.0.1:40000' : '';
-        const dlCmd = `yt-dlp -f "best[height<=1080]/best" ${proxyArg} --merge-output-format mp4 --js-runtimes node -o "${fullPath}" --no-playlist --socket-timeout 30 "https://youtube.com/watch?v=${videoId}"`;
-
-        execSync(dlCmd, { timeout: 180000, stdio: "pipe" });
-
-        if (!fs.existsSync(fullPath)) {
-          res.writeHead(500);
-          return res.end(JSON.stringify({ error: "download failed" }));
-        }
-
-        console.log(`Trimming ${startTime}s +${duration}s...`);
-        execSync(`ffmpeg -ss ${startTime} -i "${fullPath}" -t ${duration} -c copy -y "${clipPath}"`, { timeout: 30000, stdio: "pipe" });
-
-        if (!fs.existsSync(clipPath)) {
-          res.writeHead(500);
-          return res.end(JSON.stringify({ error: "trim failed" }));
-        }
-
-        const fileData = fs.readFileSync(clipPath);
-        console.log(`Sending clip: ${(fileData.length / 1024).toFixed(0)}KB`);
-
-        res.writeHead(200, {
-          "Content-Type": "video/mp4",
-          "Content-Length": fileData.length,
-        });
-        res.end(fileData);
-
-        // Cleanup
-        fs.rmSync(clipDir, { recursive: true, force: true });
-      } catch (e) {
-        console.error("Error:", e.message);
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: e.message.slice(0, 200) }));
-      }
-    });
-  } else if (req.method === "GET" && req.url === "/health") {
-    res.writeHead(200);
-    res.end(JSON.stringify({ status: "ok", warp: USE_WARP }));
-  } else {
-    res.writeHead(404);
-    res.end("not found");
-  }
-});
-
-server.listen(PORT, () => console.log(`Clip API running on port ${PORT}`));
-APIEOF
+# Copy server.js — SCP it to /opt/sports-lore/server.js before running setup,
+# or it will be created from the local scripts/vps-server.js
+if [ ! -f /opt/sports-lore/server.js ]; then
+  echo "WARNING: /opt/sports-lore/server.js not found. SCP scripts/vps-server.js to the VPS first."
+  echo "  scp scripts/vps-server.js root@YOUR_VPS:/opt/sports-lore/server.js"
+  exit 1
+fi
+# To update: scp scripts/vps-server.js root@194.163.180.19:/opt/sports-lore/server.js && ssh root@194.163.180.19 systemctl restart clip-api
 
 # 7. Create systemd service
 echo "[7/7] Creating systemd service..."
@@ -152,6 +86,8 @@ Restart=always
 RestartSec=5
 Environment=CLIP_API_SECRET=sports-lore-clips-2026
 Environment=USE_WARP=true
+Environment=PATH=/root/.deno/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOME=/root
 
 [Install]
 WantedBy=multi-user.target

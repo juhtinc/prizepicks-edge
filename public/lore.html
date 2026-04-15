@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sports Lore — Production Dashboard</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@800;900&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -2246,11 +2246,26 @@
 
             <div class="clip-panel-title" style="margin-top:16px">Thumbnail</div>
             <div style="margin-bottom:8px">
-              ${s.thumbnailUrl ? `<img src="${s.thumbnailUrl}" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-bottom:6px">` : ""}
+              <!-- Live thumbnail preview -->
+              <div id="thumbPreview" style="position:relative;width:100%;aspect-ratio:9/16;border-radius:6px;overflow:hidden;background:#080604;border:1px solid var(--border);margin-bottom:8px;cursor:pointer" onclick="openThumbEditor()">
+                <div id="thumbGlow" style="position:absolute;bottom:5%;left:50%;transform:translateX(-50%);width:70%;height:65%;border-radius:50%;filter:blur(30px);z-index:1;background:radial-gradient(ellipse,rgba(200,140,40,0.35) 0%,transparent 70%);opacity:0.5"></div>
+                <div id="thumbSubject" style="position:absolute;bottom:-3%;left:50%;transform:translateX(-50%);width:130%;height:82%;background:${s.playerPhotoUrl || photoCache[s.playerName] ? `url('${s.playerPhotoUrl || photoCache[s.playerName]}')` : "#222"} center 5%/cover no-repeat;z-index:3;filter:saturate(0.12) contrast(1.45) brightness(0.82);-webkit-mask-image:linear-gradient(to top,rgba(0,0,0,1) 50%,rgba(0,0,0,0.95) 70%,transparent 92%)"></div>
+                <div style="position:absolute;top:0;left:0;right:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding-top:5%">
+                  <div id="thumbLine1" style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:36px;color:#d4920f;line-height:0.9;letter-spacing:-0.02em;text-shadow:0 0 25px rgba(212,146,15,0.2);text-align:center;white-space:nowrap;-webkit-text-stroke:3px rgba(0,0,0,0.9);paint-order:stroke fill">${s.thumbnailLine1 || ""}</div>
+                  <div id="thumbLine2" style="font-family:'Montserrat',sans-serif;font-weight:900;color:#fff;line-height:1;margin-top:1px;text-shadow:0 3px 8px rgba(0,0,0,0.5);text-align:center;text-transform:uppercase;white-space:nowrap;-webkit-text-stroke:2px rgba(0,0,0,0.85);paint-order:stroke fill;width:85%;display:flex;align-items:center;justify-content:center">${s.thumbnailLine2 || ""}</div>
+                </div>
+              </div>
+              <!-- Editable fields -->
+              <div style="display:flex;gap:4px;margin-bottom:4px">
+                <input type="text" id="thumbLine1Input" value="${s.thumbnailLine1 || ""}" placeholder="Line 1 (e.g. 7'7&quot;)" style="flex:1;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--gold);font-family:'Montserrat',sans-serif;font-weight:900;font-size:11px" oninput="updateThumbPreview()">
+                <input type="text" id="thumbLine2Input" value="${s.thumbnailLine2 || ""}" placeholder="Line 2 (e.g. WARRIOR)" style="flex:1.5;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'Montserrat',sans-serif;font-weight:900;font-size:11px;text-transform:uppercase" oninput="updateThumbPreview()">
+              </div>
               <div style="display:flex;gap:4px">
+                <button class="btn btn-gold btn-sm" onclick="saveThumbText('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">Save</button>
                 <button class="btn btn-dim btn-sm" onclick="generateThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">${s.thumbnailUrl ? "Regen" : "Generate"}</button>
                 <button class="btn btn-dim btn-sm" onclick="uploadThumbnail('${rowId}')" style="text-transform:none;letter-spacing:0;flex:1">Upload</button>
               </div>
+              ${s.thumbnailUrl ? `<div style="margin-top:4px;font-size:8px;color:var(--text3)">Saved: <a href="${s.thumbnailUrl}" target="_blank" style="color:var(--gold-dim)">view</a></div>` : ""}
             </div>
             <input type="file" id="thumbFileInput" accept="image/png,image/jpeg" style="display:none">
 
@@ -2308,14 +2323,7 @@
         const totalDur = scriptData?.voiceoverDuration || 60;
         const clipDur = totalDur / clipUrls.length;
 
-        // Split text into chunks, one per clip
-        const allWords = fullText.split(/\s+/).filter(Boolean);
-        const wordsPerClip = Math.ceil(allWords.length / clipUrls.length);
-
-        // Store captions globally so selectClip can show exact text in sidebar
-        window.clipCaptionsHtml = clipUrls.map((c, i) => {
-          const startWord = i * wordsPerClip;
-          const words = allWords.slice(startWord, startWord + wordsPerClip);
+        function colorWordsHtml(words) {
           return words
             .map((w) => {
               const clean = w.replace(/[.,!?;:'"()\-—]/g, "");
@@ -2330,7 +2338,30 @@
               return w;
             })
             .join(" ");
-        });
+        }
+
+        // Build captions per clip — use voiceover timestamps if available for accurate sync
+        const wordTs = s?.voiceoverTimestamps;
+        if (wordTs && wordTs.length > 0) {
+          // Each clip covers a time range — find words that fall within it
+          window.clipCaptionsHtml = clipUrls.map((c, i) => {
+            const clipStart = i * clipDur;
+            const clipEnd = clipStart + clipDur;
+            const wordsInRange = wordTs
+              .filter((w) => w.start >= clipStart && w.start < clipEnd)
+              .map((w) => w.word);
+            return colorWordsHtml(wordsInRange);
+          });
+        } else {
+          // Fallback: even word split
+          const allWords = fullText.split(/\s+/).filter(Boolean);
+          const wordsPerClip = Math.ceil(allWords.length / clipUrls.length);
+          window.clipCaptionsHtml = clipUrls.map((c, i) => {
+            const startWord = i * wordsPerClip;
+            const words = allWords.slice(startWord, startWord + wordsPerClip);
+            return colorWordsHtml(words);
+          });
+        }
         const clipCaptions = window.clipCaptionsHtml;
 
         timeline.innerHTML = clipUrls
@@ -3649,6 +3680,10 @@
 
       // ── YouTube Search & Clip Modal ──
       let ytSelectedVideo = null;
+      // Remember last selected video so reopening the modal restores it
+      window._ytLastVideo = window._ytLastVideo || null;
+      window._ytLastSearchResults = window._ytLastSearchResults || null;
+      window._ytLastQuery = window._ytLastQuery || null;
 
       // Persistent clip queue (survives modal close/reopen)
       window.ytClipQueue = window.ytClipQueue || [];
@@ -3746,6 +3781,39 @@
         document.body.appendChild(modal);
         renderYTQueue();
 
+        // Restore previous search results and selected video
+        if (window._ytLastSearchResults?.length) {
+          const results = window._ytLastSearchResults;
+          if (window._ytLastQuery) {
+            document.getElementById("ytSearchInput").value =
+              window._ytLastQuery;
+          }
+          document.getElementById("ytResults").innerHTML = results
+            .map(
+              (v, i) => `
+          <div class="yt-result" data-idx="${i}" onclick="selectYouTubeResult(${i})">
+            <div class="yt-thumb"><img src="${v.thumbnail}" alt="" loading="lazy"></div>
+            <div class="yt-info">
+              <div class="yt-title">${v.title}</div>
+              <div class="yt-channel">${v.channel}</div>
+            </div>
+          </div>
+        `,
+            )
+            .join("");
+          window.ytSearchResults = results;
+
+          // Re-select the last chosen video
+          if (window._ytLastVideo) {
+            const idx = results.findIndex(
+              (v) => v.videoId === window._ytLastVideo.videoId,
+            );
+            if (idx >= 0) {
+              selectYouTubeResult(idx);
+            }
+          }
+        }
+
         // Enter to search
         document
           .getElementById("ytSearchInput")
@@ -3791,12 +3859,15 @@
           .join("");
 
         window.ytSearchResults = results;
+        window._ytLastSearchResults = results;
+        window._ytLastQuery = query;
       }
 
       function selectYouTubeResult(idx) {
         const video = window.ytSearchResults[idx];
         if (!video) return;
         ytSelectedVideo = video;
+        window._ytLastVideo = video;
 
         document
           .querySelectorAll(".yt-result")
@@ -3941,6 +4012,8 @@
 
         if (result.ok) {
           toast(`Clip #${slot} replaced from YouTube`);
+          // Mark clip as approved
+          await apiPost("approve-clip", { rowId: curScript, slot });
           // Auto-save to library
           if (result.url) {
             await apiPost("save-clip-library", {
@@ -4164,6 +4237,11 @@
             });
             if (result.ok) {
               successCount++;
+              // Mark clip as approved
+              await apiPost("approve-clip", {
+                rowId: curScript,
+                slot: item.slot,
+              });
               // Auto-save to library
               if (result.url) {
                 await apiPost("save-clip-library", {
@@ -4663,26 +4741,40 @@
         const sentences = splitIntoSegments(s.hookLine, s.script, segments);
         const clips = s.clipBriefs || [];
 
-        // Build clip URLs for each 3s cut using the actual 18-slot clip list
-        const cutClips = [];
-        const TOTAL = 18;
+        // Build clip URLs using the same order as the sidebar clip list (curClipList)
+        // This ensures preview matches what the user sees in the timeline
+        const clipList = curClipList.length > 0 ? curClipList : clips;
+        const TOTAL = clipList.length || 18;
         const pvTotalTime = s.voiceoverDuration || 60;
         const clipDurPv = pvTotalTime / TOTAL;
-        for (let i = 0; i < TOTAL; i++) {
-          const brief = clips.find((c) => c.slot === i + 1);
-          cutClips.push({
-            start: i * clipDurPv,
-            duration: clipDurPv,
-            url: brief?.clipUrl || `${R2}/${s.rowId}/clip_${i + 1}.mp4`,
-            slot: i + 1,
-            isPhoto: brief?.source === "photo",
-          });
-        }
+        const cutClips = clipList.map((c, i) => ({
+          start: i * clipDurPv,
+          duration: clipDurPv,
+          url:
+            c.clipUrl ||
+            c.url ||
+            `${R2}/${s.rowId}/clip_${c.slot || i + 1}.mp4`,
+          slot: c.slot || i + 1,
+          isPhoto: c.source === "photo",
+        }));
 
         // Build captions from ElevenLabs word timestamps if available, else WPM estimate
         const MAX_WORDS = 4;
         const captions = [];
         const wordTs = s.voiceoverTimestamps; // [{word, start, end}, ...]
+        console.log("[Preview Debug]", {
+          hasTimestamps: !!wordTs,
+          timestampCount: wordTs?.length || 0,
+          voiceoverDuration: s.voiceoverDuration,
+          voiceoverUrl: s.voiceoverUrl?.slice(0, 50),
+          scriptKeys: Object.keys(s).filter(
+            (k) =>
+              k.includes("voice") ||
+              k.includes("timestamp") ||
+              k.includes("Voice") ||
+              k.includes("Timestamp"),
+          ),
+        });
 
         function colorWord(word) {
           const clean = word.replace(/[.,!?;:'"()\-—]/g, "");
@@ -4767,7 +4859,14 @@
           <audio id="pvAudio" preload="auto"></audio>
           <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,.6) 100%);pointer-events:none"></div>
           <div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.85));pointer-events:none"></div>
-          <div id="pvCaption" style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:80%;text-align:center;font-size:16px;font-weight:900;line-height:1.3;letter-spacing:0.5px;transition:opacity 0.15s;font-family:'DM Sans',sans-serif;-webkit-text-stroke:1.5px #000;paint-order:stroke fill;text-shadow:0 1px 3px rgba(0,0,0,1),0 2px 6px rgba(0,0,0,0.8),0 0 12px rgba(0,0,0,0.6)"></div>
+          <!-- Outro card overlay -->
+          <div id="pvOutro" style="position:absolute;inset:0;background:#000;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;opacity:0;transition:opacity 0.4s">
+            <div style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);width:60%;height:50%;border-radius:50%;filter:blur(30px);background:radial-gradient(ellipse,rgba(200,140,40,0.25) 0%,transparent 70%);opacity:0.5"></div>
+            <div id="pvOutroName" style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:22px;color:#d4920f;letter-spacing:0.02em;text-shadow:0 0 25px rgba(212,146,15,0.2);z-index:2;text-align:center"></div>
+            <div style="width:50px;height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,0.4),transparent);margin:10px 0;z-index:2" id="pvOutroLine"></div>
+            <div style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:8px;color:rgba(245,166,35,0.4);letter-spacing:0.3em;z-index:2">SPORTS LORE</div>
+          </div>
+          <div id="pvCaption" style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:80%;text-align:center;font-size:16px;font-weight:900;line-height:1.3;letter-spacing:0.5px;transition:opacity 0.15s;font-family:'DM Sans',sans-serif;-webkit-text-stroke:1.5px #000;paint-order:stroke fill;text-shadow:0 1px 3px rgba(0,0,0,1),0 2px 6px rgba(0,0,0,0.8),0 0 12px rgba(0,0,0,0.6);z-index:60"></div>
           <div style="position:absolute;top:10px;left:10px;font-size:7px;font-weight:800;color:rgba(245,166,35,.7);letter-spacing:2px;background:rgba(0,0,0,.4);padding:2px 6px;border-radius:3px">SPORTS LORE</div>
           <div id="pvLowerThird" style="position:absolute;bottom:60px;left:10px;opacity:0;transition:opacity 0.3s">
             <div style="font-size:6px;color:rgba(245,166,35,.7);letter-spacing:2px;display:flex;align-items:center;gap:4px"><span style="display:block;width:8px;height:1px;background:#F5A623"></span>${(s.storyType || "").replace(/_/g, " ").toUpperCase()}</div>
@@ -4821,8 +4920,68 @@
       `;
         document.body.appendChild(modal);
 
+        // Detect kicker (last sentence) start time for outro card
+        let kickerStart = totalDur; // default: no outro
+        if (captions.length > 0) {
+          // Get the last 1-2 sentences of the script
+          const fullScript =
+            (s.hookLine ? s.hookLine + ". " : "") + (s.script || "");
+          const sentences = fullScript.split(/(?<=[.!?])\s+/).filter(Boolean);
+          const lastSentence =
+            sentences.length > 0 ? sentences[sentences.length - 1] : "";
+          // Get first 3 distinctive words (skip common words)
+          const lastSentenceWords = lastSentence.split(/\s+/).filter(Boolean);
+          const searchWord = lastSentenceWords.find(
+            (w) =>
+              w.length > 3 &&
+              !/^(the|and|was|that|this|with|from|have|been|were|they|their|than|what|when|will|would|could|should|into|just|also|more|some|only|over|such|then|them|these|those|each|which|about|after|before|between|under|again|once|here|there|where|does|did|has|had|its|his|her|our|your|who|how|all|but|not|for)$/i.test(
+                w,
+              ),
+          );
+
+          if (searchWord) {
+            // Find the caption that contains this distinctive word from the last sentence
+            // Search backwards so we find the latest occurrence
+            for (let i = captions.length - 1; i >= 0; i--) {
+              const capWords = captions[i].text.toLowerCase();
+              if (
+                capWords.includes(
+                  searchWord.toLowerCase().replace(/[.,!?;:'"()\-—]/g, ""),
+                )
+              ) {
+                kickerStart = captions[i].start;
+                break;
+              }
+            }
+          }
+
+          // Fallback: use last 3 caption groups if matching failed
+          if (kickerStart >= totalDur && captions.length >= 3) {
+            kickerStart = captions[captions.length - 3].start;
+          }
+
+          // Only use outro if kicker is within the last 12 seconds
+          const outroDur = totalDur - kickerStart;
+          console.log("[Outro Debug]", {
+            lastSentence: lastSentence?.slice(0, 60),
+            searchWord,
+            kickerStart: kickerStart.toFixed(1),
+            outroDur: outroDur.toFixed(1),
+            totalDur,
+          });
+          if (outroDur < 1.5 || outroDur > 12) kickerStart = totalDur;
+        }
+
         // Store preview data globally
-        window.pvData = { cutClips, captions, totalDur, segments, sentences };
+        window.pvData = {
+          cutClips,
+          captions,
+          totalDur,
+          segments,
+          sentences,
+          kickerStart,
+          playerName: s.playerName || "",
+        };
         window.pvTime = 0;
         window.pvPlaying = false;
         window.pvInterval = null;
@@ -4856,9 +5015,15 @@
           window.pvVideos[url] = v;
           v.load();
         });
-        // Show first clip
+        // Show first clip and start playing it
         const firstVid = window.pvVideos[cutClips[0]?.url];
-        if (firstVid) firstVid.style.display = "block";
+        if (firstVid) {
+          firstVid.style.display = "block";
+          if (firstVid.tagName === "VIDEO") {
+            firstVid.currentTime = 0;
+            firstVid.play().catch(() => {});
+          }
+        }
         window.pvActiveUrl = cutClips[0]?.url;
 
         // Populate audio timeline panel
@@ -5433,6 +5598,16 @@
       function pvReset() {
         pvStop();
         window.pvTime = 0;
+        // Reset outro
+        const outroEl = document.getElementById("pvOutro");
+        if (outroEl) {
+          outroEl.style.display = "none";
+          outroEl.style.opacity = "0";
+        }
+        const outroName = document.getElementById("pvOutroName");
+        if (outroName) outroName.textContent = "";
+        const vc = document.getElementById("pvVideoContainer");
+        if (vc) vc.style.opacity = "1";
         pvRender(0);
         const scrub = document.getElementById("pvScrubber");
         if (scrub) scrub.value = 0;
@@ -5473,13 +5648,33 @@
       }
 
       function pvRender(t) {
-        const { cutClips, captions, totalDur } = window.pvData;
+        const { cutClips, captions, totalDur, kickerStart, playerName } =
+          window.pvData;
 
         // Update progress
         const prog = document.getElementById("pvProgress");
         const timeLabel = document.getElementById("pvTimeLabel");
         if (prog) prog.style.width = (t / totalDur) * 100 + "%";
         if (timeLabel) timeLabel.textContent = t.toFixed(1) + "s";
+
+        // ── Outro card: show during kicker ──
+        const outroEl = document.getElementById("pvOutro");
+        const videoContainer = document.getElementById("pvVideoContainer");
+        if (outroEl && kickerStart < totalDur) {
+          if (t >= kickerStart) {
+            outroEl.style.display = "flex";
+            outroEl.style.opacity = "1";
+            // Hide all clip videos so they don't render on top
+            if (videoContainer) videoContainer.style.opacity = "0";
+            const nameEl = document.getElementById("pvOutroName");
+            if (nameEl && !nameEl.textContent)
+              nameEl.textContent = (playerName || "").toUpperCase();
+          } else {
+            outroEl.style.display = "none";
+            outroEl.style.opacity = "0";
+            if (videoContainer) videoContainer.style.opacity = "1";
+          }
+        }
 
         // Cycle through clips — swap visibility of preloaded videos (no load delay)
         const curCut = cutClips.find(
@@ -5679,6 +5874,56 @@
         };
         input.click();
       }
+
+      // ── Thumbnail Preview ──
+      function updateThumbPreview() {
+        const l1 = document.getElementById("thumbLine1Input")?.value || "";
+        const l2 = document.getElementById("thumbLine2Input")?.value || "";
+        const el1 = document.getElementById("thumbLine1");
+        const el2 = document.getElementById("thumbLine2");
+        if (el1) el1.textContent = l1;
+        if (el2) {
+          el2.textContent = l2.toUpperCase();
+          fitThumbLine2();
+        }
+      }
+
+      function fitThumbLine2() {
+        const el = document.getElementById("thumbLine2");
+        if (!el || !el.textContent) return;
+        const container = el.parentElement;
+        if (!container) return;
+        const maxW = container.offsetWidth * 0.85;
+        let size = 24;
+        el.style.fontSize = size + "px";
+        while (el.scrollWidth > maxW && size > 8) {
+          size -= 0.5;
+          el.style.fontSize = size + "px";
+        }
+      }
+
+      async function saveThumbText(rowId) {
+        const l1 = document.getElementById("thumbLine1Input")?.value || "";
+        const l2 = document.getElementById("thumbLine2Input")?.value || "";
+        await apiPost("edit-script", {
+          rowId,
+          field: "thumbnailLine1",
+          value: l1,
+        });
+        await apiPost("edit-script", {
+          rowId,
+          field: "thumbnailLine2",
+          value: l2,
+        });
+        toast("Thumbnail text saved");
+      }
+
+      function openThumbEditor() {
+        document.getElementById("thumbLine1Input")?.focus();
+      }
+
+      // Auto-fit on script load
+      setTimeout(() => fitThumbLine2(), 100);
 
       // ── Comments ──
       async function loadComments(rowId) {
