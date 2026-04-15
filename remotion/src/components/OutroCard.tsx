@@ -51,7 +51,6 @@ export const OutroCard: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        backgroundColor: `rgba(0,0,0,${bgOpacity})`,
         zIndex: 90,
       }}
     >

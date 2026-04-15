@@ -21,7 +21,7 @@ export const CaptionOverlay: React.FC<{ captions: Caption[] }> = ({
   const { fps } = useVideoConfig();
 
   return (
-    <AbsoluteFill style={{ pointerEvents: "none" }}>
+    <AbsoluteFill style={{ pointerEvents: "none", zIndex: 95 }}>
       {captions.map((cap, i) => {
         const startFrame = Math.round(cap.start * fps);
         const durationFrames = Math.max(Math.round(cap.duration * fps), 1);

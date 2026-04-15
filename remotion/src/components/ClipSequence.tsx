@@ -23,22 +23,13 @@ export const ClipSequence: React.FC<{
         const durationFrames = Math.round(clip.duration * fps);
         const isOutroClip = outroStart !== null && clip.start >= outroStart;
 
-        if (isOutroClip) {
-          // Black frame for outro
-          return (
-            <Sequence
-              key={i}
-              from={startFrame}
-              durationInFrames={durationFrames}
-            >
-              <AbsoluteFill style={{ backgroundColor: "#000" }} />
-            </Sequence>
-          );
-        }
-
         return (
           <Sequence key={i} from={startFrame} durationInFrames={durationFrames}>
-            <ClipWithKenBurns url={clip.url} durationFrames={durationFrames} />
+            <ClipWithKenBurns
+              url={clip.url}
+              durationFrames={durationFrames}
+              isOutro={isOutroClip}
+            />
           </Sequence>
         );
       })}
@@ -49,13 +40,25 @@ export const ClipSequence: React.FC<{
 const ClipWithKenBurns: React.FC<{
   url: string;
   durationFrames: number;
-}> = ({ url, durationFrames }) => {
+  isOutro?: boolean;
+}> = ({ url, durationFrames, isOutro }) => {
   const frame = useCurrentFrame();
 
   // Ken Burns: slow zoom from 100% to 112%
   const scale = interpolate(frame, [0, durationFrames], [1.0, 1.12], {
     extrapolateRight: "clamp",
   });
+
+  // Outro: blur and darken over the first 15 frames (~0.5s)
+  const blurAmount = isOutro
+    ? interpolate(frame, [0, 15], [0, 12], { extrapolateRight: "clamp" })
+    : 0;
+  const darkenAmount = isOutro
+    ? interpolate(frame, [0, 15], [1, 0.2], { extrapolateRight: "clamp" })
+    : 1;
+  const saturation = isOutro
+    ? interpolate(frame, [0, 15], [0.85, 0.2], { extrapolateRight: "clamp" })
+    : 0.85;
 
   return (
     <AbsoluteFill
@@ -71,7 +74,7 @@ const ClipWithKenBurns: React.FC<{
           height: "100%",
           objectFit: "cover",
           transform: `scale(${scale})`,
-          filter: "saturate(0.85) contrast(1.1)",
+          filter: `saturate(${saturation}) contrast(1.1) blur(${blurAmount}px) brightness(${darkenAmount})`,
         }}
       />
     </AbsoluteFill>
