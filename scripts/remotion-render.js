@@ -87,14 +87,41 @@ async function renderVideo(input) {
   const finalOutput =
     outputPath || "/tmp/remotion-render-" + Date.now() + ".mp4";
 
+  // Pre-download all remote assets to local files for reliable rendering
+  const dlDir = "/tmp/remotion-assets-" + Date.now();
+  fs.mkdirSync(dlDir, { recursive: true });
+
+  function dlFile(url, filename) {
+    const out = path.join(dlDir, filename);
+    console.error("  Downloading " + filename + "...");
+    execSync(`curl -sL -o "${out}" "${url}"`, {
+      timeout: 30000,
+      stdio: "pipe",
+    });
+    return "file://" + out;
+  }
+
+  console.error(
+    "Pre-downloading " + (clips || []).length + " clips + audio...",
+  );
+  const localClips = (clips || []).map((clip, i) => ({
+    ...clip,
+    url: clip.url ? dlFile(clip.url, `clip_${i}.mp4`) : clip.url,
+  }));
+  const localVoiceover = voiceoverUrl
+    ? dlFile(voiceoverUrl, "voiceover.mp3")
+    : null;
+  const localMusic = musicUrl ? dlFile(musicUrl, "music.mp3") : null;
+  console.error("All assets downloaded to " + dlDir);
+
   console.error("Selecting composition...");
   const composition = await selectComposition({
     serveUrl,
     id: "SportsLoreShort",
     inputProps: {
-      clips: clips || [],
-      voiceoverUrl: voiceoverUrl || null,
-      musicUrl: musicUrl || null,
+      clips: localClips,
+      voiceoverUrl: localVoiceover,
+      musicUrl: localMusic,
       captions: captions || [],
       playerName: playerName || "",
       storyType: input.storyType || "forgotten_legend",
@@ -114,9 +141,9 @@ async function renderVideo(input) {
     codec: "h264",
     outputLocation: finalOutput,
     inputProps: {
-      clips: clips || [],
-      voiceoverUrl: voiceoverUrl || null,
-      musicUrl: musicUrl || null,
+      clips: localClips,
+      voiceoverUrl: localVoiceover,
+      musicUrl: localMusic,
       captions: captions || [],
       playerName: playerName || "",
       storyType: input.storyType || "forgotten_legend",
@@ -142,6 +169,11 @@ async function renderVideo(input) {
   console.error(
     `Render complete: ${(stat.size / 1024 / 1024).toFixed(1)}MB at ${finalOutput}`,
   );
+
+  // Cleanup downloaded assets
+  try {
+    fs.rmSync(dlDir, { recursive: true, force: true });
+  } catch {}
 
   return { ok: true, path: finalOutput, size: stat.size };
 }
