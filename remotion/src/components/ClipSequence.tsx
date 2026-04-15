@@ -49,16 +49,11 @@ const ClipWithKenBurns: React.FC<{
     extrapolateRight: "clamp",
   });
 
-  // Outro: darken gradually, reaching full black by the end
+  // Outro: quick fade to full black (0.5s transition, then pure black)
   const darkenOpacity = isOutro
-    ? interpolate(
-        frame,
-        [0, 10, durationFrames - 15, durationFrames],
-        [0, 0.75, 0.85, 1],
-        {
-          extrapolateRight: "clamp",
-        },
-      )
+    ? interpolate(frame, [0, 15], [0, 1], {
+        extrapolateRight: "clamp",
+      })
     : 0;
 
   return (
