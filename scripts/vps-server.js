@@ -309,7 +309,7 @@ const server = http.createServer(async (req, res) => {
 
         // Run render (can take 2-5 minutes)
         const result = execSync(`cat "${inputFile}" | node "${renderScript}"`, {
-          timeout: 600000,
+          timeout: 1800000, // 30 minutes for Remotion renders
           stdio: ["pipe", "pipe", "pipe"],
           maxBuffer: 10 * 1024 * 1024,
         });

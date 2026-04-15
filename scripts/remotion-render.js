@@ -126,8 +126,8 @@ async function renderVideo(input) {
     chromiumOptions: {
       gl: "swangle",
     },
-    concurrency: 2,
-    timeoutInMilliseconds: 300000,
+    concurrency: 1, // safer on 8GB RAM VPS
+    timeoutInMilliseconds: 1200000, // 20 min per-frame timeout
     onProgress: ({ progress }) => {
       const pct = Math.round(progress * 100);
       if (pct > lastProgress) {
