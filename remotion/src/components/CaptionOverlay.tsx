@@ -15,20 +15,58 @@ type Caption = {
   color?: string;
 };
 
-export const CaptionOverlay: React.FC<{ captions: Caption[] }> = ({
-  captions,
-}) => {
-  const { fps } = useVideoConfig();
+export const CaptionOverlay: React.FC<{
+  captions: Caption[];
+  outroStart?: number | null;
+}> = ({ captions, outroStart }) => {
+  const { fps, durationInFrames } = useVideoConfig();
+
+  // During the outro, merge all remaining captions into one full sentence
+  let processedCaptions = captions;
+  if (outroStart !== null && outroStart !== undefined) {
+    const beforeOutro = captions.filter(
+      (c) => c.start + c.duration <= outroStart,
+    );
+    const duringOutro = captions.filter(
+      (c) => c.start + c.duration > outroStart,
+    );
+
+    if (duringOutro.length > 0) {
+      const fullText = duringOutro.map((c) => c.text).join(" ");
+      const outroCaption: Caption = {
+        text: fullText,
+        start: duringOutro[0].start,
+        duration:
+          duringOutro[duringOutro.length - 1].start +
+          duringOutro[duringOutro.length - 1].duration -
+          duringOutro[0].start +
+          2, // extend 2s to hold on screen
+        color: "white",
+      };
+      processedCaptions = [...beforeOutro, outroCaption];
+    }
+  }
 
   return (
     <AbsoluteFill style={{ pointerEvents: "none", zIndex: 95 }}>
-      {captions.map((cap, i) => {
+      {processedCaptions.map((cap, i) => {
         const startFrame = Math.round(cap.start * fps);
-        const durationFrames = Math.max(Math.round(cap.duration * fps), 1);
+        const durationFrames = Math.min(
+          Math.max(Math.round(cap.duration * fps), 1),
+          durationInFrames - startFrame,
+        );
+        const isOutroCap =
+          outroStart !== null &&
+          outroStart !== undefined &&
+          cap.start >= outroStart - 1;
 
         return (
           <Sequence key={i} from={startFrame} durationInFrames={durationFrames}>
-            <CaptionGroup text={cap.text} durationFrames={durationFrames} />
+            <CaptionGroup
+              text={cap.text}
+              durationFrames={durationFrames}
+              isOutro={isOutroCap}
+            />
           </Sequence>
         );
       })}
@@ -39,7 +77,8 @@ export const CaptionOverlay: React.FC<{ captions: Caption[] }> = ({
 const CaptionGroup: React.FC<{
   text: string;
   durationFrames: number;
-}> = ({ text, durationFrames }) => {
+  isOutro?: boolean;
+}> = ({ text, durationFrames, isOutro }) => {
   const frame = useCurrentFrame();
   const words = text.split(/\s+/);
 
@@ -47,6 +86,9 @@ const CaptionGroup: React.FC<{
   const opacity = interpolate(frame, [0, 4], [0, 1], {
     extrapolateRight: "clamp",
   });
+
+  // During outro, use slightly smaller font if text is long
+  const fontSize = isOutro && words.length > 8 ? 36 : 48;
 
   return (
     <AbsoluteFill
@@ -62,11 +104,11 @@ const CaptionGroup: React.FC<{
     >
       <div
         style={{
-          width: "70%",
+          width: isOutro ? "80%" : "70%",
           textAlign: "center",
           fontFamily: "Montserrat, sans-serif",
           fontWeight: 800,
-          fontSize: 48,
+          fontSize,
           lineHeight: 1.35,
           textShadow:
             "0 0 16px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.6)",

@@ -6,24 +6,20 @@ import {
   interpolate,
   spring,
 } from "remotion";
-import { BRAND_GOLD, BRAND_GOLD_BRIGHT } from "../lib/colors";
+import { BRAND_GOLD } from "../lib/colors";
 
 export const OutroCard: React.FC<{
   outroStart: number;
   playerName: string;
 }> = ({ outroStart, playerName }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
   const currentTime = frame / fps;
 
   if (currentTime < outroStart) return null;
 
   const outroFrame = frame - Math.round(outroStart * fps);
-
-  // Fade in the black background over 12 frames (~0.4s)
-  const bgOpacity = interpolate(outroFrame, [0, 12], [0, 1], {
-    extrapolateRight: "clamp",
-  });
+  const totalOutroFrames = durationInFrames - Math.round(outroStart * fps);
 
   // Player name springs in
   const nameSpring = spring({
@@ -65,13 +61,13 @@ export const OutroCard: React.FC<{
           height: "40%",
           borderRadius: "50%",
           background:
-            "radial-gradient(ellipse, rgba(200,140,40,0.15) 0%, transparent 70%)",
+            "radial-gradient(ellipse, rgba(200,140,40,0.12) 0%, transparent 70%)",
           filter: "blur(40px)",
-          opacity: bgOpacity,
+          opacity: nameOpacity,
         }}
       />
 
-      {/* Player name */}
+      {/* Player name — with strong text shadow for readability */}
       <div
         style={{
           position: "absolute",
@@ -83,10 +79,13 @@ export const OutroCard: React.FC<{
           fontSize: 64,
           color: BRAND_GOLD,
           letterSpacing: "0.02em",
-          textShadow: `0 0 40px rgba(212,146,15,0.2)`,
+          textShadow:
+            "0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1), 0 0 60px rgba(212,146,15,0.15)",
           textAlign: "center",
           opacity: nameOpacity,
           whiteSpace: "nowrap",
+          WebkitTextStroke: "1px rgba(0,0,0,0.3)",
+          paintOrder: "stroke fill" as any,
         }}
       >
         {playerName.toUpperCase()}
@@ -101,11 +100,12 @@ export const OutroCard: React.FC<{
           transform: "translateX(-50%)",
           width: 200 * lineProgress,
           height: 1,
-          background: `linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.15) 15%, rgba(245,166,35,0.5) 50%, rgba(245,166,35,0.15) 85%, transparent 100%)`,
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.15) 15%, rgba(245,166,35,0.5) 50%, rgba(245,166,35,0.15) 85%, transparent 100%)",
         }}
       />
 
-      {/* SPORTS LORE wordmark */}
+      {/* SPORTS LORE wordmark — with shadow for readability */}
       <div
         style={{
           position: "absolute",
@@ -116,8 +116,10 @@ export const OutroCard: React.FC<{
           fontWeight: 800,
           fontSize: 22,
           color: BRAND_GOLD,
-          opacity: brandOpacity * 0.45,
+          opacity: brandOpacity * 0.5,
           letterSpacing: "0.35em",
+          textShadow:
+            "0 0 20px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,1)",
         }}
       >
         SPORTS LORE

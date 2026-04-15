@@ -58,7 +58,7 @@ export const SportsLoreShort: React.FC<VideoProps> = ({
       )}
 
       {/* Layer 9: Captions — on top of everything including outro */}
-      <CaptionOverlay captions={captions} />
+      <CaptionOverlay captions={captions} outroStart={outroStart} />
 
       {/* Audio: Voiceover */}
       {voiceoverUrl && <Audio src={voiceoverUrl} volume={1.0} />}

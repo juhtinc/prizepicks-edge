@@ -49,9 +49,16 @@ const ClipWithKenBurns: React.FC<{
     extrapolateRight: "clamp",
   });
 
-  // Outro: darken with overlay (no CSS blur — too heavy for Chrome Headless)
+  // Outro: darken gradually, reaching full black by the end
   const darkenOpacity = isOutro
-    ? interpolate(frame, [0, 15], [0, 0.85], { extrapolateRight: "clamp" })
+    ? interpolate(
+        frame,
+        [0, 10, durationFrames - 15, durationFrames],
+        [0, 0.75, 0.85, 1],
+        {
+          extrapolateRight: "clamp",
+        },
+      )
     : 0;
 
   return (
