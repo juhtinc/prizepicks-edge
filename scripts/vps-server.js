@@ -280,7 +280,15 @@ const server = http.createServer(async (req, res) => {
         );
 
         // Write render script to disk
-        const renderScript = path.join("/opt/sports-lore", "vps-render.js");
+        // Use Remotion renderer if available, fall back to FFmpeg
+        const remotionScript = path.join(
+          "/opt/sports-lore",
+          "remotion-render.js",
+        );
+        const ffmpegScript = path.join("/opt/sports-lore", "vps-render.js");
+        const renderScript = fs.existsSync(remotionScript)
+          ? remotionScript
+          : ffmpegScript;
         const outputPath = "/tmp/render-" + Date.now() + ".mp4";
 
         // Pass input data via temp file (too large for stdin in some cases)
