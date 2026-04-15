@@ -41,24 +41,24 @@ export const SportsLoreShort: React.FC<VideoProps> = ({
       {/* Layer 4: Bottom gradient for text readability */}
       {!isOutro && <BottomGradient />}
 
-      {/* Layer 5: Captions */}
-      <CaptionOverlay captions={captions} />
-
-      {/* Layer 6: Lower third (player name + story type) */}
+      {/* Layer 5: Lower third (player name + story type) */}
       {!isOutro && (
         <LowerThird playerName={playerName} storyType={storyType || ""} />
       )}
 
-      {/* Layer 7: Watermark */}
+      {/* Layer 6: Watermark */}
       {!isOutro && <Watermark />}
 
-      {/* Layer 8: Progress bar */}
+      {/* Layer 7: Progress bar */}
       <ProgressBar totalDuration={duration} />
 
-      {/* Layer 9: Outro card */}
+      {/* Layer 8: Outro card */}
       {outroStart !== null && (
         <OutroCard outroStart={outroStart} playerName={playerName} />
       )}
+
+      {/* Layer 9: Captions — on top of everything including outro */}
+      <CaptionOverlay captions={captions} />
 
       {/* Audio: Voiceover */}
       {voiceoverUrl && <Audio src={voiceoverUrl} volume={1.0} />}

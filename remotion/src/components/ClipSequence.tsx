@@ -64,6 +64,7 @@ const ClipWithKenBurns: React.FC<{
       }}
     >
       <OffthreadVideo
+        muted
         src={url}
         style={{
           width: "100%",
