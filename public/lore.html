@@ -2791,6 +2791,8 @@
           wasApproved ? `Clip #${slot} unapproved` : `Clip #${slot} approved ✓`,
         );
         await apiPost("approve-clip", { rowId: curScript, slot });
+        // Check if all clips now approved → auto-render
+        if (!wasApproved) checkAutoRender(curScript);
       }
 
       async function rejectClip(idx) {
@@ -2863,9 +2865,33 @@
         const result = await apiPost("approve-all", { rowId });
         if (result.ok) {
           toast(`${result.approved} clips approved ✓`);
-          selectScript(rowId); // Refresh to show updated state
+          selectScript(rowId);
+          // Check if ready to auto-render
+          checkAutoRender(rowId);
         } else {
           toast("Failed to approve clips");
+        }
+      }
+
+      // Auto-render: check if all requirements met and trigger render
+      async function checkAutoRender(rowId) {
+        const { script } = await api("script-detail", { rowId });
+        if (!script) return;
+        // Already rendered?
+        if (script.renderUrl) return;
+        // Check requirements
+        const clips = script.clipBriefs || [];
+        const sourcedClips = clips.filter((c) => c.clipUrl);
+        const approvedClips = clips.filter((c) => c.approved);
+        const hasVoiceover = !!script.voiceoverUrl;
+        // Need at least 15 clips sourced (3 may be outro), all sourced clips approved, and voiceover
+        if (
+          sourcedClips.length >= 15 &&
+          approvedClips.length >= sourcedClips.length &&
+          hasVoiceover
+        ) {
+          toast("All requirements met — auto-starting render...");
+          renderVPS(rowId);
         }
       }
 
@@ -3212,22 +3238,81 @@
 
       // ── Render via VPS (free FFmpeg) ──
       async function renderVPS(rowId) {
-        if (!confirm("Render video via VPS (free)? This takes 2-5 minutes."))
+        if (
+          !confirm(
+            "Render video via VPS? This takes 15-30 minutes with Remotion.",
+          )
+        )
           return;
-        toast(
-          "Rendering on VPS — this takes 2-5 minutes. Refresh the page when done to see the video.",
-        );
+        toast("Starting render on VPS...");
         try {
           const result = await apiPost("render-vps", { rowId });
           if (result.ok) {
-            toast(
-              result.message || "Render started — refresh in a few minutes",
-            );
+            toast("Render started — tracking progress below");
+            startRenderProgress(rowId);
           } else {
             toast("Render failed: " + (result.error || "unknown"));
           }
         } catch (e) {
           toast("Render error: " + e.message);
+        }
+      }
+
+      // Poll VPS for render progress
+      let renderProgressInterval = null;
+      function startRenderProgress(rowId) {
+        // Create progress bar toast
+        const container = document.getElementById("toastContainer");
+        const bar = document.createElement("div");
+        bar.id = "renderProgressBar";
+        bar.className = "toast-item";
+        bar.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;min-width:220px">
+            <div style="font-size:10px;color:var(--text2);white-space:nowrap" id="renderProgressLabel">Rendering: 0%</div>
+            <div style="flex:1;height:6px;background:var(--bg5);border-radius:3px;overflow:hidden">
+              <div id="renderProgressFill" style="height:100%;width:0%;background:var(--gold);border-radius:3px;transition:width 1s"></div>
+            </div>
+            <button class="toast-x" onclick="stopRenderProgress()">&times;</button>
+          </div>`;
+        container.appendChild(bar);
+
+        // Poll every 15 seconds
+        renderProgressInterval = setInterval(async () => {
+          try {
+            const status = await api("vps-render-status");
+            const label = document.getElementById("renderProgressLabel");
+            const fill = document.getElementById("renderProgressFill");
+            if (!label || !fill) {
+              stopRenderProgress();
+              return;
+            }
+
+            if (status.rendering) {
+              const pct = status.progress || 0;
+              label.textContent = "Rendering: " + pct + "%";
+              fill.style.width = pct + "%";
+            } else {
+              // Not rendering anymore — check if done
+              const { script } = await api("script-detail", { rowId });
+              if (script?.renderUrl) {
+                label.textContent = "Render complete! ✓";
+                fill.style.width = "100%";
+                fill.style.background = "var(--green)";
+                toast("Render complete — refresh to see the video");
+                stopRenderProgress();
+                selectScript(rowId);
+              } else {
+                label.textContent = "Waiting for render...";
+              }
+            }
+          } catch {}
+        }, 15000);
+      }
+
+      function stopRenderProgress() {
+        if (renderProgressInterval) {
+          clearInterval(renderProgressInterval);
+          renderProgressInterval = null;
         }
       }
 

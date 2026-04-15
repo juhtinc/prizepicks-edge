@@ -470,6 +470,41 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: e.message.slice(0, 200) }));
       }
     });
+  } else if (req.method === "GET" && req.url === "/render-status") {
+    // Check if a render is currently in progress
+    try {
+      const { execSync: es } = require("child_process");
+      const procs = es("ps aux | grep remotion-render | grep -v grep | wc -l", {
+        stdio: "pipe",
+      })
+        .toString()
+        .trim();
+      const isRendering = parseInt(procs) > 0;
+      let progress = 0;
+      let fileSize = 0;
+      if (isRendering) {
+        try {
+          const files = es(
+            "ls -la /tmp/react-motion-render*/pre-encode.mp4 2>/dev/null | tail -1",
+            { stdio: "pipe" },
+          )
+            .toString()
+            .trim();
+          const match = files.match(/(\d+)\s+\w+\s+\d+\s+[\d:]+\s+/);
+          if (match) fileSize = parseInt(match[1]);
+          // Estimate: ~35MB for a 58s video at 1080x1920
+          progress = Math.min(
+            Math.round((fileSize / (35 * 1024 * 1024)) * 100),
+            99,
+          );
+        } catch {}
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ rendering: isRendering, progress, fileSize }));
+    } catch (e) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ rendering: false, progress: 0 }));
+    }
   } else if (req.method === "GET" && req.url === "/health") {
     res.writeHead(200);
     res.end(JSON.stringify({ status: "ok", warp: USE_WARP }));
