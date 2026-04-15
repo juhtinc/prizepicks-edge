@@ -2364,8 +2364,51 @@
         }
         const clipCaptions = window.clipCaptionsHtml;
 
+        // Detect which clips are covered by the outro
+        let outroClipStart = clipUrls.length; // default: no outro clips
+        if (wordTs && wordTs.length > 0) {
+          const fullScriptText =
+            (s?.hookLine ? s.hookLine + ". " : "") + (s?.script || "");
+          const scriptSentences = fullScriptText
+            .split(/(?<=[.!?])\s+/)
+            .filter(Boolean);
+          const lastSent =
+            scriptSentences.length > 0
+              ? scriptSentences[scriptSentences.length - 1]
+              : "";
+          const searchW = lastSent
+            .split(/\s+/)
+            .find(
+              (w) =>
+                w.length > 3 &&
+                !/^(the|and|was|that|this|with|from|have|been|were|they|their|than|what|when|will|would|could|should|into|just|also|more|some|only|over|then|them|these|those|which|about|after|before|does|did|has|had|its|his|her|our|your|who|how|all|but|not|for)$/i.test(
+                  w,
+                ),
+            );
+          if (searchW) {
+            const cleanSearch = searchW
+              .toLowerCase()
+              .replace(/[.,!?;:'"()\-—]/g, "");
+            for (let wi = wordTs.length - 1; wi >= 0; wi--) {
+              if (
+                wordTs[wi].word
+                  .toLowerCase()
+                  .replace(/[.,!?;:'"()\-—]/g, "") === cleanSearch
+              ) {
+                const kickerTime = wordTs[wi].start;
+                outroClipStart = Math.floor(kickerTime / clipDur);
+                break;
+              }
+            }
+          }
+          // Fallback
+          if (outroClipStart >= clipUrls.length)
+            outroClipStart = clipUrls.length - 2;
+        }
+
         timeline.innerHTML = clipUrls
           .map((c, i) => {
+            const isOutroClip = i >= outroClipStart;
             const approvalClass = c.approved
               ? "approved"
               : c.rejected
@@ -2382,11 +2425,15 @@
                   reasonLabel.replace(/"/g, "") +
                   '"></div>'
                 : '<div class="clip-status-dot pending" title="Pending"></div>';
+            const outroLabel = isOutroClip
+              ? '<span style="font-size:7px;color:rgba(245,166,35,0.6);background:rgba(245,166,35,0.1);padding:1px 4px;border-radius:2px;margin-left:4px;white-space:nowrap">OUTRO</span>'
+              : "";
             return `
         <div class="clip-row ${i === curClipIdx ? "active" : ""} ${approvalClass}" data-idx="${i}" data-slot="${c.slot}" onclick="selectClip(${i})"
-             draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropClip(event,${i})" ondragend="dragEnd(event)">
+             draggable="true" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dropClip(event,${i})" ondragend="dragEnd(event)"
+             ${isOutroClip ? 'style="opacity:0.45"' : ""}>
           ${statusDot}
-          <div class="clip-row-num">${i + 1}</div>
+          <div class="clip-row-num">${i + 1}${outroLabel}</div>
           <div class="clip-row-thumb">
             ${c.source === "photo" ? `<img src="${c.url}" class="clip-photo ${i % 2 === 0 ? "" : "zoom-out"}" style="animation:none">` : `<video src="${c.url}" muted preload="auto" onloadeddata="this.currentTime=0.5"></video>`}
           </div>
