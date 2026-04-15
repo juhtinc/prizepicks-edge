@@ -348,6 +348,30 @@ const server = http.createServer(async (req, res) => {
 
           fs.unlinkSync(outputPath);
 
+          // Callback to Vercel to save the render URL
+          if (json.callbackUrl) {
+            try {
+              const cbBody = JSON.stringify({
+                rowId,
+                url: publicUrl,
+                size: renderResult.size,
+                secret: json.callbackSecret || "",
+              });
+              execSync(
+                'curl -s -X POST "' +
+                  json.callbackUrl +
+                  '" -H "Content-Type: application/json" -d ' +
+                  "'" +
+                  cbBody +
+                  "'",
+                { timeout: 10000, stdio: "pipe" },
+              );
+              console.log("Callback sent to Vercel");
+            } catch (cbErr) {
+              console.error("Callback failed:", cbErr.message);
+            }
+          }
+
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(
             JSON.stringify({

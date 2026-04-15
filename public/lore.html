@@ -3214,16 +3214,15 @@
       async function renderVPS(rowId) {
         if (!confirm("Render video via VPS (free)? This takes 2-5 minutes."))
           return;
-        toast("Rendering on VPS — this takes 2-5 minutes...");
+        toast(
+          "Rendering on VPS — this takes 2-5 minutes. Refresh the page when done to see the video.",
+        );
         try {
           const result = await apiPost("render-vps", { rowId });
-          if (result.ok && result.url) {
+          if (result.ok) {
             toast(
-              "Render complete! " +
-                (result.size / 1024 / 1024).toFixed(1) +
-                "MB",
+              result.message || "Render started — refresh in a few minutes",
             );
-            selectScript(rowId);
           } else {
             toast("Render failed: " + (result.error || "unknown"));
           }
