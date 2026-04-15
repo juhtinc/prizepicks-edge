@@ -241,6 +241,138 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: e.message.slice(0, 200) }));
       }
     });
+  } else if (req.method === "POST" && req.url === "/render-video") {
+    // FFmpeg video render — receives clip data, renders locally, uploads to R2
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", async () => {
+      try {
+        const body = Buffer.concat(chunks);
+        const json = JSON.parse(body.toString());
+        if (json.secret !== API_SECRET) {
+          res.writeHead(401);
+          return res.end(JSON.stringify({ error: "unauthorized" }));
+        }
+
+        const {
+          rowId,
+          clips,
+          voiceoverUrl,
+          musicUrl,
+          captions,
+          playerName,
+          duration,
+          outroStart,
+        } = json;
+        if (!rowId || !clips || !clips.length) {
+          res.writeHead(400);
+          return res.end(JSON.stringify({ error: "rowId and clips required" }));
+        }
+
+        console.log(
+          "Rendering video for " +
+            rowId +
+            " (" +
+            clips.length +
+            " clips, " +
+            duration +
+            "s)",
+        );
+
+        // Write render script to disk
+        const renderScript = path.join("/opt/sports-lore", "vps-render.js");
+        const outputPath = "/tmp/render-" + Date.now() + ".mp4";
+
+        // Pass input data via temp file (too large for stdin in some cases)
+        const inputFile = "/tmp/render-input-" + Date.now() + ".json";
+        fs.writeFileSync(
+          inputFile,
+          JSON.stringify({
+            clips,
+            voiceoverUrl,
+            musicUrl,
+            captions,
+            playerName,
+            duration,
+            outroStart,
+            outputPath,
+          }),
+        );
+
+        // Run render (can take 2-5 minutes)
+        const result = execSync(`cat "${inputFile}" | node "${renderScript}"`, {
+          timeout: 600000,
+          stdio: ["pipe", "pipe", "pipe"],
+          maxBuffer: 10 * 1024 * 1024,
+        });
+
+        const renderResult = JSON.parse(
+          result.toString().trim().split("\n").pop(),
+        );
+        fs.unlinkSync(inputFile);
+
+        if (!renderResult.ok || !fs.existsSync(outputPath)) {
+          res.writeHead(500);
+          return res.end(
+            JSON.stringify({ error: renderResult.error || "render failed" }),
+          );
+        }
+
+        console.log("Render complete, uploading to R2...");
+
+        // Upload to R2
+        const key = rowId + "/rendered.mp4";
+        if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID) {
+          const endpoint =
+            "https://" + R2_ACCOUNT_ID + ".r2.cloudflarestorage.com";
+          const env =
+            "AWS_ACCESS_KEY_ID=" +
+            R2_ACCESS_KEY_ID +
+            " AWS_SECRET_ACCESS_KEY=" +
+            R2_SECRET_ACCESS_KEY;
+          execSync(
+            env +
+              ' aws s3 cp "' +
+              outputPath +
+              '" "s3://' +
+              R2_BUCKET +
+              "/" +
+              key +
+              '" --endpoint-url "' +
+              endpoint +
+              '"',
+            { timeout: 60000, stdio: "pipe" },
+          );
+          const publicUrl = R2_PUBLIC_URL + "/" + key + "?t=" + Date.now();
+          console.log("Uploaded to R2: " + publicUrl);
+
+          fs.unlinkSync(outputPath);
+
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              ok: true,
+              url: publicUrl,
+              size: renderResult.size,
+            }),
+          );
+        } else {
+          // No R2 — return local path
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              ok: true,
+              url: "local://" + outputPath,
+              size: renderResult.size,
+            }),
+          );
+        }
+      } catch (e) {
+        console.error("render-video error:", e.message);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message.slice(0, 300) }));
+      }
+    });
   } else if (req.method === "POST" && req.url === "/remove-bg") {
     // Remove background from image using rembg
     const chunks = [];

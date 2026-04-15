@@ -2067,7 +2067,8 @@
             ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="btn btn-dim btn-sm">YouTube</a>` : ""}
             <button class="btn btn-dim btn-sm" onclick="openRegenModal('${rowId}')">Regen Script${s.scriptVersions?.length ? " (" + s.scriptVersions.length + ")" : ""}</button>
             <button class="btn btn-dim btn-sm" onclick="generateVoiceover('${rowId}')">${s.voiceoverUrl ? "Regen Voice" : "Gen Voice"}</button>
-            ${!s.renderUrl ? `<button class="btn btn-dim btn-sm" onclick="renderVideo('${rowId}',true)">Preview Render</button>` : ""}
+            <button class="btn btn-green btn-sm" onclick="renderVPS('${rowId}')" style="text-transform:none;letter-spacing:0">Render (Free)</button>
+            ${!s.renderUrl ? `<button class="btn btn-dim btn-sm" onclick="renderVideo('${rowId}',true)">Render (Creatomate)</button>` : ""}
             ${s.renderUrl && !s.youtubeUrl ? `<button class="btn btn-gold btn-sm" onclick="renderVideo('${rowId}',false)">Publish</button>` : ""}
             ${s.youtubeUrl ? `<a href="${s.youtubeUrl}" target="_blank" class="btn btn-green btn-sm">Live</a>` : ""}
             <button class="btn btn-dim btn-sm" onclick="sourceClips('${rowId}')">Re-source</button>
@@ -3173,7 +3174,29 @@
         }
       }
 
-      // ── Render + Publish ──
+      // ── Render via VPS (free FFmpeg) ──
+      async function renderVPS(rowId) {
+        if (!confirm("Render video via VPS (free)? This takes 2-5 minutes."))
+          return;
+        toast("Rendering on VPS — this takes 2-5 minutes...");
+        try {
+          const result = await apiPost("render-vps", { rowId });
+          if (result.ok && result.url) {
+            toast(
+              "Render complete! " +
+                (result.size / 1024 / 1024).toFixed(1) +
+                "MB",
+            );
+            selectScript(rowId);
+          } else {
+            toast("Render failed: " + (result.error || "unknown"));
+          }
+        } catch (e) {
+          toast("Render error: " + e.message);
+        }
+      }
+
+      // ── Render + Publish (Creatomate) ──
       async function renderVideo(rowId, preview) {
         if (!checkCooldown(preview ? "render" : "publish", rowId)) return;
         const action = preview ? "Preview render" : "Full publish";
