@@ -241,6 +241,71 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: e.message.slice(0, 200) }));
       }
     });
+  } else if (req.method === "POST" && req.url === "/remove-bg") {
+    // Remove background from image using rembg
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => {
+      try {
+        const body = Buffer.concat(chunks);
+        const json = JSON.parse(body.toString());
+        if (json.secret !== API_SECRET) {
+          res.writeHead(401);
+          return res.end(JSON.stringify({ error: "unauthorized" }));
+        }
+
+        const tmpIn = "/tmp/rembg_in_" + Date.now() + ".png";
+        const tmpOut = "/tmp/rembg_out_" + Date.now() + ".png";
+
+        if (json.imageBase64) {
+          fs.writeFileSync(tmpIn, Buffer.from(json.imageBase64, "base64"));
+        } else if (json.imageUrl) {
+          execSync('curl -sL -o "' + tmpIn + '" "' + json.imageUrl + '"', {
+            timeout: 15000,
+            stdio: "pipe",
+          });
+        } else {
+          res.writeHead(400);
+          return res.end(
+            JSON.stringify({ error: "imageBase64 or imageUrl required" }),
+          );
+        }
+
+        if (!fs.existsSync(tmpIn)) {
+          res.writeHead(500);
+          return res.end(
+            JSON.stringify({ error: "failed to save input image" }),
+          );
+        }
+
+        console.log("Removing background...");
+        execSync('rembg i "' + tmpIn + '" "' + tmpOut + '"', {
+          timeout: 60000,
+          stdio: "pipe",
+        });
+
+        if (!fs.existsSync(tmpOut)) {
+          res.writeHead(500);
+          return res.end(JSON.stringify({ error: "rembg failed" }));
+        }
+
+        const outData = fs.readFileSync(tmpOut);
+        const base64 = outData.toString("base64");
+        console.log(
+          "Background removed: " + (outData.length / 1024).toFixed(0) + "KB",
+        );
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, imageBase64: base64 }));
+
+        fs.unlinkSync(tmpIn);
+        fs.unlinkSync(tmpOut);
+      } catch (e) {
+        console.error("remove-bg error:", e.message);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message.slice(0, 200) }));
+      }
+    });
   } else if (req.method === "GET" && req.url === "/health") {
     res.writeHead(200);
     res.end(JSON.stringify({ status: "ok", warp: USE_WARP }));
