@@ -98,21 +98,58 @@ async function renderVideo(input) {
       timeout: 30000,
       stdio: "pipe",
     });
-    return "file://" + out;
+    return out;
   }
+
+  // Serve downloaded assets via a local HTTP server for Remotion
+  const http = require("http");
+  const assetServer = http.createServer((assetReq, assetRes) => {
+    const filePath = path.join(
+      dlDir,
+      decodeURIComponent(assetReq.url.replace(/^\//, "")),
+    );
+    if (fs.existsSync(filePath)) {
+      const ext = path.extname(filePath).toLowerCase();
+      const mime =
+        ext === ".mp4"
+          ? "video/mp4"
+          : ext === ".mp3"
+            ? "audio/mpeg"
+            : "application/octet-stream";
+      assetRes.writeHead(200, {
+        "Content-Type": mime,
+        "Content-Length": fs.statSync(filePath).size,
+      });
+      fs.createReadStream(filePath).pipe(assetRes);
+    } else {
+      assetRes.writeHead(404);
+      assetRes.end("not found");
+    }
+  });
+  await new Promise((resolve) => assetServer.listen(0, "127.0.0.1", resolve));
+  const assetPort = assetServer.address().port;
+  console.error("Asset server on port " + assetPort);
 
   console.error(
     "Pre-downloading " + (clips || []).length + " clips + audio...",
   );
-  const localClips = (clips || []).map((clip, i) => ({
-    ...clip,
-    url: clip.url ? dlFile(clip.url, `clip_${i}.mp4`) : clip.url,
-  }));
-  const localVoiceover = voiceoverUrl
-    ? dlFile(voiceoverUrl, "voiceover.mp3")
-    : null;
-  const localMusic = musicUrl ? dlFile(musicUrl, "music.mp3") : null;
-  console.error("All assets downloaded to " + dlDir);
+  const localUrl = (filename) => `http://127.0.0.1:${assetPort}/${filename}`;
+  const localClips = (clips || []).map((clip, i) => {
+    const filename = `clip_${i}.mp4`;
+    if (clip.url) dlFile(clip.url, filename);
+    return { ...clip, url: clip.url ? localUrl(filename) : clip.url };
+  });
+  let localVoiceover = null;
+  if (voiceoverUrl) {
+    dlFile(voiceoverUrl, "voiceover.mp3");
+    localVoiceover = localUrl("voiceover.mp3");
+  }
+  let localMusic = null;
+  if (musicUrl) {
+    dlFile(musicUrl, "music.mp3");
+    localMusic = localUrl("music.mp3");
+  }
+  console.error("All assets downloaded and served via localhost:" + assetPort);
 
   console.error("Selecting composition...");
   const composition = await selectComposition({
@@ -170,7 +207,8 @@ async function renderVideo(input) {
     `Render complete: ${(stat.size / 1024 / 1024).toFixed(1)}MB at ${finalOutput}`,
   );
 
-  // Cleanup downloaded assets
+  // Cleanup downloaded assets and stop asset server
+  assetServer.close();
   try {
     fs.rmSync(dlDir, { recursive: true, force: true });
   } catch {}
