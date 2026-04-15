@@ -3316,6 +3316,8 @@
           clearInterval(renderProgressInterval);
           renderProgressInterval = null;
         }
+        const bar = document.getElementById("renderProgressBar");
+        if (bar) bar.remove();
       }
 
       // ── Render + Publish (Creatomate) ──
