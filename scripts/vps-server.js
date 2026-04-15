@@ -307,98 +307,49 @@ const server = http.createServer(async (req, res) => {
           }),
         );
 
-        // Run render (can take 2-5 minutes)
-        const result = execSync(`cat "${inputFile}" | node "${renderScript}"`, {
-          timeout: 1800000, // 30 minutes for Remotion renders
-          stdio: ["pipe", "pipe", "pipe"],
-          maxBuffer: 10 * 1024 * 1024,
+        // Spawn render as detached background process (avoids service environment issues)
+        const { spawn } = require("child_process");
+        const logFile = "/tmp/render-log-" + Date.now() + ".txt";
+        const shellScript = `
+          cat "${inputFile}" | node "${renderScript}" > /tmp/render-stdout.json 2>"${logFile}"
+          RESULT=$?
+          if [ $RESULT -eq 0 ]; then
+            RENDER_OUTPUT=$(tail -1 /tmp/render-stdout.json)
+            echo "Render finished: $RENDER_OUTPUT" >> "${logFile}"
+            # Upload to R2
+            if [ -f "${outputPath}" ] && [ -n "${R2_ACCOUNT_ID}" ]; then
+              AWS_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY} aws s3 cp "${outputPath}" "s3://${R2_BUCKET}/${rowId}/rendered.mp4" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" 2>>"${logFile}"
+              echo "Uploaded to R2" >> "${logFile}"
+              rm -f "${outputPath}"
+              # Callback to Vercel
+              ${json.callbackUrl ? `curl -s -X POST "${json.callbackUrl}" -H "Content-Type: application/json" -d '{"rowId":"${rowId}","url":"${R2_PUBLIC_URL}/${rowId}/rendered.mp4?t='$(date +%s)'","secret":"${json.callbackSecret || ""}"}'  2>>"${logFile}"` : ""}
+              echo "Callback sent" >> "${logFile}"
+            fi
+          else
+            echo "Render failed with exit code $RESULT" >> "${logFile}"
+          fi
+          rm -f "${inputFile}" /tmp/render-stdout.json
+        `;
+
+        const child = spawn("/bin/bash", ["-c", shellScript], {
+          detached: true,
+          stdio: "ignore",
+          env: {
+            ...process.env,
+            HOME: "/root",
+            PATH: "/root/.deno/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          },
         });
+        child.unref();
 
-        const renderResult = JSON.parse(
-          result.toString().trim().split("\n").pop(),
+        console.log(
+          "Render spawned as detached process (PID: " + child.pid + ")",
         );
-        fs.unlinkSync(inputFile);
 
-        if (!renderResult.ok || !fs.existsSync(outputPath)) {
-          res.writeHead(500);
-          return res.end(
-            JSON.stringify({ error: renderResult.error || "render failed" }),
-          );
-        }
-
-        console.log("Render complete, uploading to R2...");
-
-        // Upload to R2
-        const key = rowId + "/rendered.mp4";
-        if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID) {
-          const endpoint =
-            "https://" + R2_ACCOUNT_ID + ".r2.cloudflarestorage.com";
-          const env =
-            "AWS_ACCESS_KEY_ID=" +
-            R2_ACCESS_KEY_ID +
-            " AWS_SECRET_ACCESS_KEY=" +
-            R2_SECRET_ACCESS_KEY;
-          execSync(
-            env +
-              ' aws s3 cp "' +
-              outputPath +
-              '" "s3://' +
-              R2_BUCKET +
-              "/" +
-              key +
-              '" --endpoint-url "' +
-              endpoint +
-              '"',
-            { timeout: 60000, stdio: "pipe" },
-          );
-          const publicUrl = R2_PUBLIC_URL + "/" + key + "?t=" + Date.now();
-          console.log("Uploaded to R2: " + publicUrl);
-
-          fs.unlinkSync(outputPath);
-
-          // Callback to Vercel to save the render URL
-          if (json.callbackUrl) {
-            try {
-              const cbBody = JSON.stringify({
-                rowId,
-                url: publicUrl,
-                size: renderResult.size,
-                secret: json.callbackSecret || "",
-              });
-              execSync(
-                'curl -s -X POST "' +
-                  json.callbackUrl +
-                  '" -H "Content-Type: application/json" -d ' +
-                  "'" +
-                  cbBody +
-                  "'",
-                { timeout: 10000, stdio: "pipe" },
-              );
-              console.log("Callback sent to Vercel");
-            } catch (cbErr) {
-              console.error("Callback failed:", cbErr.message);
-            }
-          }
-
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({
-              ok: true,
-              url: publicUrl,
-              size: renderResult.size,
-            }),
-          );
-        } else {
-          // No R2 — return local path
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(
-            JSON.stringify({
-              ok: true,
-              url: "local://" + outputPath,
-              size: renderResult.size,
-            }),
-          );
-        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({ ok: true, message: "Render started in background" }),
+        );
       } catch (e) {
         console.error("render-video error:", e.message);
         res.writeHead(500);
