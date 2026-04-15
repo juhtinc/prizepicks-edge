@@ -49,16 +49,10 @@ const ClipWithKenBurns: React.FC<{
     extrapolateRight: "clamp",
   });
 
-  // Outro: blur and darken over the first 15 frames (~0.5s)
-  const blurAmount = isOutro
-    ? interpolate(frame, [0, 15], [0, 12], { extrapolateRight: "clamp" })
+  // Outro: darken with overlay (no CSS blur — too heavy for Chrome Headless)
+  const darkenOpacity = isOutro
+    ? interpolate(frame, [0, 15], [0, 0.85], { extrapolateRight: "clamp" })
     : 0;
-  const darkenAmount = isOutro
-    ? interpolate(frame, [0, 15], [1, 0.2], { extrapolateRight: "clamp" })
-    : 1;
-  const saturation = isOutro
-    ? interpolate(frame, [0, 15], [0.85, 0.2], { extrapolateRight: "clamp" })
-    : 0.85;
 
   return (
     <AbsoluteFill
@@ -74,9 +68,16 @@ const ClipWithKenBurns: React.FC<{
           height: "100%",
           objectFit: "cover",
           transform: `scale(${scale})`,
-          filter: `saturate(${saturation}) contrast(1.1) blur(${blurAmount}px) brightness(${darkenAmount})`,
+          filter: "saturate(0.85) contrast(1.1)",
         }}
       />
+      {isOutro && (
+        <AbsoluteFill
+          style={{
+            backgroundColor: `rgba(0,0,0,${darkenOpacity})`,
+          }}
+        />
+      )}
     </AbsoluteFill>
   );
 };
