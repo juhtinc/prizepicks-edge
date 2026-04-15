@@ -1615,27 +1615,61 @@
       }
 
       /* ── Toast ── */
-      .toast {
+      .toast-container {
         position: fixed;
         bottom: 24px;
         right: 24px;
+        z-index: 200;
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 6px;
+        max-height: 60vh;
+        overflow-y: auto;
+        pointer-events: none;
+      }
+      .toast-item {
         background: var(--bg3);
         border: 1px solid var(--border2);
         border-radius: 6px;
-        padding: 10px 18px;
+        padding: 8px 28px 8px 14px;
         font-size: 11px;
         color: var(--gold);
-        z-index: 200;
-        transform: translateY(80px) scale(0.95);
-        opacity: 0;
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         font-weight: 500;
         letter-spacing: 0.3px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        position: relative;
+        pointer-events: auto;
+        animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        max-width: 340px;
       }
-      .toast.show {
-        transform: translateY(0) scale(1);
-        opacity: 1;
+      .toast-item.error {
+        border-color: rgba(232, 64, 64, 0.3);
+        color: var(--red);
+      }
+      .toast-x {
+        position: absolute;
+        top: 4px;
+        right: 6px;
+        background: none;
+        border: none;
+        color: var(--text3);
+        font-size: 13px;
+        cursor: pointer;
+        padding: 2px 4px;
+        line-height: 1;
+      }
+      .toast-x:hover {
+        color: var(--text);
+      }
+      @keyframes toastIn {
+        from {
+          transform: translateX(40px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
       }
 
       /* ── Loading ── */
@@ -1764,7 +1798,7 @@
       </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <div class="toast-container" id="toastContainer"></div>
 
     <script>
       const API = "/api/lore?route=dashboard";
@@ -1832,10 +1866,12 @@
       ];
 
       function toast(msg) {
-        const t = document.getElementById("toast");
-        t.textContent = msg;
-        t.classList.add("show");
-        setTimeout(() => t.classList.remove("show"), 3000);
+        const container = document.getElementById("toastContainer");
+        const item = document.createElement("div");
+        const isError = /fail|error|denied|unauthorized/i.test(msg);
+        item.className = "toast-item" + (isError ? " error" : "");
+        item.innerHTML = `${msg}<button class="toast-x" onclick="this.parentElement.remove()">&times;</button>`;
+        container.appendChild(item);
       }
 
       // ── Batches ──
