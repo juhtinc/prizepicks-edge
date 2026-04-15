@@ -197,6 +197,17 @@ async function renderVideo(input) {
       if (pct > lastProgress) {
         process.stderr.write(`\rProgress: ${pct}%`);
         lastProgress = pct;
+        // Write progress to shared file for dashboard polling
+        try {
+          fs.writeFileSync(
+            "/tmp/remotion-progress.json",
+            JSON.stringify({
+              progress: pct,
+              rendering: true,
+              timestamp: Date.now(),
+            }),
+          );
+        } catch {}
       }
     },
   });
@@ -206,6 +217,18 @@ async function renderVideo(input) {
   console.error(
     `Render complete: ${(stat.size / 1024 / 1024).toFixed(1)}MB at ${finalOutput}`,
   );
+
+  // Mark render as complete in shared progress file
+  try {
+    fs.writeFileSync(
+      "/tmp/remotion-progress.json",
+      JSON.stringify({
+        progress: 100,
+        rendering: false,
+        timestamp: Date.now(),
+      }),
+    );
+  } catch {}
 
   // Cleanup downloaded assets and stop asset server
   assetServer.close();

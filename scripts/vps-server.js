@@ -422,36 +422,24 @@ const server = http.createServer(async (req, res) => {
       }
     });
   } else if (req.method === "GET" && req.url === "/render-status") {
-    // Check if a render is currently in progress
+    // Read progress from shared file written by remotion-render.js
     try {
-      const { execSync: es } = require("child_process");
-      const procs = es("ps aux | grep remotion-render | grep -v grep | wc -l", {
-        stdio: "pipe",
-      })
-        .toString()
-        .trim();
-      const isRendering = parseInt(procs) > 0;
-      let progress = 0;
-      let fileSize = 0;
-      if (isRendering) {
-        try {
-          const files = es(
-            "ls -la /tmp/react-motion-render*/pre-encode.mp4 2>/dev/null | tail -1",
-            { stdio: "pipe" },
-          )
-            .toString()
-            .trim();
-          const match = files.match(/(\d+)\s+\w+\s+\d+\s+[\d:]+\s+/);
-          if (match) fileSize = parseInt(match[1]);
-          // Estimate: ~35MB for a 58s video at 1080x1920
-          progress = Math.min(
-            Math.round((fileSize / (35 * 1024 * 1024)) * 100),
-            99,
-          );
-        } catch {}
+      if (fs.existsSync("/tmp/remotion-progress.json")) {
+        const data = JSON.parse(
+          fs.readFileSync("/tmp/remotion-progress.json", "utf8"),
+        );
+        // If the timestamp is older than 5 minutes, consider it stale
+        if (Date.now() - (data.timestamp || 0) > 300000) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ rendering: false, progress: 0 }));
+        } else {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(data));
+        }
+      } else {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ rendering: false, progress: 0 }));
       }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ rendering: isRendering, progress, fileSize }));
     } catch (e) {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ rendering: false, progress: 0 }));
