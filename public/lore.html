@@ -3245,6 +3245,8 @@
         )
           return;
         toast("Starting render on VPS...");
+        // Clear old render URL so progress bar doesn't false-complete
+        await apiPost("edit-script", { rowId, field: "renderUrl", value: "" });
         try {
           const result = await apiPost("render-vps", { rowId });
           if (result.ok) {
