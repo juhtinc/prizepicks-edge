@@ -16,19 +16,39 @@ export const ClipSequence: React.FC<{
 }> = ({ clips, outroStart }) => {
   const { fps } = useVideoConfig();
 
+  // Find the last non-outro clip index
+  const lastRealClipIdx =
+    outroStart !== null
+      ? clips.findIndex((c) => c.start >= outroStart) - 1
+      : clips.length - 1;
+
   return (
     <AbsoluteFill>
       {clips.map((clip, i) => {
         const startFrame = Math.round(clip.start * fps);
         const durationFrames = Math.round(clip.duration * fps);
         const isOutroClip = outroStart !== null && clip.start >= outroStart;
+        const isLastRealClip = i === lastRealClipIdx && outroStart !== null;
+
+        if (isOutroClip) {
+          // Pure black frame — no footage
+          return (
+            <Sequence
+              key={i}
+              from={startFrame}
+              durationInFrames={durationFrames}
+            >
+              <AbsoluteFill style={{ backgroundColor: "#000" }} />
+            </Sequence>
+          );
+        }
 
         return (
           <Sequence key={i} from={startFrame} durationInFrames={durationFrames}>
             <ClipWithKenBurns
               url={clip.url}
               durationFrames={durationFrames}
-              isOutro={isOutroClip}
+              fadeToBlack={isLastRealClip}
             />
           </Sequence>
         );
@@ -40,8 +60,8 @@ export const ClipSequence: React.FC<{
 const ClipWithKenBurns: React.FC<{
   url: string;
   durationFrames: number;
-  isOutro?: boolean;
-}> = ({ url, durationFrames, isOutro }) => {
+  fadeToBlack?: boolean;
+}> = ({ url, durationFrames, fadeToBlack }) => {
   const frame = useCurrentFrame();
 
   // Ken Burns: slow zoom from 100% to 112%
@@ -49,19 +69,18 @@ const ClipWithKenBurns: React.FC<{
     extrapolateRight: "clamp",
   });
 
-  // Outro: quick fade to full black (0.5s transition, then pure black)
-  const darkenOpacity = isOutro
-    ? interpolate(frame, [0, 15], [0, 1], {
+  // Fade to black in the last 1.5 seconds of this clip
+  const fadeFrames = 45; // 1.5s at 30fps
+  const fadeStart = Math.max(0, durationFrames - fadeFrames);
+  const blackOverlay = fadeToBlack
+    ? interpolate(frame, [fadeStart, durationFrames], [0, 1], {
+        extrapolateLeft: "clamp",
         extrapolateRight: "clamp",
       })
     : 0;
 
   return (
-    <AbsoluteFill
-      style={{
-        overflow: "hidden",
-      }}
-    >
+    <AbsoluteFill style={{ overflow: "hidden" }}>
       <OffthreadVideo
         muted
         src={url}
@@ -73,10 +92,10 @@ const ClipWithKenBurns: React.FC<{
           filter: "saturate(0.85) contrast(1.1)",
         }}
       />
-      {isOutro && (
+      {fadeToBlack && (
         <AbsoluteFill
           style={{
-            backgroundColor: `rgba(0,0,0,${darkenOpacity})`,
+            backgroundColor: `rgba(0,0,0,${blackOverlay})`,
           }}
         />
       )}
