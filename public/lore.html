@@ -3262,7 +3262,9 @@
 
       // Poll VPS for render progress
       let renderProgressInterval = null;
+      let renderWaitingAttempts = 0;
       function startRenderProgress(rowId) {
+        renderWaitingAttempts = 0;
         // Create progress bar toast
         const container = document.getElementById("toastContainer");
         const bar = document.createElement("div");
@@ -3293,6 +3295,7 @@
               const pct = status.progress || 0;
               label.textContent = "Rendering: " + pct + "%";
               fill.style.width = pct + "%";
+              renderWaitingAttempts = 0;
             } else {
               // Not rendering anymore — check if done
               const { script } = await api("script-detail", { rowId });
@@ -3303,8 +3306,38 @@
                 toast("Render complete — refresh to see the video");
                 stopRenderProgress();
                 selectScript(rowId);
-              } else {
-                label.textContent = "Waiting for render...";
+                return;
+              }
+
+              // Render done on VPS but renderUrl not saved yet. Show an amber
+              // "syncing" bar instead of a stalled 99%, and auto-heal by probing
+              // R2 directly after a couple of polls.
+              renderWaitingAttempts++;
+              fill.style.width = "100%";
+              fill.style.background = "var(--gold)";
+              label.textContent =
+                renderWaitingAttempts > 1
+                  ? "Syncing render... (attempt " +
+                    renderWaitingAttempts +
+                    ")"
+                  : "Syncing render...";
+
+              if (renderWaitingAttempts >= 2 && renderWaitingAttempts <= 6) {
+                try {
+                  const res = await apiPost("reconcile-render", { rowId });
+                  if (res?.ok && res.url) {
+                    label.textContent = "Render complete! ✓";
+                    fill.style.background = "var(--green)";
+                    toast("Render complete — refresh to see the video");
+                    stopRenderProgress();
+                    selectScript(rowId);
+                  }
+                } catch {}
+              } else if (renderWaitingAttempts > 6) {
+                // Give up after ~90s of syncing.
+                label.textContent = "Sync failed — check VPS logs";
+                fill.style.background = "var(--red)";
+                stopRenderProgress();
               }
             }
           } catch {}

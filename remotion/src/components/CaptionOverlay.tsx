@@ -33,8 +33,23 @@ export const CaptionOverlay: React.FC<{
 
     if (duringOutro.length > 0) {
       const fullText = duringOutro.map((c) => c.text).join(" ");
+
+      // Isolate the final question: last sentence ending in "?".
+      // If it has a lead-in before an em-dash (e.g. "So ask yourself —"),
+      // strip that so only the question itself shows over the outro card.
+      let outroText = fullText;
+      const sentences = fullText.split(/(?<=[.!?])\s+/);
+      const lastQuestion = [...sentences]
+        .reverse()
+        .find((s) => s.trim().endsWith("?"));
+      if (lastQuestion) {
+        outroText = lastQuestion.includes("—")
+          ? lastQuestion.split("—").slice(1).join("—").trim()
+          : lastQuestion.trim();
+      }
+
       const outroCaption: Caption = {
-        text: fullText,
+        text: outroText,
         start: duringOutro[0].start,
         duration:
           duringOutro[duringOutro.length - 1].start +
