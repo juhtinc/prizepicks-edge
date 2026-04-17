@@ -37,6 +37,7 @@ export const CaptionOverlay: React.FC<{
       // Isolate the final question: last sentence ending in "?".
       // If it has a lead-in before an em-dash (e.g. "So ask yourself —"),
       // strip that so only the question itself shows over the outro card.
+      // Capitalize the first letter since the extracted fragment now stands alone.
       let outroText = fullText;
       const sentences = fullText.split(/(?<=[.!?])\s+/);
       const lastQuestion = [...sentences]
@@ -46,6 +47,7 @@ export const CaptionOverlay: React.FC<{
         outroText = lastQuestion.includes("—")
           ? lastQuestion.split("—").slice(1).join("—").trim()
           : lastQuestion.trim();
+        outroText = outroText.charAt(0).toUpperCase() + outroText.slice(1);
       }
 
       const outroCaption: Caption = {
