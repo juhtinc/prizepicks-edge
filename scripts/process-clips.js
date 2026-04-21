@@ -69,9 +69,19 @@ async function askClaude(prompt, maxTokens = 2000) {
   }
   const data = await resp.json();
   const text = data.content?.[0]?.text || "";
+  const stopReason = data.stop_reason;
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) return JSON.parse(jsonMatch[0]);
-  return null;
+  if (!jsonMatch) {
+    console.error(`    Claude returned no JSON (stop_reason=${stopReason}). First 300: ${text.slice(0, 300)}`);
+    return null;
+  }
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch (e) {
+    console.error(`    Claude JSON parse failed (stop_reason=${stopReason}): ${e.message}`);
+    console.error(`    Response length: ${text.length} chars; last 200: ${text.slice(-200)}`);
+    return null;
+  }
 }
 
 // ── YouTube search ──
@@ -330,7 +340,7 @@ RULES:
 
 Return JSON:
 {"clips":[{"slot":1,"search_query":"${script.playerName} specific play","visual_match":"what narrator says here"},...],"searches":["query1","query2","query3"]}`,
-    2000,
+    4000,
   );
 
   if (!clipPlan || !clipPlan.clips) {
