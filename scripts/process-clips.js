@@ -57,14 +57,18 @@ async function askClaude(prompt, maxTokens = 2000) {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     }),
   });
+  if (!resp.ok) {
+    const body = await resp.text();
+    console.error(`    Claude API ${resp.status}: ${body.slice(0, 300)}`);
+    return null;
+  }
   const data = await resp.json();
   const text = data.content?.[0]?.text || "";
-  // Extract JSON from response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (jsonMatch) return JSON.parse(jsonMatch[0]);
   return null;
