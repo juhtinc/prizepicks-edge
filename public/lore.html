@@ -2796,37 +2796,7 @@
       }
 
       async function rejectClip(idx) {
-        const slot = curClipList[idx]?.slot || idx + 1;
-        // Show rejection reason picker
-        const allRows = document.querySelectorAll(".clip-row");
-        const row = allRows[idx];
-        if (!row) return;
-
-        // Remove any existing picker
-        document.querySelector(".reject-picker")?.remove();
-
-        const picker = document.createElement("div");
-        picker.className = "reject-picker";
-        const rect = row.getBoundingClientRect();
-        const top = Math.min(rect.top, window.innerHeight - 250);
-        const left = Math.min(rect.right + 8, window.innerWidth - 200);
-        picker.style.cssText = `position:fixed;z-index:500;top:${Math.max(top, 10)}px;left:${left}px`;
-        picker.innerHTML = `
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:4px 10px;margin-bottom:2px">Why reject?</div>
-        ${REJECTION_REASONS.map((r) => `<button class="reject-option" onclick="doRejectClip(${idx},'${r.id}')">${r.label}</button>`).join("")}
-      `;
-        document.body.appendChild(picker);
-
-        // Close on click outside
-        setTimeout(() => {
-          const close = (e) => {
-            if (!picker.contains(e.target)) {
-              picker.remove();
-              document.removeEventListener("click", close);
-            }
-          };
-          document.addEventListener("click", close);
-        }, 50);
+        await doRejectClip(idx, null);
       }
 
       async function doRejectClip(idx, reason) {
@@ -2842,22 +2812,22 @@
         const dot = row?.querySelector(".clip-status-dot");
         if (dot) {
           dot.className = "clip-status-dot no";
-          dot.title = reason;
+          if (reason) dot.title = reason;
         }
 
-        // Show reason text on the row
-        const timeEl = row?.querySelector(".clip-row-time");
-        const label =
-          REJECTION_REASONS.find((r) => r.id === reason)?.label || reason;
-        if (timeEl && !timeEl.innerHTML.includes("color:var(--red)")) {
-          timeEl.innerHTML += ` · <span style="color:var(--red)">${label}</span>`;
+        const label = reason
+          ? REJECTION_REASONS.find((r) => r.id === reason)?.label || reason
+          : null;
+
+        if (label) {
+          const timeEl = row?.querySelector(".clip-row-time");
+          if (timeEl && !timeEl.innerHTML.includes("color:var(--red)")) {
+            timeEl.innerHTML += ` · <span style="color:var(--red)">${label}</span>`;
+          }
         }
 
-        toast(`Clip #${slot} rejected: ${label}`);
+        toast(label ? `Clip #${slot} rejected: ${label}` : `Clip #${slot} rejected`);
         await apiPost("reject-clip", { rowId: curScript, slot, reason });
-
-        // Auto-open YouTube search to find replacement
-        // Removed auto-open YouTube search — user can replace manually via ↻ or ⋯
       }
 
       async function approveAllClips(rowId) {
@@ -6056,8 +6026,12 @@
       document.addEventListener("keydown", (e) => {
         // Never intercept browser shortcuts (Ctrl/Cmd+R, Ctrl+Shift+R, etc.)
         if (e.ctrlKey || e.metaKey || e.altKey) return;
-        // Don't capture when typing in inputs
-        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+        // Don't capture when typing in inputs or inline-editable fields
+        if (
+          e.target.tagName === "INPUT" ||
+          e.target.tagName === "TEXTAREA" ||
+          e.target.isContentEditable
+        )
           return;
         if (
           document.getElementById("uploadModal") ||
