@@ -2886,8 +2886,17 @@
         const result = await apiPost("edit-script", { rowId, field, value });
         if (result.ok) {
           if (result.clipsReset > 0) {
-            toast(`Player renamed — ${result.clipsReset} clips cleared, hit Re-source`);
+            toast(`Player renamed — ${result.clipsReset} clips cleared, re-sourcing…`);
+            const batchId = scriptData?.batchId || curBatch;
             selectScript(rowId);
+            apiPost("trigger-clips", { batchId, rowIds: [rowId] }).then((r) => {
+              if (r?.ok) {
+                toast("Pipeline triggered — check status in a few minutes");
+                pollPipelineStatus?.();
+              } else {
+                toast(`Pipeline trigger failed: ${r?.error || "unknown"}`);
+              }
+            });
           } else {
             toast(
               `${field === "hookLine" ? "Hook" : field === "script" ? "Script" : field} saved`,
