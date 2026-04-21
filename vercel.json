@@ -4,10 +4,6 @@
     "api/*.js": { "maxDuration": 60 }
   },
   "crons": [
-    { "path": "/api/cron",  "schedule": "0 17 * * *" },
-    { "path": "/api/cron",  "schedule": "0 21 * * *" },
-    { "path": "/api/cron",  "schedule": "0 2 * * *"  },
-    { "path": "/api/grade", "schedule": "0 15 * * *" },
     { "path": "/api/lore?route=cron-lore&workflow=analytics",              "schedule": "0 1 * * 1"  },
     { "path": "/api/lore?route=cron-lore&workflow=weekly-batch&batch=A",   "schedule": "0 2 * * 1"  },
     { "path": "/api/lore?route=cron-lore&workflow=auto-start",            "schedule": "0 11 * * *" },
