@@ -2092,7 +2092,7 @@
           <div class="detail-photo" id="detailPhoto" onclick="uploadPlayerPhoto('${rowId}')" style="cursor:pointer" title="Click to upload photo">${s.playerPhotoUrl || photoCache[s.playerName] ? `<img src="${s.playerPhotoUrl || photoCache[s.playerName]}">` : ""}</div>
           <input type="file" id="photoFileInput" accept="image/png,image/jpeg,image/webp" style="display:none">
           <div>
-            <div class="detail-title">${s.playerName || "?"}</div>
+            <div class="detail-title editable" contenteditable="true" data-field="playerName" data-row="${rowId}" onblur="saveInlineEdit(this)" title="Click to edit — renaming the player resets all clip approvals">${s.playerName || "?"}</div>
             <div class="detail-sub">${(s.storyType || "").replace(/_/g, " ").toUpperCase()} · ${s.playerSport || "NBA"} · ${rowId}</div>
           </div>
           <div class="detail-actions">
@@ -2915,9 +2915,14 @@
 
         const result = await apiPost("edit-script", { rowId, field, value });
         if (result.ok) {
-          toast(
-            `${field === "hookLine" ? "Hook" : field === "script" ? "Script" : field} saved`,
-          );
+          if (result.clipsReset > 0) {
+            toast(`Player renamed — ${result.clipsReset} clips cleared, hit Re-source`);
+            selectScript(rowId);
+          } else {
+            toast(
+              `${field === "hookLine" ? "Hook" : field === "script" ? "Script" : field} saved`,
+            );
+          }
           // Update word count if script was edited
           if (field === "script" && result.wordCount != null) {
             const label = document.getElementById("wordCountLabel");
