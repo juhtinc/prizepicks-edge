@@ -154,9 +154,9 @@ try {
         `x=(w-text_w)/2:y=h*0.25:` +
         `enable='between(t,${outroStart.toFixed(2)},${outroEnd.toFixed(2)})'`,
     );
-    // SPORTS LORE wordmark
+    // COLD VAULT wordmark
     drawtextFilters.push(
-      `drawtext=${font}text='SPORTS LORE':fontsize=22:fontcolor=0xD4920F@0.45:` +
+      `drawtext=${font}text='COLD VAULT':fontsize=22:fontcolor=0xD4920F@0.45:` +
         `x=(w-text_w)/2:y=h*0.62:` +
         `enable='between(t,${(outroStart + 1).toFixed(2)},${outroEnd.toFixed(2)})'`,
     );
