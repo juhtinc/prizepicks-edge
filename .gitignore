@@ -5,3 +5,8 @@ node_modules/
 
 .vercel
 .env*.local
+
+cookies.txt
+manute-bol-render.mp4
+*.mp4
+cookies*.txt
