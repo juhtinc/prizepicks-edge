@@ -22,7 +22,7 @@ export const Watermark: React.FC = () => {
           borderRadius: 4,
         }}
       >
-        SPORTS LORE
+        COLD VAULT
       </div>
 
       {/* Bottom-right handle */}
@@ -37,7 +37,7 @@ export const Watermark: React.FC = () => {
           color: "rgba(255,255,255,0.3)",
         }}
       >
-        @SportsLore1
+        @ColdVaultYT
       </div>
     </AbsoluteFill>
   );
