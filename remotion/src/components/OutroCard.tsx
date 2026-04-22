@@ -38,7 +38,7 @@ export const OutroCard: React.FC<{
     extrapolateRight: "clamp",
   });
 
-  // SPORTS LORE fades in at 50%
+  // COLD VAULT fades in at 50%
   const brandOpacity = interpolate(outroFrame, [24, 40], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -105,7 +105,7 @@ export const OutroCard: React.FC<{
         }}
       />
 
-      {/* SPORTS LORE wordmark — with shadow for readability */}
+      {/* COLD VAULT wordmark — with shadow for readability */}
       <div
         style={{
           position: "absolute",
@@ -122,7 +122,7 @@ export const OutroCard: React.FC<{
             "0 0 20px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,1)",
         }}
       >
-        SPORTS LORE
+        COLD VAULT
       </div>
     </AbsoluteFill>
   );
