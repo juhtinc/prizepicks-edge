@@ -243,7 +243,7 @@ const videoTemplate = {
     {
       type: "text",
       name: "watermark",
-      text: "SPORTS LORE",
+      text: "COLD VAULT",
       x: "14%",
       y: "5%",
       x_alignment: "50%",
@@ -378,11 +378,11 @@ const thumbnailTemplate = {
       fill_color: "#FFD700",
       text_alignment: "center",
     },
-    // Sports Lore branding
+    // ColdVault branding
     {
       type: "text",
       name: "brand",
-      text: "SPORTS LORE",
+      text: "COLD VAULT",
       x: "50%",
       y: "5%",
       x_alignment: "50%",
