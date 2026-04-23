@@ -1,9 +1,9 @@
 #!/bin/bash
-# Sports Lore VPS Setup Script
+# ColdVault VPS Setup Script (internal codename: sports-lore)
 # Run as root on Contabo Ubuntu 24.04
 
 set -e
-echo "=== Sports Lore VPS Setup ==="
+echo "=== ColdVault VPS Setup ==="
 
 # 1. Update system
 echo "[1/7] Updating system..."
@@ -76,7 +76,7 @@ fi
 echo "[7/7] Creating systemd service..."
 cat > /etc/systemd/system/clip-api.service << 'SVCEOF'
 [Unit]
-Description=Sports Lore Clip API
+Description=ColdVault Clip API
 After=network.target
 
 [Service]
