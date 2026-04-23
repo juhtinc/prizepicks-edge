@@ -322,7 +322,20 @@ const server = http.createServer(async (req, res) => {
               echo "Uploaded to R2" >> "${logFile}"
               rm -f "${outputPath}"
               # Callback to Vercel
-              ${json.callbackUrl ? `curl -s -X POST "${json.callbackUrl}" -H "Content-Type: application/json" -d '{"rowId":"${rowId}","url":"${R2_PUBLIC_URL}/${rowId}/rendered.mp4?t='$(date +%s)'","secret":"${json.callbackSecret || ""}"}'  2>>"${logFile}"` : ""}
+              ${
+                json.callbackUrl
+                  ? `
+              CALLBACK_RESP=$(curl -s -w "\\nHTTP_STATUS:%{http_code}" -X POST "${json.callbackUrl}" -H "Content-Type: application/json" -d '{"rowId":"${rowId}","url":"${R2_PUBLIC_URL}/${rowId}/rendered.mp4?t='$(date +%s)'","secret":"${json.callbackSecret || ""}"}' 2>>"${logFile}")
+              echo "Callback response: $CALLBACK_RESP" >> "${logFile}"
+              # Retry once if callback failed
+              if ! echo "$CALLBACK_RESP" | grep -q "HTTP_STATUS:200"; then
+                echo "Callback failed, retrying in 5s..." >> "${logFile}"
+                sleep 5
+                CALLBACK_RESP=$(curl -s -w "\\nHTTP_STATUS:%{http_code}" -X POST "${json.callbackUrl}" -H "Content-Type: application/json" -d '{"rowId":"${rowId}","url":"${R2_PUBLIC_URL}/${rowId}/rendered.mp4?t='$(date +%s)'","secret":"${json.callbackSecret || ""}"}' 2>>"${logFile}")
+                echo "Retry response: $CALLBACK_RESP" >> "${logFile}"
+              fi`
+                  : ""
+              }
               echo "Callback sent" >> "${logFile}"
             fi
           else
